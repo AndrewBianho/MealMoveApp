@@ -39,6 +39,8 @@ model User {
   restaurantId String?
   pickups      Pickup[]
   events       ListingEvent[]
+  adminActions  AdminEvent[] @relation("AdminActor")
+  adminTargeted AdminEvent[] @relation("AdminTarget")
   createdAt    DateTime    @default(now())
 }
 
@@ -91,6 +93,21 @@ model Pickup {
   deliveredAt DateTime?
 
   @@index([volunteerId])
+}
+
+// Append-only log of admin actions (role changes) — who granted authority to
+// whom, and when. The institutional record that survives founder turnover.
+model AdminEvent {
+  id       String   @id @default(cuid())
+  type     String // role_changed
+  actor    User     @relation("AdminActor", fields: [actorId], references: [id])
+  actorId  String
+  target   User     @relation("AdminTarget", fields: [targetId], references: [id])
+  targetId String
+  meta     Json?
+  at       DateTime @default(now())
+
+  @@index([targetId, at])
 }
 
 // Append-only audit trail — the chapter's institutional memory.

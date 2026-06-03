@@ -12,12 +12,13 @@ const PICKUPS: Item = { href: "/pickups", label: "My pickups" };
 const RESTAURANT: Item = { href: "/restaurant", label: "Restaurant" };
 const DROPOFF: Item = { href: "/dropoff", label: "Drop-off" };
 const IMPACT: Item = { href: "/impact", label: "Impact" };
+const MEMBERS: Item = { href: "/admin/users", label: "Members" };
 
 const NAV_BY_ROLE: Record<Role, Item[]> = {
   volunteer: [FEED, PICKUPS, IMPACT],
   restaurant: [RESTAURANT, IMPACT],
   drop_off_admin: [DROPOFF, IMPACT],
-  org_admin: [FEED, PICKUPS, RESTAURANT, DROPOFF, IMPACT],
+  org_admin: [FEED, PICKUPS, RESTAURANT, DROPOFF, IMPACT, MEMBERS],
 };
 
 export function Nav({ role }: { role: Role }) {

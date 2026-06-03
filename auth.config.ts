@@ -20,6 +20,7 @@ const ACCESS: { prefix: string; roles: Role[] }[] = [
   { prefix: "/pickups", roles: ["volunteer", "org_admin"] },
   { prefix: "/restaurant", roles: ["restaurant", "org_admin"] },
   { prefix: "/dropoff", roles: ["drop_off_admin", "org_admin"] },
+  { prefix: "/admin", roles: ["org_admin"] },
 ];
 
 function matches(path: string, prefix: string): boolean {

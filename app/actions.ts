@@ -175,3 +175,50 @@ export async function postListing(input: {
   refreshViews(listing.id);
   return listing.id;
 }
+
+// Roles an org_admin can assign via the panel. "restaurant" is excluded — it's
+// tied to a Restaurant entity and only set at sign-up.
+type ManagedRole = "volunteer" | "drop_off_admin" | "org_admin";
+
+/** Change a user's role. Org-admin only; never leaves zero org admins. */
+export async function setRole(
+  userId: string,
+  role: ManagedRole
+): Promise<SignUpResult> {
+  const session = await auth();
+  if (session?.user?.role !== "org_admin") {
+    return { ok: false, error: "Only org admins can change roles." };
+  }
+  if (!["volunteer", "drop_off_admin", "org_admin"].includes(role)) {
+    return { ok: false, error: "Invalid role." };
+  }
+
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target) return { ok: false, error: "User not found." };
+  if (target.role === "restaurant") {
+    return { ok: false, error: "Restaurant accounts are managed at sign-up." };
+  }
+  if (target.role === role) return { ok: true };
+
+  // Last-admin guard — don't let the org lock itself out.
+  if (target.role === "org_admin" && role !== "org_admin") {
+    const admins = await prisma.user.count({ where: { role: "org_admin" } });
+    if (admins <= 1) {
+      return { ok: false, error: "Can't remove the last org admin." };
+    }
+  }
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { role } }),
+    prisma.adminEvent.create({
+      data: {
+        type: "role_changed",
+        actorId: session.user.id,
+        targetId: userId,
+        meta: { from: target.role, to: role },
+      },
+    }),
+  ]);
+  revalidatePath("/admin/users");
+  return { ok: true };
+}
