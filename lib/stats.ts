@@ -29,23 +29,45 @@ export async function getImpactStats(): Promise<ImpactStat[]> {
   ];
 }
 
-// Reliability = delivered / claimed, per volunteer who has claimed at least one
-// pickup. Non-punitive: a percentage, surfaced highest-first.
+// Reliability from the event log: completed vs flaked attempts. A delivered
+// event counts for the volunteer; a released (hold expired) or failed event
+// counts against them. Non-punitive: a percentage, surfaced highest-first.
 export async function getVolunteerReliability(): Promise<Volunteer[]> {
+  const rows = await prisma.listingEvent.groupBy({
+    by: ["actorId", "type"],
+    where: {
+      actorId: { not: null },
+      type: { in: ["delivered", "released", "failed"] },
+    },
+    _count: { _all: true },
+  });
+
+  const tally = new Map<string, { delivered: number; flaked: number }>();
+  for (const r of rows) {
+    if (!r.actorId) continue;
+    const t = tally.get(r.actorId) ?? { delivered: 0, flaked: 0 };
+    if (r.type === "delivered") t.delivered += r._count._all;
+    else t.flaked += r._count._all;
+    tally.set(r.actorId, t);
+  }
+
+  const ids = Array.from(tally.keys());
+  if (ids.length === 0) return [];
+
   const users = await prisma.user.findMany({
-    where: { role: "volunteer", pickups: { some: {} } },
-    select: { id: true, name: true, pickups: { select: { deliveredAt: true } } },
+    where: { id: { in: ids } },
+    select: { id: true, name: true },
   });
 
   return users
     .map((u) => {
-      const total = u.pickups.length;
-      const delivered = u.pickups.filter((p) => p.deliveredAt !== null).length;
+      const t = tally.get(u.id)!;
+      const total = t.delivered + t.flaked;
       return {
         id: u.id,
         name: u.name,
         pickups: total,
-        reliability: Math.round((delivered / total) * 100),
+        reliability: total > 0 ? Math.round((t.delivered / total) * 100) : 0,
       };
     })
     .sort((a, b) => b.reliability - a.reliability);
