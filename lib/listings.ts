@@ -40,6 +40,7 @@ export function serializeListing(l: DbListing): Listing {
     lng: l.restaurant.lng,
     category: l.category,
     perishable: l.perishable,
+    notes: l.notes ?? undefined,
   };
 }
 

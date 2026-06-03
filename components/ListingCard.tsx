@@ -34,6 +34,7 @@ export function ListingCard({ listing, onClaim }: ListingCardProps) {
     status,
     claimedBy,
     dropOff,
+    notes,
   } = listing;
 
   const spent = ["delivered", "expired", "failed"].includes(status);
@@ -72,6 +73,11 @@ export function ListingCard({ listing, onClaim }: ListingCardProps) {
           {dropOff && (
             <p className="flex items-center gap-1 font-mono text-xs text-neutral-600">
               <MapPin className="text-transit-400" />→ {dropOff}
+            </p>
+          )}
+          {notes && (
+            <p className="rounded-md bg-urgent-50 px-2 py-1 text-xs text-urgent-800">
+              {notes}
             </p>
           )}
         </div>

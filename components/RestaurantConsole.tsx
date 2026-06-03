@@ -33,6 +33,7 @@ export function RestaurantConsole({
   const [servings, setServings] = useState("");
   const [windowMin, setWindowMin] = useState(WINDOWS[1].minutes);
   const [dropOff, setDropOff] = useState("");
+  const [notes, setNotes] = useState("");
 
   const servingsNum = Number(servings);
   const valid = title.trim().length > 0 && servingsNum > 0;
@@ -47,11 +48,13 @@ export function RestaurantConsole({
         servings: servingsNum,
         minutes: windowMin,
         dropOffName: dropOff.trim() || undefined,
+        notes: notes.trim() || undefined,
       });
       show(`Posted “${name}” — it's live on the volunteer feed.`);
       setTitle("");
       setServings("");
       setDropOff("");
+      setNotes("");
       setWindowMin(WINDOWS[1].minutes);
     });
   }
@@ -142,6 +145,21 @@ export function RestaurantConsole({
                 placeholder="e.g. Community Fridge — 4th & Elm"
                 value={dropOff}
                 onChange={(e) => setDropOff(e.target.value)}
+              />
+            </div>
+
+            <div>
+              <label className={labelCls} htmlFor="notes">
+                Special requests / restraints{" "}
+                <span className="text-neutral-400">(optional)</span>
+              </label>
+              <textarea
+                id="notes"
+                rows={2}
+                className={fieldCls}
+                placeholder="e.g. contains nuts · keep upright · pick up at back door"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
               />
             </div>
 

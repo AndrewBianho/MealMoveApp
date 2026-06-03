@@ -131,6 +131,15 @@ export function ListingDetail({ listing }: { listing: Listing | null }) {
               )}
             </div>
 
+            {listing.notes && (
+              <div className="mt-5 rounded-md bg-urgent-50 px-4 py-3 text-sm text-urgent-800">
+                <span className="font-mono text-[10px] uppercase tracking-wide">
+                  special requests
+                </span>
+                <p className="mt-0.5">{listing.notes}</p>
+              </div>
+            )}
+
             {terminal && (
               <div
                 className={cn(

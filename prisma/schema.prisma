@@ -86,6 +86,7 @@ model FoodListing {
   servings     Int
   category     FoodCategory   @default(prepared)
   perishable   Boolean        @default(false)
+  notes        String? // special requests / restraints from the restaurant
   status       ListingStatus  @default(open)
   restaurant   Restaurant     @relation(fields: [restaurantId], references: [id])
   restaurantId String

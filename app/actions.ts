@@ -149,6 +149,7 @@ export async function postListing(input: {
   servings: number;
   minutes: number;
   dropOffName?: string;
+  notes?: string;
 }) {
   let dropOffId: string | undefined;
   if (input.dropOffName?.trim()) {
@@ -165,6 +166,7 @@ export async function postListing(input: {
     data: {
       title: input.title.trim(),
       servings: input.servings,
+      notes: input.notes?.trim() || null,
       status: "open",
       restaurantId: input.restaurantId,
       dropOffId,
@@ -174,6 +176,25 @@ export async function postListing(input: {
   });
   refreshViews(listing.id);
   return listing.id;
+}
+
+/** A drop-off admin sets the special requests / restraints for a location. */
+export async function updateDropOffNotes(
+  dropOffId: string,
+  notes: string
+): Promise<SignUpResult> {
+  const session = await auth();
+  const role = session?.user?.role;
+  if (role !== "drop_off_admin" && role !== "org_admin") {
+    return { ok: false, error: "Only drop-off admins can edit this." };
+  }
+  await prisma.dropOff.update({
+    where: { id: dropOffId },
+    data: { notes: notes.trim() || null },
+  });
+  revalidatePath("/dropoff");
+  revalidatePath(`/dropoffs/${dropOffId}`);
+  return { ok: true };
 }
 
 // Roles an org_admin can assign via the panel. "restaurant" is excluded — it's

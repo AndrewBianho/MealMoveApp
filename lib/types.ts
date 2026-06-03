@@ -70,6 +70,8 @@ export interface Listing {
   lng?: number;
   category?: FoodCategory;
   perishable?: boolean;
+  /** Special requests / restraints from the restaurant. */
+  notes?: string;
 }
 
 export interface Volunteer {

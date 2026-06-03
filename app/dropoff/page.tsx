@@ -1,4 +1,5 @@
 import { ListingCard } from "@/components/ListingCard";
+import { DropOffNotesEditor } from "@/components/DropOffNotesEditor";
 import { getDropOffs } from "@/lib/map";
 import { getListings } from "@/lib/listings";
 
@@ -55,9 +56,7 @@ export default async function DropoffPage() {
               <p className="font-mono text-xs text-neutral-600">
                 holds up to {d.capacity} servings
               </p>
-              {d.notes && (
-                <p className="mt-1 text-xs text-neutral-600">{d.notes}</p>
-              )}
+              <DropOffNotesEditor dropOffId={d.id} initialNotes={d.notes ?? ""} />
             </div>
           ))}
         </div>
