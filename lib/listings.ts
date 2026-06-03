@@ -36,6 +36,8 @@ export function serializeListing(l: DbListing): Listing {
     status: fromEnum(l.status),
     claimedBy: l.pickup?.volunteer.name,
     dropOff: l.dropOff?.name ?? undefined,
+    lat: l.restaurant.lat,
+    lng: l.restaurant.lng,
   };
 }
 

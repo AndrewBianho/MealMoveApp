@@ -29,6 +29,9 @@ export interface Listing {
   claimedBy?: string;
   /** Drop-off destination, shown once claimed. */
   dropOff?: string;
+  /** Source restaurant coordinates, for the map (present on DB-backed data). */
+  lat?: number;
+  lng?: number;
 }
 
 export interface Volunteer {
