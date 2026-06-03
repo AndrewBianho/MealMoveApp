@@ -1,15 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Button } from "./Button";
 import { ListingCard } from "./ListingCard";
 import { Toast, useToast } from "./Toast";
 import { cn } from "./cn";
-import { useListings } from "./store";
+import { postListing } from "@/app/actions";
 import type { Listing } from "@/lib/types";
 
-// Relative pickup windows → minutes. The expiry label is derived from "now"
-// when the listing is posted.
+// Relative pickup windows → minutes. The expiry timestamp is computed
+// server-side in the action from "now" + this value.
 const WINDOWS = [
   { label: "30 minutes", minutes: 30 },
   { label: "1 hour", minutes: 60 },
@@ -17,20 +17,17 @@ const WINDOWS = [
   { label: "3 hours", minutes: 180 },
 ];
 
-function expiryLabel(minutes: number): string {
-  return new Date(Date.now() + minutes * 60_000).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function newId(): string {
-  return `PU-${Math.floor(1000 + Math.random() * 9000)}`;
-}
-
-export function RestaurantConsole({ restaurant }: { restaurant: string }) {
-  const { listings, post } = useListings();
+export function RestaurantConsole({
+  restaurant,
+  restaurantId,
+  listings,
+}: {
+  restaurant: string;
+  restaurantId: string;
+  listings: Listing[];
+}) {
   const { message, show } = useToast();
+  const [isPending, startTransition] = useTransition();
 
   const [title, setTitle] = useState("");
   const [servings, setServings] = useState("");
@@ -42,39 +39,33 @@ export function RestaurantConsole({ restaurant }: { restaurant: string }) {
 
   function submit() {
     if (!valid) return;
-    const listing: Listing = {
-      id: newId(),
-      title: title.trim(),
-      source: restaurant,
-      expiresAt: expiryLabel(windowMin),
-      minutesLeft: windowMin,
-      servings: servingsNum,
-      distance: "0.4 mi",
-      status: "open",
-      dropOff: dropOff.trim() || undefined,
-    };
-    post(listing);
-    setTitle("");
-    setServings("");
-    setDropOff("");
-    setWindowMin(WINDOWS[1].minutes);
-    show(`Posted “${listing.title}” — it's live on the volunteer feed.`);
+    const name = title.trim();
+    startTransition(async () => {
+      await postListing({
+        restaurantId,
+        title: name,
+        servings: servingsNum,
+        minutes: windowMin,
+        dropOffName: dropOff.trim() || undefined,
+      });
+      show(`Posted “${name}” — it's live on the volunteer feed.`);
+      setTitle("");
+      setServings("");
+      setDropOff("");
+      setWindowMin(WINDOWS[1].minutes);
+    });
   }
 
-  const mine = useMemo(
-    () => listings.filter((l) => l.source === restaurant),
-    [listings, restaurant]
-  );
   const live = useMemo(
-    () => mine.filter((l) => l.status === "open" || l.status === "claimed"),
-    [mine]
+    () => listings.filter((l) => l.status === "open" || l.status === "claimed"),
+    [listings]
   );
   const past = useMemo(
     () =>
-      mine.filter((l) =>
+      listings.filter((l) =>
         ["in transit", "delivered", "expired", "failed"].includes(l.status)
       ),
-    [mine]
+    [listings]
   );
 
   const labelCls =
@@ -90,9 +81,7 @@ export function RestaurantConsole({ restaurant }: { restaurant: string }) {
       <div className="lg:sticky lg:top-20 lg:self-start">
         <div className="rounded-xl border border-neutral-200/40 bg-white p-5">
           <h2 className="text-lg font-medium">Post surplus</h2>
-          <p className="mb-4 text-sm text-neutral-600">
-            Posting from {restaurant}.
-          </p>
+          <p className="mb-4 text-sm text-neutral-600">Posting from {restaurant}.</p>
 
           <div className="space-y-4">
             <div>
@@ -159,10 +148,10 @@ export function RestaurantConsole({ restaurant }: { restaurant: string }) {
             <Button
               variant="primary"
               onClick={submit}
-              disabled={!valid}
-              className={cn("w-full", !valid && "opacity-50")}
+              disabled={!valid || isPending}
+              className={cn("w-full", (!valid || isPending) && "opacity-50")}
             >
-              Post listing
+              {isPending ? "Posting…" : "Post listing"}
             </Button>
           </div>
         </div>

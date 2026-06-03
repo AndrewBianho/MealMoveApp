@@ -1,8 +1,14 @@
 import { ListingFeed } from "@/components/ListingFeed";
 import { MetricCard } from "@/components/MetricCard";
 import { IMPACT_STATS } from "@/lib/mock";
+import { getListings } from "@/lib/listings";
 
-export default function FeedPage() {
+// Reads live data per request (and after revalidation from server actions).
+export const dynamic = "force-dynamic";
+
+export default async function FeedPage() {
+  const listings = await getListings();
+
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
       <header className="mb-6">
@@ -19,7 +25,7 @@ export default function FeedPage() {
         ))}
       </div>
 
-      <ListingFeed />
+      <ListingFeed listings={listings} />
     </main>
   );
 }

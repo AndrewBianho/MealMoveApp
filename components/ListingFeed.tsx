@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { cn } from "./cn";
 import { ListingCard } from "./ListingCard";
 import { Toast, useToast } from "./Toast";
-import { useListings } from "./store";
-import type { ListingStatus } from "@/lib/types";
+import { claimListing } from "@/app/actions";
+import type { Listing, ListingStatus } from "@/lib/types";
 
 type Filter = "all" | "open" | "claimed" | "in transit" | "delivered";
 
@@ -15,15 +15,17 @@ function isSpent(status: ListingStatus): boolean {
   return ["delivered", "expired", "failed"].includes(status);
 }
 
-export function ListingFeed() {
-  const { listings, claim } = useListings();
+export function ListingFeed({ listings }: { listings: Listing[] }) {
   const [filter, setFilter] = useState<Filter>("open");
   const { message, show } = useToast();
+  const [isPending, startTransition] = useTransition();
 
   function handleClaim(id: string) {
-    claim(id);
     const target = listings.find((l) => l.id === id);
-    show(`Claimed — head to ${target?.source ?? "pickup"}.`);
+    startTransition(async () => {
+      await claimListing(id);
+      show(`Claimed — head to ${target?.source ?? "pickup"}.`);
+    });
   }
 
   const counts = useMemo(() => {
@@ -44,7 +46,7 @@ export function ListingFeed() {
   }, [listings, filter]);
 
   return (
-    <div>
+    <div className={cn(isPending && "opacity-70 transition-opacity")}>
       <div className="mb-4 flex flex-wrap gap-2">
         {FILTERS.map((f) => {
           const active = f === filter;

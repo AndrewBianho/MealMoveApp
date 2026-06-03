@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useTransition } from "react";
 import { Button } from "./Button";
 import { StatusBadge } from "./StatusBadge";
 import { Toast, useToast } from "./Toast";
 import { Clock, MapPin, Users } from "./icons";
 import { cn } from "./cn";
-import { useListings } from "./store";
-import type { ListingStatus } from "@/lib/types";
+import { advanceListing, claimListing } from "@/app/actions";
+import type { Listing, ListingStatus } from "@/lib/types";
 
 // The happy-path journey. expired / failed are terminal off-ramps and render
 // their own banner rather than a step.
@@ -35,19 +36,16 @@ function MetaRow({
   );
 }
 
-export function ListingDetail({ id }: { id: string }) {
-  const { getById, claim, advance } = useListings();
+export function ListingDetail({ listing }: { listing: Listing | null }) {
   const { message, show } = useToast();
-  const listing = getById(id);
+  const [isPending, startTransition] = useTransition();
 
   if (!listing) {
     return (
       <div className="rounded-xl border border-dashed border-neutral-200 bg-white px-6 py-16 text-center">
-        <p className="text-sm text-neutral-600">
-          This listing isn&apos;t available.
-        </p>
+        <p className="text-sm text-neutral-600">This listing isn&apos;t available.</p>
         <p className="mt-1 font-mono text-xs text-neutral-400">
-          It may have been removed, or the page was reloaded.
+          It may have been removed.
         </p>
         <Link
           href="/"
@@ -61,22 +59,27 @@ export function ListingDetail({ id }: { id: string }) {
 
   const terminal = ["expired", "failed"].includes(listing.status);
   const currentStep = JOURNEY.indexOf(listing.status);
+  const id = listing.id;
 
   function onClaim() {
-    claim(id);
-    show("Claimed — it's yours for the next fifteen minutes.");
+    startTransition(async () => {
+      await claimListing(id);
+      show("Claimed — it's yours for the next fifteen minutes.");
+    });
   }
-  function onAdvance(next: string) {
-    advance(id);
-    show(
-      next === "in transit"
-        ? "On your way — drive safe."
-        : "Delivered. Thank you for the rescue. 🌱"
-    );
+  function onAdvance(next: "in transit" | "delivered") {
+    startTransition(async () => {
+      await advanceListing(id);
+      show(
+        next === "in transit"
+          ? "On your way — drive safe."
+          : "Delivered. Thank you for the rescue. 🌱"
+      );
+    });
   }
 
   return (
-    <div>
+    <div className={cn(isPending && "opacity-70 transition-opacity")}>
       <Link
         href="/"
         className="mb-4 inline-block text-sm text-neutral-600 hover:text-neutral-900"
@@ -197,7 +200,12 @@ export function ListingDetail({ id }: { id: string }) {
                 Next step
               </p>
               {listing.status === "open" && (
-                <Button variant="primary" className="w-full" onClick={onClaim}>
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  onClick={onClaim}
+                  disabled={isPending}
+                >
                   Claim pickup
                 </Button>
               )}
@@ -206,6 +214,7 @@ export function ListingDetail({ id }: { id: string }) {
                   variant="primary"
                   className="w-full"
                   onClick={() => onAdvance("in transit")}
+                  disabled={isPending}
                 >
                   Start delivery
                 </Button>
@@ -215,6 +224,7 @@ export function ListingDetail({ id }: { id: string }) {
                   variant="primary"
                   className="w-full"
                   onClick={() => onAdvance("delivered")}
+                  disabled={isPending}
                 >
                   Mark delivered
                 </Button>

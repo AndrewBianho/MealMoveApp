@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { Header } from "@/components/Header";
-import { ListingsProvider } from "@/components/store";
-import { LISTINGS } from "@/lib/mock";
 import "./globals.css";
 
 const plexSans = IBM_Plex_Sans({
@@ -32,10 +30,8 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${plexSans.variable} ${plexMono.variable}`}>
       <body className="min-h-screen bg-neutral-50 font-sans text-neutral-900 antialiased">
-        <ListingsProvider initial={LISTINGS}>
-          <Header />
-          {children}
-        </ListingsProvider>
+        <Header />
+        {children}
       </body>
     </html>
   );

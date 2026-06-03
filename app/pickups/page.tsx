@@ -1,7 +1,17 @@
-import { MyPickups } from "@/components/MyPickups";
+import { ListingCard } from "@/components/ListingCard";
 import { ReliabilityMeter } from "@/components/ReliabilityMeter";
+import { getListings } from "@/lib/listings";
 
-export default function PickupsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function PickupsPage() {
+  const all = await getListings();
+  const mine = all.filter((l) => l.claimedBy === "You");
+  const active = mine.filter((l) => ["claimed", "in transit"].includes(l.status));
+  const past = mine.filter((l) =>
+    ["delivered", "expired", "failed"].includes(l.status)
+  );
+
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
       <header className="mb-6">
@@ -18,7 +28,33 @@ export default function PickupsPage() {
         <ReliabilityMeter name="On-time completion" pct={91} />
       </div>
 
-      <MyPickups />
+      <section className="mb-8">
+        <h2 className="mb-4 text-lg font-medium">Active</h2>
+        {active.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {active.map((l) => (
+              <ListingCard key={l.id} listing={l} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-neutral-600">
+            Nothing in flight right now. Claim a pickup from the feed.
+          </p>
+        )}
+      </section>
+
+      <section>
+        <h2 className="mb-4 text-lg font-medium">History</h2>
+        {past.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {past.map((l) => (
+              <ListingCard key={l.id} listing={l} />
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-neutral-600">No completed pickups yet.</p>
+        )}
+      </section>
     </main>
   );
 }

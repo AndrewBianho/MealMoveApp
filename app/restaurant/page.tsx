@@ -1,7 +1,18 @@
 import { RestaurantConsole } from "@/components/RestaurantConsole";
+import { getListings } from "@/lib/listings";
+import { prisma } from "@/lib/prisma";
 import { RESTAURANT } from "@/lib/mock";
 
-export default function RestaurantPage() {
+export const dynamic = "force-dynamic";
+
+export default async function RestaurantPage() {
+  // Until auth, the "logged-in restaurant" is the seeded one.
+  const restaurant = await prisma.restaurant.findFirst({
+    where: { name: RESTAURANT },
+  });
+  const all = await getListings();
+  const mine = all.filter((l) => l.source === RESTAURANT);
+
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
       <header className="mb-6">
@@ -11,7 +22,17 @@ export default function RestaurantPage() {
         </p>
       </header>
 
-      <RestaurantConsole restaurant={RESTAURANT} />
+      {restaurant ? (
+        <RestaurantConsole
+          restaurant={RESTAURANT}
+          restaurantId={restaurant.id}
+          listings={mine}
+        />
+      ) : (
+        <p className="text-sm text-neutral-600">
+          Restaurant account not found. Run <code className="font-mono">npm run db:seed</code>.
+        </p>
+      )}
     </main>
   );
 }
