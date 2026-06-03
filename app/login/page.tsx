@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { LoginForm } from "@/components/LoginForm";
 
 const DEMO = [
@@ -16,6 +17,13 @@ export default function LoginPage() {
       </p>
 
       <LoginForm />
+
+      <p className="mt-6 text-sm text-neutral-600">
+        New here?{" "}
+        <Link href="/signup" className="font-medium text-rescued-600 hover:underline">
+          Create an account
+        </Link>
+      </p>
 
       <div className="mt-8 rounded-md bg-neutral-50 p-4">
         <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-600">

@@ -1,10 +1,76 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
 const HOLD_MINUTES = 15;
+
+type SignUpResult = { ok: true } | { ok: false; error: string };
+
+/**
+ * Self-serve registration. Only volunteer and restaurant accounts can be
+ * created here — drop_off_admin / org_admin are provisioned by an org admin.
+ */
+export async function registerUser(input: {
+  name: string;
+  email: string;
+  password: string;
+  role: "volunteer" | "restaurant";
+  restaurantName?: string;
+  restaurantAddress?: string;
+}): Promise<SignUpResult> {
+  const name = input.name?.trim();
+  const email = input.email?.trim().toLowerCase();
+  const password = input.password ?? "";
+
+  if (!name) return { ok: false, error: "Please enter your name." };
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return { ok: false, error: "Please enter a valid email address." };
+  }
+  if (password.length < 8) {
+    return { ok: false, error: "Password must be at least 8 characters." };
+  }
+  // Guard the role server-side — never trust the client to send a safe value.
+  if (input.role !== "volunteer" && input.role !== "restaurant") {
+    return { ok: false, error: "Invalid account type." };
+  }
+  if (input.role === "restaurant" && !input.restaurantName?.trim()) {
+    return { ok: false, error: "Please enter your restaurant's name." };
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  try {
+    if (input.role === "restaurant") {
+      await prisma.$transaction(async (tx) => {
+        const restaurant = await tx.restaurant.create({
+          data: {
+            name: input.restaurantName!.trim(),
+            address: input.restaurantAddress?.trim() || "Campus",
+            lat: 0,
+            lng: 0,
+          },
+        });
+        await tx.user.create({
+          data: { name, email, passwordHash, role: "restaurant", restaurantId: restaurant.id },
+        });
+      });
+    } else {
+      await prisma.user.create({
+        data: { name, email, passwordHash, role: "volunteer" },
+      });
+    }
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return { ok: false, error: "An account with that email already exists." };
+    }
+    return { ok: false, error: "Something went wrong. Please try again." };
+  }
+}
 
 // The acting user comes from the authenticated session.
 async function currentUserId(): Promise<string> {

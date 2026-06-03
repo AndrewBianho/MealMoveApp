@@ -33,11 +33,11 @@ export const authConfig = {
     authorized({ auth, request: { nextUrl } }) {
       const user = auth?.user;
       const path = nextUrl.pathname;
-      const onLogin = path === "/login";
+      const isAuthPage = path === "/login" || path === "/signup";
 
-      if (!user) return onLogin ? true : false; // false → redirect to signIn
+      if (!user) return isAuthPage; // signed out: only the auth pages are open
 
-      if (onLogin) {
+      if (isAuthPage) {
         return Response.redirect(new URL(ROLE_HOME[user.role], nextUrl));
       }
 
