@@ -29,6 +29,16 @@ enum ListingStatus {
   failed
 }
 
+// What a listing is, so it can be matched to drop-offs that can hold it.
+enum FoodCategory {
+  prepared
+  produce
+  bakery
+  packaged
+  dairy
+  beverages
+}
+
 model User {
   id           String      @id @default(cuid())
   email        String      @unique
@@ -61,6 +71,11 @@ model DropOff {
   address   String
   lat       Float
   lng       Float
+  // Constraints on what this location can actually take in.
+  acceptedCategories FoodCategory[]
+  refrigerated       Boolean        @default(false) // can hold perishable/cold
+  capacity           Int            @default(100) // max servings it can hold
+  notes              String? // human-readable restrictions (allergens, hours…)
   listings  FoodListing[]
   createdAt DateTime      @default(now())
 }
@@ -69,6 +84,8 @@ model FoodListing {
   id           String         @id @default(cuid())
   title        String
   servings     Int
+  category     FoodCategory   @default(prepared)
+  perishable   Boolean        @default(false)
   status       ListingStatus  @default(open)
   restaurant   Restaurant     @relation(fields: [restaurantId], references: [id])
   restaurantId String

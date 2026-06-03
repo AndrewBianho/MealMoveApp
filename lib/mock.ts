@@ -1,11 +1,60 @@
-// Mock data standing in for the database until Prisma/Supabase is wired up.
-// Shapes match lib/types so swapping in real queries is a drop-in change.
-import type { Listing } from "./types";
+// Mock data used to seed the database and to drive the static style guide.
+// Shapes match lib/types so the seed maps cleanly onto the schema.
+import type { FoodCategory, Listing } from "./types";
 
 export const CURRENT_USER = { name: "You", role: "volunteer" as const };
 
 // The restaurant account viewing the restaurant console.
 export const RESTAURANT = "Saxbys — Commons";
+
+// Drop-off locations with their real constraints. Variety here is what makes
+// the recommendation/matching meaningful.
+export const DROP_OFFS: {
+  name: string;
+  acceptedCategories: FoodCategory[];
+  refrigerated: boolean;
+  capacity: number;
+  notes: string;
+  lat: number;
+  lng: number;
+}[] = [
+  {
+    name: "Community Fridge — 4th & Elm",
+    acceptedCategories: ["prepared", "produce", "dairy", "bakery", "beverages"],
+    refrigerated: true,
+    capacity: 60,
+    notes: "Refrigerated. No nut-containing items.",
+    lat: 40.045,
+    lng: -75.345,
+  },
+  {
+    name: "St. Mark's Shelter",
+    acceptedCategories: ["prepared", "bakery", "packaged", "beverages"],
+    refrigerated: false,
+    capacity: 120,
+    notes: "Hot meals welcome before 7pm. Not refrigerated.",
+    lat: 40.03,
+    lng: -75.33,
+  },
+  {
+    name: "Campus Pantry — Student Union",
+    acceptedCategories: ["packaged", "bakery", "beverages", "produce"],
+    refrigerated: false,
+    capacity: 200,
+    notes: "Shelf-stable & produce only. No prepared or dairy.",
+    lat: 40.042,
+    lng: -75.338,
+  },
+  {
+    name: "Grace Kitchen",
+    acceptedCategories: ["prepared", "dairy", "produce", "bakery", "packaged", "beverages"],
+    refrigerated: true,
+    capacity: 80,
+    notes: "Full-service kitchen. Accepts everything.",
+    lat: 40.05,
+    lng: -75.325,
+  },
+];
 
 export const LISTINGS: Listing[] = [
   {
@@ -17,6 +66,8 @@ export const LISTINGS: Listing[] = [
     servings: 18,
     distance: "0.4 mi",
     status: "open",
+    category: "prepared",
+    perishable: true,
   },
   {
     id: "PU-4822",
@@ -27,6 +78,8 @@ export const LISTINGS: Listing[] = [
     servings: 40,
     distance: "0.9 mi",
     status: "open",
+    category: "bakery",
+    perishable: false,
   },
   {
     id: "PU-4823",
@@ -37,6 +90,8 @@ export const LISTINGS: Listing[] = [
     servings: 60,
     distance: "1.1 mi",
     status: "open",
+    category: "prepared",
+    perishable: true,
   },
   {
     id: "PU-4824",
@@ -49,6 +104,8 @@ export const LISTINGS: Listing[] = [
     status: "claimed",
     claimedBy: "Priya R.",
     dropOff: "Community Fridge — 4th & Elm",
+    category: "prepared",
+    perishable: true,
   },
   {
     id: "PU-4825",
@@ -61,6 +118,8 @@ export const LISTINGS: Listing[] = [
     status: "in transit",
     claimedBy: "You",
     dropOff: "St. Mark's Shelter",
+    category: "prepared",
+    perishable: true,
   },
   {
     id: "PU-4818",
@@ -73,6 +132,8 @@ export const LISTINGS: Listing[] = [
     status: "delivered",
     claimedBy: "You",
     dropOff: "Community Fridge — 4th & Elm",
+    category: "prepared",
+    perishable: true,
   },
   {
     id: "PU-4815",
@@ -83,6 +144,8 @@ export const LISTINGS: Listing[] = [
     servings: 15,
     distance: "1.4 mi",
     status: "expired",
+    category: "prepared",
+    perishable: true,
   },
   {
     id: "PU-4811",
@@ -95,6 +158,8 @@ export const LISTINGS: Listing[] = [
     status: "failed",
     claimedBy: "Sam O.",
     dropOff: "St. Mark's Shelter",
+    category: "prepared",
+    perishable: true,
   },
   {
     id: "PU-4826",
@@ -107,6 +172,8 @@ export const LISTINGS: Listing[] = [
     status: "claimed",
     claimedBy: "Marcus L.",
     dropOff: "Community Fridge — 4th & Elm",
+    category: "beverages",
+    perishable: false,
   },
   {
     id: "PU-4809",
@@ -119,5 +186,7 @@ export const LISTINGS: Listing[] = [
     status: "delivered",
     claimedBy: "Dana K.",
     dropOff: "St. Mark's Shelter",
+    category: "prepared",
+    perishable: true,
   },
 ];

@@ -2,7 +2,7 @@
 // the frontend already renders. Safe to re-run — it wipes first (dev only).
 import { PrismaClient, type ListingStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
-import { LISTINGS, RESTAURANT } from "../lib/mock";
+import { DROP_OFFS, LISTINGS, RESTAURANT } from "../lib/mock";
 
 const prisma = new PrismaClient();
 
@@ -34,14 +34,22 @@ async function main() {
     restaurantId.set(name, r.id);
   }
 
-  // Drop-off locations.
+  // Drop-off locations, with their real intake constraints.
   const dropOffId = new Map<string, string>();
-  const dropNames = LISTINGS.map((l) => l.dropOff).filter(Boolean) as string[];
-  for (const name of Array.from(new Set(dropNames))) {
-    const d = await prisma.dropOff.create({
-      data: { name, address: "Campus", lat: 40.04 + jitter(), lng: -75.34 + jitter() },
+  for (const d of DROP_OFFS) {
+    const created = await prisma.dropOff.create({
+      data: {
+        name: d.name,
+        address: "Campus",
+        lat: d.lat,
+        lng: d.lng,
+        acceptedCategories: d.acceptedCategories,
+        refrigerated: d.refrigerated,
+        capacity: d.capacity,
+        notes: d.notes,
+      },
     });
-    dropOffId.set(name, d.id);
+    dropOffId.set(d.name, created.id);
   }
 
   // Volunteers (everyone who has claimed something, plus "You").
@@ -94,6 +102,8 @@ async function main() {
       data: {
         title: l.title,
         servings: l.servings,
+        category: l.category ?? "prepared",
+        perishable: l.perishable ?? false,
         status,
         restaurantId: restaurantId.get(l.source)!,
         dropOffId: l.dropOff ? dropOffId.get(l.dropOff)! : null,

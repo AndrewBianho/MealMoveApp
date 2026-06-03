@@ -38,6 +38,8 @@ export function serializeListing(l: DbListing): Listing {
     dropOff: l.dropOff?.name ?? undefined,
     lat: l.restaurant.lat,
     lng: l.restaurant.lng,
+    category: l.category,
+    perishable: l.perishable,
   };
 }
 

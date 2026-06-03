@@ -12,6 +12,42 @@ export type ListingStatus =
   | "expired"
   | "failed";
 
+export type FoodCategory =
+  | "prepared"
+  | "produce"
+  | "bakery"
+  | "packaged"
+  | "dairy"
+  | "beverages";
+
+/** A drop-off location and the constraints on what it can take in. */
+export interface DropOffLocation {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  acceptedCategories: FoodCategory[];
+  refrigerated: boolean;
+  capacity: number;
+  notes?: string;
+}
+
+/** A restaurant on the map, summarizing its active (open/claimed) listings. */
+export interface MapRestaurant {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  /** Total servings still on offer. */
+  servings: number;
+  /** Distinct categories across its active listings. */
+  categories: FoodCategory[];
+  /** Whether any active listing is perishable. */
+  perishable: boolean;
+  /** Number of active listings. */
+  count: number;
+}
+
 export interface Listing {
   id: string;
   title: string;
@@ -32,6 +68,8 @@ export interface Listing {
   /** Source restaurant coordinates, for the map (present on DB-backed data). */
   lat?: number;
   lng?: number;
+  category?: FoodCategory;
+  perishable?: boolean;
 }
 
 export interface Volunteer {
