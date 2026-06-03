@@ -1,0 +1,137 @@
+// Mock data standing in for the database until Prisma/Supabase is wired up.
+// Shapes match lib/types so swapping in real queries is a drop-in change.
+import type { ImpactStat, Listing, Volunteer } from "./types";
+
+export const CURRENT_USER = { name: "You", role: "volunteer" as const };
+
+// The restaurant account viewing the restaurant console.
+export const RESTAURANT = "Saxbys — Commons";
+
+export const LISTINGS: Listing[] = [
+  {
+    id: "PU-4821",
+    title: "Mediterranean wraps & salads",
+    source: "Saxbys — Commons",
+    expiresAt: "6:51 PM",
+    minutesLeft: 8,
+    servings: 18,
+    distance: "0.4 mi",
+    status: "open",
+  },
+  {
+    id: "PU-4822",
+    title: "Bagels, pastries & coffee cake",
+    source: "Bruegger's — Main St",
+    expiresAt: "7:15 PM",
+    minutesLeft: 32,
+    servings: 40,
+    distance: "0.9 mi",
+    status: "open",
+  },
+  {
+    id: "PU-4823",
+    title: "Catered sandwich platters",
+    source: "Conference Center",
+    expiresAt: "8:30 PM",
+    minutesLeft: 107,
+    servings: 60,
+    distance: "1.1 mi",
+    status: "open",
+  },
+  {
+    id: "PU-4824",
+    title: "Soup, rolls & side salads",
+    source: "Dining Hall — North",
+    expiresAt: "7:40 PM",
+    minutesLeft: 57,
+    servings: 35,
+    distance: "0.6 mi",
+    status: "claimed",
+    claimedBy: "Priya R.",
+    dropOff: "Community Fridge — 4th & Elm",
+  },
+  {
+    id: "PU-4825",
+    title: "Pizza by the slice",
+    source: "Slice Co. — Quad",
+    expiresAt: "6:30 PM",
+    minutesLeft: 21,
+    servings: 24,
+    distance: "0.3 mi",
+    status: "in transit",
+    claimedBy: "You",
+    dropOff: "St. Mark's Shelter",
+  },
+  {
+    id: "PU-4818",
+    title: "Roasted veg & grain bowls",
+    source: "Greenhouse Cafe",
+    expiresAt: "5:55 PM",
+    minutesLeft: 0,
+    servings: 28,
+    distance: "0.8 mi",
+    status: "delivered",
+    claimedBy: "You",
+    dropOff: "Community Fridge — 4th & Elm",
+  },
+  {
+    id: "PU-4815",
+    title: "Assorted deli sandwiches",
+    source: "Corner Market",
+    expiresAt: "4:10 PM",
+    minutesLeft: 0,
+    servings: 15,
+    distance: "1.4 mi",
+    status: "expired",
+  },
+  {
+    id: "PU-4811",
+    title: "Pasta trays & garlic bread",
+    source: "Tony's Kitchen",
+    expiresAt: "3:30 PM",
+    minutesLeft: 0,
+    servings: 50,
+    distance: "2.0 mi",
+    status: "failed",
+    claimedBy: "Sam O.",
+    dropOff: "St. Mark's Shelter",
+  },
+  {
+    id: "PU-4826",
+    title: "Cold brew & iced lattes",
+    source: "Saxbys — Commons",
+    expiresAt: "7:00 PM",
+    minutesLeft: 24,
+    servings: 30,
+    distance: "0.4 mi",
+    status: "claimed",
+    claimedBy: "Marcus L.",
+    dropOff: "Community Fridge — 4th & Elm",
+  },
+  {
+    id: "PU-4809",
+    title: "Breakfast sandwiches",
+    source: "Saxbys — Commons",
+    expiresAt: "10:30 AM",
+    minutesLeft: 0,
+    servings: 22,
+    distance: "0.4 mi",
+    status: "delivered",
+    claimedBy: "Dana K.",
+    dropOff: "St. Mark's Shelter",
+  },
+];
+
+export const IMPACT_STATS: ImpactStat[] = [
+  { label: "meals rescued", value: "12,480" },
+  { label: "pickups this week", value: "37" },
+  { label: "lbs diverted", value: "2,140" },
+  { label: "active volunteers", value: "58" },
+];
+
+export const VOLUNTEERS: Volunteer[] = [
+  { id: "v1", name: "Marcus L.", reliability: 94, pickups: 41 },
+  { id: "v2", name: "Priya R.", reliability: 88, pickups: 33 },
+  { id: "v3", name: "Dana K.", reliability: 68, pickups: 19 },
+  { id: "v4", name: "Sam O.", reliability: 41, pickups: 7 },
+];

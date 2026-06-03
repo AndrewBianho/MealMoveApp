@@ -2,26 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Design system: light only. Surface = neutral-50, text = neutral-900.
+   Fonts come from next/font variables wired in app/layout.tsx. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+  color-scheme: light;
 }

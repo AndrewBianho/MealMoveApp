@@ -1,0 +1,107 @@
+// Meal Move — data model.
+// Designed around the two core problems: volunteer flaking (claims are holds
+// with deadlines; reliability is computed from real events) and loss of
+// institutional memory (everything durable, ListingEvent is an append-only log).
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled (6543) — used by the app
+  directUrl = env("DIRECT_URL") // direct (5432) — used by migrations
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  volunteer
+  restaurant
+  drop_off_admin
+  org_admin
+}
+
+enum ListingStatus {
+  open
+  claimed
+  in_transit
+  delivered
+  expired
+  failed
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  name         String
+  role         Role        @default(volunteer)
+  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id])
+  restaurantId String?
+  pickups      Pickup[]
+  events       ListingEvent[]
+  createdAt    DateTime    @default(now())
+}
+
+model Restaurant {
+  id        String        @id @default(cuid())
+  name      String
+  address   String
+  lat       Float
+  lng       Float
+  members   User[]
+  listings  FoodListing[]
+  createdAt DateTime      @default(now())
+}
+
+model DropOff {
+  id        String        @id @default(cuid())
+  name      String
+  address   String
+  lat       Float
+  lng       Float
+  listings  FoodListing[]
+  createdAt DateTime      @default(now())
+}
+
+model FoodListing {
+  id           String         @id @default(cuid())
+  title        String
+  servings     Int
+  status       ListingStatus  @default(open)
+  restaurant   Restaurant     @relation(fields: [restaurantId], references: [id])
+  restaurantId String
+  dropOff      DropOff?       @relation(fields: [dropOffId], references: [id])
+  dropOffId    String?
+  postedAt     DateTime       @default(now())
+  expiresAt    DateTime // real timestamp — "minutes left" is derived from this
+  pickup       Pickup?
+  events       ListingEvent[]
+
+  @@index([status, expiresAt])
+}
+
+model Pickup {
+  id          String      @id @default(cuid())
+  listing     FoodListing @relation(fields: [listingId], references: [id])
+  listingId   String      @unique
+  volunteer   User        @relation(fields: [volunteerId], references: [id])
+  volunteerId String
+  claimedAt   DateTime    @default(now())
+  holdUntil   DateTime // the 15-min hold; a cron releases claims past this
+  deliveredAt DateTime?
+
+  @@index([volunteerId])
+}
+
+// Append-only audit trail — the chapter's institutional memory.
+model ListingEvent {
+  id        String      @id @default(cuid())
+  listing   FoodListing @relation(fields: [listingId], references: [id])
+  listingId String
+  type      String // posted | claimed | in_transit | delivered | expired | released | failed
+  actor     User?       @relation(fields: [actorId], references: [id])
+  actorId   String?
+  meta      Json?
+  at        DateTime    @default(now())
+
+  @@index([listingId, at])
+}
