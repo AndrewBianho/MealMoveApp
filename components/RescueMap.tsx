@@ -85,7 +85,9 @@ export function RescueMap({
       // Restaurant markers — round, green; clicking isolates.
       for (const r of restaurants) {
         const el = document.createElement("div");
-        el.style.cssText = `width:20px;height:20px;border-radius:50%;background:${REST};border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25);cursor:pointer;transition:transform .12s;`;
+        // No transform/transition on the marker root — Mapbox owns its transform
+        // for positioning; styling it would make the pin lag the map.
+        el.style.cssText = `width:20px;height:20px;border-radius:50%;background:${REST};border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25);cursor:pointer;`;
         el.addEventListener("click", (ev) => {
           ev.stopPropagation();
           setSelected((cur) => (cur === r.id ? null : r.id));
@@ -106,8 +108,13 @@ export function RescueMap({
 
       // Drop-off markers — square, blue; popup shows constraints.
       for (const d of dropOffs) {
+        // Root is the positioned element (Mapbox sets its transform); the inner
+        // dot carries the visual so highlight scaling never disturbs position.
         const el = document.createElement("div");
-        el.style.cssText = `width:18px;height:18px;border-radius:4px;background:${DROP};border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25);cursor:pointer;transition:transform .12s,outline .12s;`;
+        el.style.cssText = `width:18px;height:18px;cursor:pointer;`;
+        const dot = document.createElement("div");
+        dot.style.cssText = `width:18px;height:18px;border-radius:4px;background:${DROP};border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25);transition:transform .12s,outline .12s;`;
+        el.appendChild(dot);
         const popup = new mapboxgl.Popup({ offset: 14, closeButton: false }).setHTML(
           `<div style="font-family:-apple-system,system-ui,sans-serif;">
              <div style="font-size:13px;font-weight:500;">${esc(d.name)}</div>
@@ -168,18 +175,23 @@ export function RescueMap({
 
       dropMarkers.current.forEach((m, id) => {
         const el = m.getElement();
+        const dot = el.firstElementChild as HTMLElement | null;
         if (!selected) {
           el.style.display = "";
-          el.style.outline = "";
-          el.style.transform = "";
+          if (dot) {
+            dot.style.outline = "";
+            dot.style.transform = "";
+          }
           return;
         }
         if (eligibleIds.has(id)) {
           el.style.display = "";
           const isRec = id === recId;
-          el.style.outline = isRec ? `3px solid ${REC}` : "";
-          el.style.outlineOffset = isRec ? "2px" : "";
-          el.style.transform = isRec ? "scale(1.3)" : "";
+          if (dot) {
+            dot.style.outline = isRec ? `3px solid ${REC}` : "";
+            dot.style.outlineOffset = isRec ? "2px" : "";
+            dot.style.transform = isRec ? "scale(1.3)" : "";
+          }
         } else {
           el.style.display = "none";
         }
