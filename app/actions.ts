@@ -142,26 +142,15 @@ export async function advanceListing(listingId: string) {
   refreshViews(listingId);
 }
 
-/** Restaurant posts surplus. Resolves drop-off by name, creating it if new. */
+// Restaurant posts surplus. Restaurants don't choose a drop-off — that's
+// decided downstream (the system recommends; the volunteer delivers).
 export async function postListing(input: {
   restaurantId: string;
   title: string;
   servings: number;
   minutes: number;
-  dropOffName?: string;
   notes?: string;
 }) {
-  let dropOffId: string | undefined;
-  if (input.dropOffName?.trim()) {
-    const name = input.dropOffName.trim();
-    const dropOff =
-      (await prisma.dropOff.findFirst({ where: { name } })) ??
-      (await prisma.dropOff.create({
-        data: { name, address: "Campus", lat: 0, lng: 0 },
-      }));
-    dropOffId = dropOff.id;
-  }
-
   const listing = await prisma.foodListing.create({
     data: {
       title: input.title.trim(),
@@ -169,7 +158,6 @@ export async function postListing(input: {
       notes: input.notes?.trim() || null,
       status: "open",
       restaurantId: input.restaurantId,
-      dropOffId,
       expiresAt: new Date(Date.now() + input.minutes * 60_000),
       events: { create: { type: "posted" } },
     },

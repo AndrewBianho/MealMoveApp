@@ -32,7 +32,6 @@ export function RestaurantConsole({
   const [title, setTitle] = useState("");
   const [servings, setServings] = useState("");
   const [windowMin, setWindowMin] = useState(WINDOWS[1].minutes);
-  const [dropOff, setDropOff] = useState("");
   const [notes, setNotes] = useState("");
 
   const servingsNum = Number(servings);
@@ -47,13 +46,11 @@ export function RestaurantConsole({
         title: name,
         servings: servingsNum,
         minutes: windowMin,
-        dropOffName: dropOff.trim() || undefined,
         notes: notes.trim() || undefined,
       });
       show(`Posted “${name}” — it's live on the volunteer feed.`);
       setTitle("");
       setServings("");
-      setDropOff("");
       setNotes("");
       setWindowMin(WINDOWS[1].minutes);
     });
@@ -132,20 +129,6 @@ export function RestaurantConsole({
                   ))}
                 </select>
               </div>
-            </div>
-
-            <div>
-              <label className={labelCls} htmlFor="dropoff">
-                Suggested drop-off{" "}
-                <span className="text-neutral-400">(optional)</span>
-              </label>
-              <input
-                id="dropoff"
-                className={fieldCls}
-                placeholder="e.g. Community Fridge — 4th & Elm"
-                value={dropOff}
-                onChange={(e) => setDropOff(e.target.value)}
-              />
             </div>
 
             <div>
