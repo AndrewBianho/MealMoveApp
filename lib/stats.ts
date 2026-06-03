@@ -1,6 +1,10 @@
 import { prisma } from "./prisma";
 import type { ImpactStat, Volunteer } from "./types";
 
+// We don't weigh individual donations, so pounds are estimated from servings.
+// ~0.8 lb/serving is a common food-rescue rule of thumb.
+const LBS_PER_SERVING = 0.8;
+
 // All computed live from the database — no hardcoded numbers.
 export async function getImpactStats(): Promise<ImpactStat[]> {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -20,9 +24,11 @@ export async function getImpactStats(): Promise<ImpactStat[]> {
     ]);
 
   const mealsRescued = mealsAgg._sum.servings ?? 0;
+  const lbsRescued = Math.round(mealsRescued * LBS_PER_SERVING);
 
   return [
     { label: "meals rescued", value: mealsRescued.toLocaleString() },
+    { label: "lbs rescued (est.)", value: lbsRescued.toLocaleString() },
     { label: "pickups this week", value: pickupsThisWeek.toLocaleString() },
     { label: "partner restaurants", value: restaurants.toLocaleString() },
     { label: "active volunteers", value: distinctVolunteers.length.toLocaleString() },

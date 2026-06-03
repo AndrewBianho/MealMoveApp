@@ -19,7 +19,7 @@ export default async function ImpactPage() {
         </p>
       </header>
 
-      <div className="mb-10 grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="mb-10 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
         {stats.map((s) => (
           <MetricCard key={s.label} label={s.label} value={s.value} />
         ))}
