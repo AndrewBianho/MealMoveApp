@@ -1,6 +1,6 @@
 // Mock data standing in for the database until Prisma/Supabase is wired up.
 // Shapes match lib/types so swapping in real queries is a drop-in change.
-import type { ImpactStat, Listing, Volunteer } from "./types";
+import type { Listing } from "./types";
 
 export const CURRENT_USER = { name: "You", role: "volunteer" as const };
 
@@ -120,18 +120,4 @@ export const LISTINGS: Listing[] = [
     claimedBy: "Dana K.",
     dropOff: "St. Mark's Shelter",
   },
-];
-
-export const IMPACT_STATS: ImpactStat[] = [
-  { label: "meals rescued", value: "12,480" },
-  { label: "pickups this week", value: "37" },
-  { label: "lbs diverted", value: "2,140" },
-  { label: "active volunteers", value: "58" },
-];
-
-export const VOLUNTEERS: Volunteer[] = [
-  { id: "v1", name: "Marcus L.", reliability: 94, pickups: 41 },
-  { id: "v2", name: "Priya R.", reliability: 88, pickups: 33 },
-  { id: "v3", name: "Dana K.", reliability: 68, pickups: 19 },
-  { id: "v4", name: "Sam O.", reliability: 41, pickups: 7 },
 ];
