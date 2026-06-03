@@ -34,6 +34,7 @@ model User {
   email        String      @unique
   name         String
   role         Role        @default(volunteer)
+  passwordHash String? // bcrypt hash for the Credentials provider
   restaurant   Restaurant? @relation(fields: [restaurantId], references: [id])
   restaurantId String?
   pickups      Pickup[]

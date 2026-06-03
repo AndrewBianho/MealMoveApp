@@ -1,16 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
 const HOLD_MINUTES = 15;
 
-// TODO(auth): replace with the authenticated user from NextAuth. Until auth is
-// wired, actions run as the seeded "You" volunteer / their restaurant.
-async function currentVolunteerId(): Promise<string> {
-  const you = await prisma.user.findFirst({ where: { name: "You" } });
-  if (!you) throw new Error("No current user — run the seed first.");
-  return you.id;
+// The acting user comes from the authenticated session.
+async function currentUserId(): Promise<string> {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Not authenticated.");
+  return session.user.id;
 }
 
 function refreshViews(listingId?: string) {
@@ -25,7 +25,7 @@ function refreshViews(listingId?: string) {
  * the same listing, and stamps a 15-minute hold the expiry cron enforces.
  */
 export async function claimListing(listingId: string) {
-  const volunteerId = await currentVolunteerId();
+  const volunteerId = await currentUserId();
   await prisma.$transaction(async (tx) => {
     const listing = await tx.foodListing.findUnique({ where: { id: listingId } });
     if (!listing || listing.status !== "open") {
@@ -53,7 +53,7 @@ const NEXT_STATUS = { claimed: "in_transit", in_transit: "delivered" } as const;
 
 /** Advance claimed → in_transit → delivered, logging each transition. */
 export async function advanceListing(listingId: string) {
-  const volunteerId = await currentVolunteerId();
+  const volunteerId = await currentUserId();
   await prisma.$transaction(async (tx) => {
     const listing = await tx.foodListing.findUnique({ where: { id: listingId } });
     if (!listing) throw new Error("Listing not found.");

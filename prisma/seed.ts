@@ -1,7 +1,8 @@
 // Seeds the database from lib/mock.ts so the shapes line up exactly with what
 // the frontend already renders. Safe to re-run — it wipes first (dev only).
 import { PrismaClient, type ListingStatus } from "@prisma/client";
-import { LISTINGS } from "../lib/mock";
+import bcrypt from "bcryptjs";
+import { LISTINGS, RESTAURANT } from "../lib/mock";
 
 const prisma = new PrismaClient();
 
@@ -20,6 +21,9 @@ async function main() {
   await prisma.dropOff.deleteMany();
   await prisma.user.deleteMany();
   await prisma.restaurant.deleteMany();
+
+  // All demo accounts share the password "password".
+  const passwordHash = await bcrypt.hash("password", 10);
 
   // Restaurants, derived from unique listing sources.
   const restaurantId = new Map<string, string>();
@@ -47,9 +51,39 @@ async function main() {
   );
   for (const name of names) {
     const email = `${name.toLowerCase().replace(/[^a-z]+/g, ".")}@campus.edu`;
-    const u = await prisma.user.create({ data: { name, email, role: "volunteer" } });
+    const u = await prisma.user.create({
+      data: { name, email, role: "volunteer", passwordHash },
+    });
     volunteerId.set(name, u.id);
   }
+
+  // Cross-role demo accounts (all password: "password").
+  await prisma.user.upsert({
+    where: { email: "saxbys@campus.edu" },
+    update: { passwordHash, role: "restaurant", restaurantId: restaurantId.get(RESTAURANT) },
+    create: {
+      name: "Saxbys manager",
+      email: "saxbys@campus.edu",
+      role: "restaurant",
+      passwordHash,
+      restaurantId: restaurantId.get(RESTAURANT),
+    },
+  });
+  await prisma.user.upsert({
+    where: { email: "dropoff@campus.edu" },
+    update: { passwordHash, role: "drop_off_admin" },
+    create: {
+      name: "Drop-off admin",
+      email: "dropoff@campus.edu",
+      role: "drop_off_admin",
+      passwordHash,
+    },
+  });
+  await prisma.user.upsert({
+    where: { email: "admin@campus.edu" },
+    update: { passwordHash, role: "org_admin" },
+    create: { name: "Org admin", email: "admin@campus.edu", role: "org_admin", passwordHash },
+  });
 
   // Listings + their pickups + event trail.
   for (const l of LISTINGS) {

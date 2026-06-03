@@ -1,0 +1,63 @@
+import type { NextAuthConfig } from "next-auth";
+import type { Role } from "@prisma/client";
+
+// Edge-safe config: NO Prisma / bcrypt imports here, because the middleware
+// bundles this file for the edge runtime. The Credentials provider (which does
+// touch the DB) lives in auth.ts instead.
+
+// Where each role lands after login.
+const ROLE_HOME: Record<Role, string> = {
+  volunteer: "/",
+  restaurant: "/restaurant",
+  drop_off_admin: "/dropoff",
+  org_admin: "/",
+};
+
+// Role-restricted route prefixes. Anything not listed is open to any signed-in
+// user (e.g. /impact, /styleguide). The feed "/" is volunteer/org_admin.
+const ACCESS: { prefix: string; roles: Role[] }[] = [
+  { prefix: "/", roles: ["volunteer", "org_admin"] },
+  { prefix: "/pickups", roles: ["volunteer", "org_admin"] },
+  { prefix: "/restaurant", roles: ["restaurant", "org_admin"] },
+  { prefix: "/dropoff", roles: ["drop_off_admin", "org_admin"] },
+];
+
+function matches(path: string, prefix: string): boolean {
+  return prefix === "/" ? path === "/" : path === prefix || path.startsWith(prefix + "/");
+}
+
+export const authConfig = {
+  pages: { signIn: "/login" },
+  providers: [], // real provider added in auth.ts
+  callbacks: {
+    authorized({ auth, request: { nextUrl } }) {
+      const user = auth?.user;
+      const path = nextUrl.pathname;
+      const onLogin = path === "/login";
+
+      if (!user) return onLogin ? true : false; // false → redirect to signIn
+
+      if (onLogin) {
+        return Response.redirect(new URL(ROLE_HOME[user.role], nextUrl));
+      }
+
+      const rule = ACCESS.find((r) => matches(path, r.prefix));
+      if (rule && !rule.roles.includes(user.role)) {
+        return Response.redirect(new URL(ROLE_HOME[user.role], nextUrl));
+      }
+      return true;
+    },
+    jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+        token.role = user.role;
+      }
+      return token;
+    },
+    session({ session, token }) {
+      session.user.id = token.id as string;
+      session.user.role = token.role as Role;
+      return session;
+    },
+  },
+} satisfies NextAuthConfig;

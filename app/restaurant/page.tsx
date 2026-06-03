@@ -1,4 +1,5 @@
 import { RestaurantConsole } from "@/components/RestaurantConsole";
+import { auth } from "@/auth";
 import { getListings } from "@/lib/listings";
 import { prisma } from "@/lib/prisma";
 import { RESTAURANT } from "@/lib/mock";
@@ -6,12 +7,19 @@ import { RESTAURANT } from "@/lib/mock";
 export const dynamic = "force-dynamic";
 
 export default async function RestaurantPage() {
-  // Until auth, the "logged-in restaurant" is the seeded one.
-  const restaurant = await prisma.restaurant.findFirst({
-    where: { name: RESTAURANT },
-  });
+  // The restaurant comes from the signed-in account; org_admins (who have no
+  // restaurant of their own) fall back to the seeded one.
+  const session = await auth();
+  const me = session?.user?.id
+    ? await prisma.user.findUnique({
+        where: { id: session.user.id },
+        include: { restaurant: true },
+      })
+    : null;
+  const restaurant =
+    me?.restaurant ?? (await prisma.restaurant.findFirst({ where: { name: RESTAURANT } }));
   const all = await getListings();
-  const mine = all.filter((l) => l.source === RESTAURANT);
+  const mine = restaurant ? all.filter((l) => l.source === restaurant.name) : [];
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
@@ -24,7 +32,7 @@ export default async function RestaurantPage() {
 
       {restaurant ? (
         <RestaurantConsole
-          restaurant={RESTAURANT}
+          restaurant={restaurant.name}
           restaurantId={restaurant.id}
           listings={mine}
         />
