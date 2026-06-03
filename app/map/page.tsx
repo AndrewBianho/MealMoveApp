@@ -14,7 +14,7 @@ export default async function MapPage() {
         <h1 className="text-[32px] font-medium leading-tight">Map</h1>
         <p className="mt-1 text-sm text-neutral-600">
           Active rescues near you. Pin color shows urgency — red is expiring
-          soon.
+          soon. Allow location to center on you and see distances.
         </p>
       </header>
 
