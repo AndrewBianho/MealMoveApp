@@ -97,7 +97,8 @@ export function RescueMap({
              <div style="font-size:13px;font-weight:500;">${esc(r.name)}</div>
              <div style="color:#5F5E5A;font-family:monospace;font-size:11px;margin:2px 0;">${r.count} listing${r.count > 1 ? "s" : ""} · ${r.servings} servings</div>
              <div style="color:#5F5E5A;font-size:12px;">${esc(r.categories.join(", "))}${r.perishable ? " · perishable" : ""}</div>
-             <div style="color:#3B6D11;font-size:12px;font-weight:500;margin-top:4px;">Click pin → eligible drop-offs</div>
+             <a href="/restaurants/${r.id}" style="display:inline-block;margin-top:6px;color:#3B6D11;font-size:13px;font-weight:500;text-decoration:none;">View details →</a>
+             <div style="color:#888780;font-size:11px;margin-top:2px;">Click pin to filter drop-offs</div>
            </div>`
         );
         restMarkers.current.set(
@@ -121,6 +122,7 @@ export function RescueMap({
              <div style="color:#5F5E5A;font-family:monospace;font-size:11px;margin:2px 0;">accepts: ${esc(d.acceptedCategories.join(", "))}</div>
              <div style="color:#5F5E5A;font-size:12px;">${d.refrigerated ? "❄ refrigerated" : "not refrigerated"} · holds ${d.capacity}</div>
              ${d.notes ? `<div style="color:#5F5E5A;font-size:12px;margin-top:4px;">${esc(d.notes)}</div>` : ""}
+             <a href="/dropoffs/${d.id}" style="display:inline-block;margin-top:6px;color:#3B6D11;font-size:13px;font-weight:500;text-decoration:none;">View details →</a>
            </div>`
         );
         dropMarkers.current.set(

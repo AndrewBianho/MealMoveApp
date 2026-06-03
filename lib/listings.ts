@@ -58,3 +58,25 @@ export async function getListing(id: string): Promise<Listing | null> {
   });
   return row ? serializeListing(row) : null;
 }
+
+export async function getRestaurantDetail(id: string) {
+  const restaurant = await prisma.restaurant.findUnique({ where: { id } });
+  if (!restaurant) return null;
+  const rows = await prisma.foodListing.findMany({
+    where: { restaurantId: id },
+    include: listingInclude,
+    orderBy: { postedAt: "desc" },
+  });
+  return { restaurant, listings: rows.map(serializeListing) };
+}
+
+export async function getDropOffDetail(id: string) {
+  const dropOff = await prisma.dropOff.findUnique({ where: { id } });
+  if (!dropOff) return null;
+  const rows = await prisma.foodListing.findMany({
+    where: { dropOffId: id },
+    include: listingInclude,
+    orderBy: { postedAt: "desc" },
+  });
+  return { dropOff, listings: rows.map(serializeListing) };
+}
