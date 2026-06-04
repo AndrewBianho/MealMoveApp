@@ -102,6 +102,7 @@ async function main() {
       data: {
         title: l.title,
         servings: l.servings,
+        weightLbs: l.weightLbs ?? null,
         category: l.category ?? "prepared",
         perishable: l.perishable ?? false,
         status,

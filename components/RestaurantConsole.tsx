@@ -31,6 +31,7 @@ export function RestaurantConsole({
 
   const [title, setTitle] = useState("");
   const [servings, setServings] = useState("");
+  const [weight, setWeight] = useState("");
   const [windowMin, setWindowMin] = useState(WINDOWS[1].minutes);
   const [notes, setNotes] = useState("");
 
@@ -46,11 +47,13 @@ export function RestaurantConsole({
         title: name,
         servings: servingsNum,
         minutes: windowMin,
+        weightLbs: Number(weight) > 0 ? Number(weight) : undefined,
         notes: notes.trim() || undefined,
       });
       show(`Posted “${name}” — it's live on the volunteer feed.`);
       setTitle("");
       setServings("");
+      setWeight("");
       setNotes("");
       setWindowMin(WINDOWS[1].minutes);
     });
@@ -113,22 +116,38 @@ export function RestaurantConsole({
                 />
               </div>
               <div>
-                <label className={labelCls} htmlFor="window">
-                  Pickup within
+                <label className={labelCls} htmlFor="weight">
+                  Weight (lbs) <span className="text-neutral-400">(optional)</span>
                 </label>
-                <select
-                  id="window"
+                <input
+                  id="weight"
+                  type="number"
+                  min={0}
+                  step="0.1"
                   className={fieldCls}
-                  value={windowMin}
-                  onChange={(e) => setWindowMin(Number(e.target.value))}
-                >
-                  {WINDOWS.map((w) => (
-                    <option key={w.minutes} value={w.minutes}>
-                      {w.label}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="0"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                />
               </div>
+            </div>
+
+            <div>
+              <label className={labelCls} htmlFor="window">
+                Pickup within
+              </label>
+              <select
+                id="window"
+                className={fieldCls}
+                value={windowMin}
+                onChange={(e) => setWindowMin(Number(e.target.value))}
+              >
+                {WINDOWS.map((w) => (
+                  <option key={w.minutes} value={w.minutes}>
+                    {w.label}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div>

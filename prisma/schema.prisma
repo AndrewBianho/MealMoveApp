@@ -84,6 +84,7 @@ model FoodListing {
   id           String         @id @default(cuid())
   title        String
   servings     Int
+  weightLbs    Float? // actual weight if the restaurant provides it
   category     FoodCategory   @default(prepared)
   perishable   Boolean        @default(false)
   notes        String? // special requests / restraints from the restaurant

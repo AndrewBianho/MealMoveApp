@@ -32,6 +32,7 @@ export function serializeListing(l: DbListing): Listing {
     }),
     minutesLeft: minutesUntil(l.expiresAt),
     servings: l.servings,
+    weightLbs: l.weightLbs ?? undefined,
     distance: "—", // TODO: derive from volunteer location once geo is wired
     status: fromEnum(l.status),
     claimedBy: l.pickup?.volunteer.name,

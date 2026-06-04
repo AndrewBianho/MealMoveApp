@@ -149,12 +149,15 @@ export async function postListing(input: {
   title: string;
   servings: number;
   minutes: number;
+  weightLbs?: number;
   notes?: string;
 }) {
   const listing = await prisma.foodListing.create({
     data: {
       title: input.title.trim(),
       servings: input.servings,
+      weightLbs:
+        input.weightLbs && input.weightLbs > 0 ? input.weightLbs : null,
       notes: input.notes?.trim() || null,
       status: "open",
       restaurantId: input.restaurantId,

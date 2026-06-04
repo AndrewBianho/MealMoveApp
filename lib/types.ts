@@ -58,6 +58,8 @@ export interface Listing {
   /** Minutes until expiry — drives the urgency strip color. */
   minutesLeft: number;
   servings: number;
+  /** Actual weight in pounds, when the restaurant provides it. */
+  weightLbs?: number;
   /** Distance label, e.g. "0.4 mi". */
   distance: string;
   status: ListingStatus;
