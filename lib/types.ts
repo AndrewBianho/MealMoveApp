@@ -76,6 +76,14 @@ export interface Listing {
   notes?: string;
   /** Food photo, falling back to the restaurant's default image. */
   imageUrl?: string;
+  /** Epoch ms when the active claim was made (present when claimed/in transit). */
+  claimedAt?: number;
+  /** Epoch ms of the 15-min auto-release deadline. */
+  holdUntil?: number;
+  /** Epoch ms of the volunteer's last check-up confirmation, if any. */
+  lastCheckInAt?: number;
+  /** True when the current viewer is the volunteer who claimed it. */
+  mine?: boolean;
 }
 
 export interface Volunteer {

@@ -21,7 +21,7 @@ function minutesUntil(expiresAt: Date): number {
 }
 
 /** DB row → the plain shape the client components already consume. */
-export function serializeListing(l: DbListing): Listing {
+export function serializeListing(l: DbListing, viewerId?: string): Listing {
   return {
     id: l.id,
     title: l.title,
@@ -44,23 +44,30 @@ export function serializeListing(l: DbListing): Listing {
     notes: l.notes ?? undefined,
     // Food photo wins; fall back to the restaurant's default image.
     imageUrl: l.imageUrl ?? l.restaurant.imageUrl ?? undefined,
+    claimedAt: l.pickup?.claimedAt.getTime(),
+    holdUntil: l.pickup?.holdUntil.getTime(),
+    lastCheckInAt: l.pickup?.lastCheckInAt?.getTime(),
+    mine: viewerId != null && l.pickup?.volunteerId === viewerId,
   };
 }
 
-export async function getListings(): Promise<Listing[]> {
+export async function getListings(viewerId?: string): Promise<Listing[]> {
   const rows = await prisma.foodListing.findMany({
     include: listingInclude,
     orderBy: { expiresAt: "asc" },
   });
-  return rows.map(serializeListing);
+  return rows.map((r) => serializeListing(r, viewerId));
 }
 
-export async function getListing(id: string): Promise<Listing | null> {
+export async function getListing(
+  id: string,
+  viewerId?: string
+): Promise<Listing | null> {
   const row = await prisma.foodListing.findUnique({
     where: { id },
     include: listingInclude,
   });
-  return row ? serializeListing(row) : null;
+  return row ? serializeListing(row, viewerId) : null;
 }
 
 export async function getRestaurantDetail(id: string) {
@@ -71,7 +78,7 @@ export async function getRestaurantDetail(id: string) {
     include: listingInclude,
     orderBy: { postedAt: "desc" },
   });
-  return { restaurant, listings: rows.map(serializeListing) };
+  return { restaurant, listings: rows.map((r) => serializeListing(r)) };
 }
 
 export async function getDropOffDetail(id: string) {
@@ -82,5 +89,5 @@ export async function getDropOffDetail(id: string) {
     include: listingInclude,
     orderBy: { postedAt: "desc" },
   });
-  return { dropOff, listings: rows.map(serializeListing) };
+  return { dropOff, listings: rows.map((r) => serializeListing(r)) };
 }
