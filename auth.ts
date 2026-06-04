@@ -7,6 +7,9 @@ import { authConfig } from "./auth.config";
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   session: { strategy: "jwt" },
+  // Auth.js auto-trusts the host in dev; production (next start / deploy) needs
+  // this explicitly. Safe behind our own middleware + hosting.
+  trustHost: true,
   providers: [
     Credentials({
       credentials: {
