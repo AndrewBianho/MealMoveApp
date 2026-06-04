@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { cn } from "./cn";
 import { Clock, MapPin, Users } from "./icons";
 import { Button } from "./Button";
@@ -35,6 +36,7 @@ export function ListingCard({ listing, onClaim }: ListingCardProps) {
     claimedBy,
     dropOff,
     notes,
+    imageUrl,
   } = listing;
 
   const spent = ["delivered", "expired", "failed"].includes(status);
@@ -43,8 +45,25 @@ export function ListingCard({ listing, onClaim }: ListingCardProps) {
     <div className="group animate-fade-up overflow-hidden rounded-2xl border border-neutral-900/5 bg-white shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift">
       <div className={cn("h-1.5", stripColor(listing))} />
 
+      {imageUrl && (
+        <Link href={`/listings/${id}`} className="block">
+          <div className="relative aspect-[16/9] w-full overflow-hidden bg-neutral-100">
+            <Image
+              src={imageUrl}
+              alt={title}
+              fill
+              sizes="(max-width: 640px) 100vw, 400px"
+              className={cn(
+                "object-cover transition-transform duration-300 group-hover:scale-[1.03]",
+                spent && "opacity-75 saturate-[0.7]"
+              )}
+            />
+          </div>
+        </Link>
+      )}
+
       <div className="p-4">
-        <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="mb-3">
           <h3 className="text-lg font-semibold leading-snug">
             <Link
               href={`/listings/${id}`}
@@ -53,25 +72,22 @@ export function ListingCard({ listing, onClaim }: ListingCardProps) {
               {title}
             </Link>
           </h3>
-          <span className="shrink-0 font-mono text-[10px] uppercase tracking-wide text-neutral-400">
-            {id}
-          </span>
         </div>
 
         <div className="space-y-2">
-          <p className="flex items-center gap-1 font-mono text-xs text-neutral-600">
+          <p className="flex items-center gap-1.5 font-sans text-[13px] text-neutral-600">
             <MapPin className="text-neutral-400" />
             {source}
           </p>
-          <p className="flex items-center gap-1 font-mono text-xs text-neutral-600">
+          <p className="flex items-center gap-1.5 font-sans text-[13px] text-neutral-600">
             <Clock className="text-neutral-400" />
             {spent ? `closed ${expiresAt}` : `expires ${expiresAt} · ${minutesLeft} min`}
           </p>
-          <p className="flex items-center gap-1 font-mono text-xs text-neutral-600">
+          <p className="flex items-center gap-1.5 font-sans text-[13px] text-neutral-600">
             <Users className="text-neutral-400" />~{servings} servings
           </p>
           {dropOff && (
-            <p className="flex items-center gap-1 font-mono text-xs text-neutral-600">
+            <p className="flex items-center gap-1.5 font-sans text-[13px] text-neutral-600">
               <MapPin className="text-transit-400" />→ {dropOff}
             </p>
           )}
@@ -91,7 +107,7 @@ export function ListingCard({ listing, onClaim }: ListingCardProps) {
         ) : (
           <StatusBadge status={status} />
         )}
-        <span className="font-mono text-xs text-neutral-600">
+        <span className="font-sans text-[13px] text-neutral-600">
           {claimedBy && status !== "open" ? `by ${claimedBy}` : distance}
         </span>
       </div>

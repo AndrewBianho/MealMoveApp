@@ -12,9 +12,9 @@ import { rankDropOffs } from "@/lib/recommend";
 import type { DropOffLocation, MapRestaurant } from "@/lib/types";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
-const REST = "#3B6D11"; // rescued-600 — restaurants
-const DROP = "#185FA5"; // transit-600 — drop-offs
-const REC = "#BA7517"; // urgent-600 — recommended highlight
+const REST = "#5F7E50"; // rescued-600 — restaurants
+const DROP = "#6E5684"; // transit-600 — drop-offs
+const REC = "#B5862C"; // urgent-600 — recommended highlight
 
 function esc(s: string): string {
   return s.replace(/[&<>"]/g, (c) =>
@@ -93,12 +93,12 @@ export function RescueMap({
           setSelected((cur) => (cur === r.id ? null : r.id));
         });
         const popup = new mapboxgl.Popup({ offset: 14, closeButton: false }).setHTML(
-          `<div style="font-family:-apple-system,system-ui,sans-serif;">
-             <div style="font-size:13px;font-weight:500;">${esc(r.name)}</div>
-             <div style="color:#5F5E5A;font-family:monospace;font-size:11px;margin:2px 0;">${r.count} listing${r.count > 1 ? "s" : ""} · ${r.servings} servings</div>
-             <div style="color:#5F5E5A;font-size:12px;">${esc(r.categories.join(", "))}${r.perishable ? " · perishable" : ""}</div>
-             <a href="/restaurants/${r.id}" style="display:inline-block;margin-top:6px;color:#3B6D11;font-size:13px;font-weight:500;text-decoration:none;">View details →</a>
-             <div style="color:#888780;font-size:11px;margin-top:2px;">Click pin to filter drop-offs</div>
+          `<div style="font-family:var(--font-sans),system-ui,sans-serif;">
+             <div style="font-family:var(--font-display),Georgia,serif;font-size:17px;font-weight:600;color:#33342C;">${esc(r.name)}</div>
+             <div style="color:#6F6F62;font-family:var(--font-sans),system-ui,sans-serif;font-size:11px;margin:2px 0;">${r.count} listing${r.count > 1 ? "s" : ""} · ${r.servings} servings</div>
+             <div style="color:#6F6F62;font-size:12px;">${esc(r.categories.join(", "))}${r.perishable ? " · perishable" : ""}</div>
+             <a href="/restaurants/${r.id}" style="display:inline-block;margin-top:6px;color:#C06D40;font-size:13px;font-weight:500;text-decoration:none;">View details →</a>
+             <div style="color:#A89E8B;font-size:11px;margin-top:2px;">Click pin to filter drop-offs</div>
            </div>`
         );
         restMarkers.current.set(
@@ -117,12 +117,12 @@ export function RescueMap({
         dot.style.cssText = `width:18px;height:18px;border-radius:4px;background:${DROP};border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25);transition:transform .12s,outline .12s;`;
         el.appendChild(dot);
         const popup = new mapboxgl.Popup({ offset: 14, closeButton: false }).setHTML(
-          `<div style="font-family:-apple-system,system-ui,sans-serif;">
-             <div style="font-size:13px;font-weight:500;">${esc(d.name)}</div>
-             <div style="color:#5F5E5A;font-family:monospace;font-size:11px;margin:2px 0;">accepts: ${esc(d.acceptedCategories.join(", "))}</div>
-             <div style="color:#5F5E5A;font-size:12px;">${d.refrigerated ? "❄ refrigerated" : "not refrigerated"} · holds ${d.capacity}</div>
-             ${d.notes ? `<div style="color:#5F5E5A;font-size:12px;margin-top:4px;">${esc(d.notes)}</div>` : ""}
-             <a href="/dropoffs/${d.id}" style="display:inline-block;margin-top:6px;color:#3B6D11;font-size:13px;font-weight:500;text-decoration:none;">View details →</a>
+          `<div style="font-family:var(--font-sans),system-ui,sans-serif;">
+             <div style="font-family:var(--font-display),Georgia,serif;font-size:17px;font-weight:600;color:#33342C;">${esc(d.name)}</div>
+             <div style="color:#6F6F62;font-family:var(--font-sans),system-ui,sans-serif;font-size:11px;margin:2px 0;">accepts: ${esc(d.acceptedCategories.join(", "))}</div>
+             <div style="color:#6F6F62;font-size:12px;">${d.refrigerated ? "❄ refrigerated" : "not refrigerated"} · holds ${d.capacity}</div>
+             ${d.notes ? `<div style="color:#6F6F62;font-size:12px;margin-top:4px;">${esc(d.notes)}</div>` : ""}
+             <a href="/dropoffs/${d.id}" style="display:inline-block;margin-top:6px;color:#C06D40;font-size:13px;font-weight:500;text-decoration:none;">View details →</a>
            </div>`
         );
         dropMarkers.current.set(

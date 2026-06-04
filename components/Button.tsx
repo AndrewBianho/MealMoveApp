@@ -5,12 +5,12 @@ type Variant = "primary" | "secondary" | "danger" | "ghost";
 
 const VARIANTS: Record<Variant, string> = {
   primary:
-    "bg-rescued-600 text-neutral-50 shadow-card hover:bg-rescued-800 hover:-translate-y-px",
+    "bg-gradient-to-b from-rescued-400 to-rescued-600 text-white shadow-glow hover:-translate-y-0.5 hover:shadow-lift",
   secondary:
-    "border-2 border-neutral-900/15 bg-white text-neutral-900 hover:border-neutral-900/35 hover:-translate-y-px",
+    "bg-white text-neutral-900 shadow-[inset_0_0_0_2px_rgba(51,52,44,0.12)] hover:shadow-[inset_0_0_0_2px_rgba(51,52,44,0.28)] hover:-translate-y-0.5",
   danger:
-    "border-2 border-failed-400 text-failed-600 hover:bg-failed-50 hover:-translate-y-px",
-  ghost: "text-neutral-600 hover:text-neutral-900",
+    "bg-white text-failed-600 shadow-[inset_0_0_0_2px_theme(colors.failed.200)] hover:bg-failed-50 hover:-translate-y-0.5",
+  ghost: "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100",
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -25,7 +25,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-150",
+        "rounded-2xl px-5 py-2.5 text-sm font-bold transition-all duration-200",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50",
         "active:translate-y-0 disabled:hover:translate-y-0",
         VARIANTS[variant],

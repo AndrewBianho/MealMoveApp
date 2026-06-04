@@ -9,10 +9,10 @@ const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 // Same urgency palette as the listing-card strip (tokens from tailwind.config).
 function urgencyColor(l: Listing): string {
-  if (["delivered", "expired", "failed"].includes(l.status)) return "#888780";
-  if (l.minutesLeft < 10) return "#E24B4A";
-  if (l.minutesLeft < 35) return "#BA7517";
-  return "#639922";
+  if (["delivered", "expired", "failed"].includes(l.status)) return "#A89E8B";
+  if (l.minutesLeft < 10) return "#D4654F";
+  if (l.minutesLeft < 35) return "#B5862C";
+  return "#5F7E50";
 }
 
 function escapeHtml(s: string): string {
@@ -43,13 +43,13 @@ type Located = Listing & { lat: number; lng: number };
 function popupHtml(l: Located, distanceMi?: number): string {
   const distance =
     distanceMi != null
-      ? `<div style="color:#3B6D11;font-family:monospace;font-size:11px;margin-bottom:6px;">${distanceMi.toFixed(1)} mi from you</div>`
+      ? `<div style="color:#C06D40;font-family:var(--font-sans),system-ui,sans-serif;font-size:11px;margin-bottom:6px;">${distanceMi.toFixed(1)} mi from you</div>`
       : "";
-  return `<div style="font-family:-apple-system,system-ui,sans-serif;">
-      <div style="font-size:13px;font-weight:500;">${escapeHtml(l.title)}</div>
-      <div style="color:#5F5E5A;font-family:monospace;font-size:11px;margin:2px 0 6px;">${escapeHtml(l.source)} · ~${l.servings} servings</div>
+  return `<div style="font-family:var(--font-sans),system-ui,sans-serif;">
+      <div style="font-family:var(--font-display),Georgia,serif;font-size:17px;font-weight:600;color:#33342C;">${escapeHtml(l.title)}</div>
+      <div style="color:#6F6F62;font-family:var(--font-sans),system-ui,sans-serif;font-size:11px;margin:2px 0 6px;">${escapeHtml(l.source)} · ~${l.servings} servings</div>
       ${distance}
-      <a href="/listings/${l.id}" style="color:#3B6D11;font-size:13px;font-weight:500;text-decoration:none;">View details →</a>
+      <a href="/listings/${l.id}" style="color:#C06D40;font-size:13px;font-weight:500;text-decoration:none;">View details →</a>
     </div>`;
 }
 

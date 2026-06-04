@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { runSweep } from "@/lib/sweep";
+import { dispatchCheckIns } from "@/lib/checkins";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,9 @@ export async function GET(req: Request) {
   if (secret && req.headers.get("authorization") !== `Bearer ${secret}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const result = await runSweep();
-  return NextResponse.json({ ok: true, ...result });
+  // Sweep FIRST so any just-expired hold is released before the nudge pass —
+  // a claim that's both due for a nudge and past its hold is released, not nudged.
+  const swept = await runSweep();
+  const checkins = await dispatchCheckIns();
+  return NextResponse.json({ ok: true, ...swept, ...checkins });
 }

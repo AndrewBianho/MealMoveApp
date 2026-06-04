@@ -1,8 +1,9 @@
 import type { Config } from "tailwindcss";
 
-// "Harvest Press" — warm editorial food-rescue aesthetic.
+// "Soft Harvest" — warm, organic, friendly food-rescue aesthetic.
 // Semantic ramp names are kept (rescued/urgent/failed/transit/neutral) so
-// components re-skin from these tokens; the values are a warm, appetizing set.
+// components re-skin from these tokens; the values are an earthy, soft set
+// (sage / honey / tomato / plum on a cream paper surface).
 const config: Config = {
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
@@ -12,76 +13,87 @@ const config: Config = {
     extend: {
       fontFamily: {
         display: ["var(--font-display)", "Georgia", "serif"], // Fraunces
-        sans: ["var(--font-sans)", "system-ui", "sans-serif"], // Hanken Grotesk
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"], // Nunito Sans
         mono: ["var(--font-mono)", "monospace"], // JetBrains Mono
       },
       colors: {
-        // leaf green — rescued / success / open
+        // sage green — rescued / success / open
         rescued: {
-          50: "#EAF2E6",
-          100: "#C6E0BC",
-          200: "#97C78A",
-          400: "#4F9E54",
-          600: "#2C7A43",
-          800: "#173E27",
+          50: "#EEF3E9",
+          100: "#D5E2C8",
+          200: "#B3C9A0",
+          400: "#7F9C6F",
+          600: "#5F7E50",
+          800: "#34452A",
         },
         // honey amber — claimed / in-flight / urgent
         urgent: {
-          50: "#FBF0DB",
-          100: "#F6D79B",
-          200: "#EDB85C",
-          400: "#D2901F",
-          600: "#9A6411",
-          800: "#5E3D0A",
+          50: "#FBF1DC",
+          100: "#F6DFA9",
+          200: "#EFC877",
+          400: "#E7B454",
+          600: "#B5862C",
+          800: "#6E4F12",
         },
         // tomato — failed / flake / expired
         failed: {
-          50: "#FBE7E0",
-          100: "#F4BCA9",
-          200: "#EC8E72",
-          400: "#E0532B",
-          600: "#AE3417",
-          800: "#641E0F",
+          50: "#FBE8E2",
+          100: "#F3C3B6",
+          200: "#E89C89",
+          400: "#D4654F",
+          600: "#A8412E",
+          800: "#642318",
         },
         // plum — in-transit
         transit: {
-          50: "#F0E6F1",
-          100: "#D6BBDA",
-          200: "#B488BB",
-          400: "#894F95",
-          600: "#62306E",
-          800: "#391844",
+          50: "#F2ECF5",
+          100: "#DCCBE6",
+          200: "#C0A6D0",
+          400: "#9A7FB0",
+          600: "#6E5684",
+          800: "#3E2B4E",
         },
-        // warm paper & ink — neutral / surfaces / text
+        // warm cream paper & soft ink — neutral / surfaces / text
         neutral: {
-          50: "#FBF6EC",
-          100: "#EFE6D4",
-          200: "#DCCFB4",
-          400: "#A89A7E",
-          600: "#6E6453",
-          800: "#3A352C",
-          900: "#211C15",
+          50: "#F7F3EA",
+          100: "#EFE8DA",
+          200: "#DED4C0",
+          400: "#A89E8B",
+          600: "#6F6F62",
+          800: "#44423A",
+          900: "#33342C",
+        },
+        // clay — a warm secondary accent (links, route arrows)
+        clay: {
+          50: "#FAEDE3",
+          100: "#F0CDB3",
+          200: "#E3A87F",
+          400: "#D98A5F",
+          600: "#C06D40",
+          800: "#7A3F20",
         },
       },
       borderRadius: {
-        md: "10px",
-        lg: "16px",
-        xl: "20px",
+        md: "14px",
+        lg: "18px",
+        xl: "22px",
         "2xl": "28px",
+        "3xl": "34px",
       },
       boxShadow: {
-        // warm, layered editorial elevation (ink-tinted, not gray)
-        card: "0 1px 0 0 rgba(33,28,21,0.04), 0 14px 28px -18px rgba(33,28,21,0.28)",
-        lift: "0 2px 0 0 rgba(33,28,21,0.05), 0 22px 40px -20px rgba(33,28,21,0.38)",
+        // soft, warm, diffuse elevation — gentle on the cream surface
+        card: "0 14px 34px -20px rgba(80,70,40,0.45)",
+        lift: "0 22px 48px -22px rgba(80,70,40,0.55)",
+        glow: "0 10px 22px -12px rgba(95,126,80,0.9)",
       },
       keyframes: {
         "fade-up": {
-          from: { opacity: "0", transform: "translateY(10px)" },
+          from: { opacity: "0", transform: "translateY(12px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
       },
       animation: {
-        "fade-up": "fade-up 0.5s cubic-bezier(0.2,0.8,0.2,1) both",
+        "fade-up": "fade-up 0.55s cubic-bezier(0.2,0.8,0.2,1) both",
       },
     },
   },

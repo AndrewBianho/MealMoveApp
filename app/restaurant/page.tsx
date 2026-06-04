@@ -33,6 +33,7 @@ export default async function RestaurantPage() {
         <RestaurantConsole
           restaurant={restaurant.name}
           restaurantId={restaurant.id}
+          restaurantImageUrl={restaurant.imageUrl}
           listings={mine}
         />
       ) : (

@@ -2,34 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
-/* "Harvest Press" — warm editorial food-rescue theme. Light only. */
+/* "Soft Harvest" — warm, organic food-rescue theme. Light only. */
 :root {
   color-scheme: light;
 }
 
-/* Headlines use the display serif by default (Fraunces), with tight tracking. */
+/* Headlines use the display serif by default (Fraunces). The soft aesthetic
+   leans on a slightly looser tracking and the optical-size axis weight. */
 h1,
 h2,
 h3 {
   font-family: var(--font-display), Georgia, serif;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
-/* Subtle paper grain over the whole surface for warmth/depth. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
+/* Two soft, blurred color washes give the cream surface depth and warmth
+   instead of a flat fill — sage from the top-left, clay from the top-right. */
+body {
+  background-color: #f7f3ea;
+  background-image:
+    radial-gradient(620px 340px at 12% -8%, rgba(127, 156, 111, 0.16), transparent 70%),
+    radial-gradient(560px 320px at 96% 2%, rgba(217, 138, 95, 0.13), transparent 72%);
+  background-attachment: fixed;
+}
+
+/* Map popups: a frosted, rounded "Soft Harvest" card that sits in front of the
+   pins but is translucent — so drop-off pins behind the open description box
+   stay visible through the glass. Clicks pass through the empty wrapper while
+   the card itself stays interactive. */
+.mapboxgl-popup {
+  z-index: 5; /* in front of markers */
   pointer-events: none;
-  opacity: 0.05;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
-
-/* Keep app content above the grain layer. */
-body > * {
-  position: relative;
-  z-index: 1;
+.mapboxgl-popup-content {
+  pointer-events: auto;
+  background: rgba(247, 243, 234, 0.7); /* cream, translucent */
+  -webkit-backdrop-filter: blur(12px) saturate(1.15);
+  backdrop-filter: blur(12px) saturate(1.15);
+  border: 1px solid rgba(51, 52, 44, 0.1);
+  border-radius: 20px;
+  box-shadow: 0 18px 40px -18px rgba(80, 70, 40, 0.5);
+  padding: 14px 16px;
+  color: #44423a;
+}
+.mapboxgl-popup-close-button {
+  color: #6f6f62;
+  font-size: 18px;
+  padding-right: 6px;
+}
+/* Floating-card look: drop the little tip triangle so the glass reads clean. */
+.mapboxgl-popup-tip {
+  display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

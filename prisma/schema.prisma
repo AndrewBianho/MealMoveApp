@@ -60,6 +60,7 @@ model Restaurant {
   address   String
   lat       Float
   lng       Float
+  imageUrl  String? // default image, shown on a card when the listing has no food photo
   members   User[]
   listings  FoodListing[]
   createdAt DateTime      @default(now())
@@ -87,6 +88,7 @@ model FoodListing {
   weightLbs    Float? // actual weight if the restaurant provides it
   category     FoodCategory   @default(prepared)
   perishable   Boolean        @default(false)
+  imageUrl     String? // photo of this specific food; takes priority over the restaurant's default
   notes        String? // special requests / restraints from the restaurant
   status       ListingStatus  @default(open)
   restaurant   Restaurant     @relation(fields: [restaurantId], references: [id])
@@ -110,6 +112,8 @@ model Pickup {
   claimedAt   DateTime    @default(now())
   holdUntil   DateTime // the 15-min hold; a cron releases claims past this
   deliveredAt DateTime?
+  lastCheckInAt DateTime? // last "still on it" confirmation; suppresses re-prompting
+  nudgesSent    Int       @default(0) // count of 5-min check-up nudges the cron has dispatched (0–2)
 
   @@index([volunteerId])
 }

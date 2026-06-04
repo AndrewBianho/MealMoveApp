@@ -8,6 +8,7 @@ import { Toast, useToast } from "./Toast";
 import { Clock, MapPin, Users } from "./icons";
 import { cn } from "./cn";
 import { advanceListing, claimListing } from "@/app/actions";
+import { CheckInPrompt } from "./CheckInPrompt";
 import type { Listing, ListingStatus } from "@/lib/types";
 
 // The happy-path journey. expired / failed are terminal off-ramps and render
@@ -29,7 +30,7 @@ function MetaRow({
   children: React.ReactNode;
 }) {
   return (
-    <p className="flex items-center gap-2 font-mono text-xs text-neutral-600">
+    <p className="flex items-center gap-2 font-sans text-[13px] text-neutral-600">
       <span className="text-neutral-400">{icon}</span>
       {children}
     </p>
@@ -108,9 +109,6 @@ export function ListingDetail({ listing }: { listing: Listing | null }) {
                 <h1 className="text-[22px] font-medium leading-tight">
                   {listing.title}
                 </h1>
-                <p className="mt-1 font-mono text-[10px] uppercase tracking-wide text-neutral-400">
-                  {listing.id}
-                </p>
               </div>
               <StatusBadge status={listing.status} />
             </div>
@@ -245,6 +243,18 @@ export function ListingDetail({ listing }: { listing: Listing | null }) {
               )}
             </div>
           )}
+
+          {listing.status === "claimed" &&
+            listing.mine &&
+            listing.claimedAt != null &&
+            listing.holdUntil != null && (
+              <CheckInPrompt
+                listingId={listing.id}
+                claimedAt={listing.claimedAt}
+                holdUntil={listing.holdUntil}
+                lastCheckInAt={listing.lastCheckInAt}
+              />
+            )}
         </aside>
       </div>
 

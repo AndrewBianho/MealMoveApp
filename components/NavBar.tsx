@@ -51,10 +51,10 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
             key={item.href}
             href={item.href}
             className={cn(
-              "rounded-md px-3 py-1.5 text-sm transition-colors",
+              "rounded-full px-4 py-1.5 text-sm font-semibold transition-all",
               isActive(item.href)
-                ? "bg-neutral-100 font-medium text-neutral-900"
-                : "text-neutral-600 hover:text-neutral-900"
+                ? "bg-neutral-900 text-neutral-50 shadow-card"
+                : "text-neutral-600 hover:bg-white hover:text-neutral-900 hover:shadow-card"
             )}
           >
             {item.label}
@@ -67,7 +67,7 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
         <span className="font-mono text-xs uppercase tracking-wide text-neutral-600">
           {roleLabel}
         </span>
-        <span className="grid h-7 w-7 place-items-center rounded-full bg-neutral-100 font-mono text-xs text-neutral-600">
+        <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-clay-200 to-clay-400 font-mono text-xs font-medium text-white shadow-card">
           {initials(name)}
         </span>
         <button
@@ -105,7 +105,7 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
 
       {/* Mobile: dropdown panel */}
       {open && (
-        <div className="absolute left-0 right-0 top-14 z-20 border-b border-neutral-200/40 bg-white shadow-sm md:hidden">
+        <div className="absolute left-0 right-0 top-16 z-20 border-b border-neutral-200/50 bg-neutral-50/95 shadow-card backdrop-blur-md md:hidden">
           <nav className="mx-auto flex max-w-5xl flex-col px-4 py-2">
             {items.map((item) => (
               <Link
@@ -113,10 +113,10 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
                 href={item.href}
                 onClick={() => setOpen(false)}
                 className={cn(
-                  "rounded-md px-3 py-2.5 text-sm transition-colors",
+                  "rounded-xl px-3 py-2.5 text-sm transition-colors",
                   isActive(item.href)
-                    ? "bg-neutral-100 font-medium text-neutral-900"
-                    : "text-neutral-700 hover:bg-neutral-50"
+                    ? "bg-neutral-900 font-semibold text-neutral-50"
+                    : "text-neutral-700 hover:bg-neutral-100"
                 )}
               >
                 {item.label}

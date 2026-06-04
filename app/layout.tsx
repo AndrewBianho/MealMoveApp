@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import { Fraunces, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
+import { Fraunces, Nunito_Sans, JetBrains_Mono } from "next/font/google";
 import { Header } from "@/components/Header";
 import "./globals.css";
 
-// Display: characterful serif. Body: clean grotesque. Data: mono.
+// Display: soft characterful serif. Body: warm humanist sans. Data: mono.
 const display = Fraunces({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
@@ -11,7 +11,7 @@ const display = Fraunces({
   display: "swap",
 });
 
-const sans = Hanken_Grotesk({
+const sans = Nunito_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-sans",
