@@ -42,6 +42,8 @@ export function serializeListing(l: DbListing): Listing {
     category: l.category,
     perishable: l.perishable,
     notes: l.notes ?? undefined,
+    // Food photo wins; fall back to the restaurant's default image.
+    imageUrl: l.imageUrl ?? l.restaurant.imageUrl ?? undefined,
   };
 }
 

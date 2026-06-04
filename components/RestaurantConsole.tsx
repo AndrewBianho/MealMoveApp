@@ -3,9 +3,10 @@
 import { useMemo, useState, useTransition } from "react";
 import { Button } from "./Button";
 import { ListingCard } from "./ListingCard";
+import { ImageUploadField } from "./ImageUploadField";
 import { Toast, useToast } from "./Toast";
 import { cn } from "./cn";
-import { postListing } from "@/app/actions";
+import { postListing, setRestaurantImage } from "@/app/actions";
 import type { Listing } from "@/lib/types";
 
 // Relative pickup windows → minutes. The expiry timestamp is computed
@@ -20,10 +21,12 @@ const WINDOWS = [
 export function RestaurantConsole({
   restaurant,
   restaurantId,
+  restaurantImageUrl,
   listings,
 }: {
   restaurant: string;
   restaurantId: string;
+  restaurantImageUrl?: string | null;
   listings: Listing[];
 }) {
   const { message, show } = useToast();
@@ -34,6 +37,7 @@ export function RestaurantConsole({
   const [weight, setWeight] = useState("");
   const [windowMin, setWindowMin] = useState(WINDOWS[1].minutes);
   const [notes, setNotes] = useState("");
+  const [foodImage, setFoodImage] = useState<string | null>(null);
 
   const servingsNum = Number(servings);
   const valid = title.trim().length > 0 && servingsNum > 0;
@@ -49,13 +53,30 @@ export function RestaurantConsole({
         minutes: windowMin,
         weightLbs: Number(weight) > 0 ? Number(weight) : undefined,
         notes: notes.trim() || undefined,
+        imageUrl: foodImage ?? undefined,
       });
       show(`Posted “${name}” — it's live on the volunteer feed.`);
       setTitle("");
       setServings("");
       setWeight("");
       setNotes("");
+      setFoodImage(null);
       setWindowMin(WINDOWS[1].minutes);
+    });
+  }
+
+  // Set/clear the restaurant's default image — used on a card when the listing
+  // has no food photo of its own.
+  function saveDefaultImage(url: string | null) {
+    startTransition(async () => {
+      const res = await setRestaurantImage(restaurantId, url);
+      show(
+        res.ok
+          ? url
+            ? "Default photo updated."
+            : "Default photo removed."
+          : res.error
+      );
     });
   }
 
@@ -81,7 +102,21 @@ export function RestaurantConsole({
   return (
     <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
       {/* Post form */}
-      <div className="lg:sticky lg:top-20 lg:self-start">
+      <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+        {/* Restaurant default photo */}
+        <div className="rounded-xl border border-neutral-200/40 bg-white p-5">
+          <h2 className="text-lg font-medium">Restaurant photo</h2>
+          <p className="mb-4 text-sm text-neutral-600">
+            Shown on a card when a listing has no food photo of its own.
+          </p>
+          <ImageUploadField
+            label="Default photo"
+            hint="Take a photo or upload one — JPG/PNG, up to 5 MB."
+            value={restaurantImageUrl}
+            onChange={saveDefaultImage}
+          />
+        </div>
+
         <div className="rounded-xl border border-neutral-200/40 bg-white p-5">
           <h2 className="text-lg font-medium">Post surplus</h2>
           <p className="mb-4 text-sm text-neutral-600">Posting from {restaurant}.</p>
@@ -164,6 +199,13 @@ export function RestaurantConsole({
                 onChange={(e) => setNotes(e.target.value)}
               />
             </div>
+
+            <ImageUploadField
+              label="Food photo"
+              hint="A photo of this food. Falls back to your restaurant photo."
+              value={foodImage}
+              onChange={setFoodImage}
+            />
 
             <Button
               variant="primary"

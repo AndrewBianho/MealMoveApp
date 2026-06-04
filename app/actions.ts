@@ -151,6 +151,7 @@ export async function postListing(input: {
   minutes: number;
   weightLbs?: number;
   notes?: string;
+  imageUrl?: string;
 }) {
   const listing = await prisma.foodListing.create({
     data: {
@@ -159,6 +160,7 @@ export async function postListing(input: {
       weightLbs:
         input.weightLbs && input.weightLbs > 0 ? input.weightLbs : null,
       notes: input.notes?.trim() || null,
+      imageUrl: input.imageUrl?.trim() || null,
       status: "open",
       restaurantId: input.restaurantId,
       expiresAt: new Date(Date.now() + input.minutes * 60_000),
@@ -167,6 +169,37 @@ export async function postListing(input: {
   });
   refreshViews(listing.id);
   return listing.id;
+}
+
+/**
+ * Set (or clear) a restaurant's default image — shown on a listing card when
+ * the listing has no food photo of its own. Restaurant members and org admins
+ * only, and a restaurant member can only edit their own restaurant.
+ */
+export async function setRestaurantImage(
+  restaurantId: string,
+  imageUrl: string | null
+): Promise<SignUpResult> {
+  const session = await auth();
+  const role = session?.user?.role;
+  if (role !== "restaurant" && role !== "org_admin") {
+    return { ok: false, error: "Only restaurants can set this." };
+  }
+  if (role === "restaurant") {
+    const me = await prisma.user.findUnique({
+      where: { id: session!.user!.id },
+      select: { restaurantId: true },
+    });
+    if (me?.restaurantId !== restaurantId) {
+      return { ok: false, error: "That isn't your restaurant." };
+    }
+  }
+  await prisma.restaurant.update({
+    where: { id: restaurantId },
+    data: { imageUrl: imageUrl?.trim() || null },
+  });
+  refreshViews();
+  return { ok: true };
 }
 
 /** A drop-off admin sets the special requests / restraints for a location. */

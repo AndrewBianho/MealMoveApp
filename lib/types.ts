@@ -74,6 +74,8 @@ export interface Listing {
   perishable?: boolean;
   /** Special requests / restraints from the restaurant. */
   notes?: string;
+  /** Food photo, falling back to the restaurant's default image. */
+  imageUrl?: string;
 }
 
 export interface Volunteer {

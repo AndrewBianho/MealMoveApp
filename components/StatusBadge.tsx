@@ -18,7 +18,7 @@ export function StatusBadge({ status }: { status: ListingStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-[3px] px-2.5 py-0.5",
+        "inline-flex items-center gap-1.5 rounded-full px-3 py-1",
         "font-mono text-xs font-medium uppercase tracking-wide",
         STYLES[status]
       )}
