@@ -4,10 +4,12 @@ import { cn } from "./cn";
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-rescued-600 text-white hover:bg-rescued-800",
+  primary:
+    "bg-rescued-600 text-neutral-50 shadow-card hover:bg-rescued-800 hover:-translate-y-px",
   secondary:
-    "border border-neutral-200/60 text-neutral-900 hover:bg-neutral-50",
-  danger: "border border-failed-400 text-failed-400 hover:bg-failed-50",
+    "border-2 border-neutral-900/15 bg-white text-neutral-900 hover:border-neutral-900/35 hover:-translate-y-px",
+  danger:
+    "border-2 border-failed-400 text-failed-600 hover:bg-failed-50 hover:-translate-y-px",
   ghost: "text-neutral-600 hover:text-neutral-900",
 };
 
@@ -23,9 +25,9 @@ export function Button({
   return (
     <button
       className={cn(
-        "rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors",
-        // focus ring only — no drop shadows anywhere in the system
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-transit-400 focus-visible:ring-offset-2",
+        "rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-150",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50",
+        "active:translate-y-0 disabled:hover:translate-y-0",
         VARIANTS[variant],
         className
       )}

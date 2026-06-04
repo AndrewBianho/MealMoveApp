@@ -1,19 +1,27 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import { Fraunces, Hanken_Grotesk, JetBrains_Mono } from "next/font/google";
 import { Header } from "@/components/Header";
 import "./globals.css";
 
-const plexSans = IBM_Plex_Sans({
+// Display: characterful serif. Body: clean grotesque. Data: mono.
+const display = Fraunces({
   subsets: ["latin"],
-  weight: ["400", "500"], // two weights only
-  variable: "--font-plex-sans",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-display",
   display: "swap",
 });
 
-const plexMono = IBM_Plex_Mono({
+const sans = Hanken_Grotesk({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const mono = JetBrains_Mono({
   subsets: ["latin"],
   weight: ["400", "500"],
-  variable: "--font-plex-mono",
+  variable: "--font-mono",
   display: "swap",
 });
 
@@ -28,7 +36,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${plexSans.variable} ${plexMono.variable}`}>
+    <html
+      lang="en"
+      className={`${display.variable} ${sans.variable} ${mono.variable}`}
+    >
       <body className="min-h-screen bg-neutral-50 font-sans text-neutral-900 antialiased">
         <Header />
         {children}

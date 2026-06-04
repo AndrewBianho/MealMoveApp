@@ -40,12 +40,12 @@ export function ListingCard({ listing, onClaim }: ListingCardProps) {
   const spent = ["delivered", "expired", "failed"].includes(status);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-neutral-200/40 bg-white">
-      <div className={cn("h-[3px]", stripColor(listing))} />
+    <div className="group animate-fade-up overflow-hidden rounded-2xl border border-neutral-900/5 bg-white shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift">
+      <div className={cn("h-1.5", stripColor(listing))} />
 
       <div className="p-4">
         <div className="mb-3 flex items-start justify-between gap-2">
-          <h3 className="text-sm font-medium">
+          <h3 className="text-lg font-semibold leading-snug">
             <Link
               href={`/listings/${id}`}
               className="rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-transit-400"
