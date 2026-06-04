@@ -8,6 +8,7 @@ import { Toast, useToast } from "./Toast";
 import { Clock, MapPin, Users } from "./icons";
 import { cn } from "./cn";
 import { advanceListing, claimListing } from "@/app/actions";
+import { CheckInPrompt } from "./CheckInPrompt";
 import type { Listing, ListingStatus } from "@/lib/types";
 
 // The happy-path journey. expired / failed are terminal off-ramps and render
@@ -242,6 +243,18 @@ export function ListingDetail({ listing }: { listing: Listing | null }) {
               )}
             </div>
           )}
+
+          {listing.status === "claimed" &&
+            listing.mine &&
+            listing.claimedAt != null &&
+            listing.holdUntil != null && (
+              <CheckInPrompt
+                listingId={listing.id}
+                claimedAt={listing.claimedAt}
+                holdUntil={listing.holdUntil}
+                lastCheckInAt={listing.lastCheckInAt}
+              />
+            )}
         </aside>
       </div>
 
