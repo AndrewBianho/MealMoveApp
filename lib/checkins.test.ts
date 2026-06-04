@@ -1,3 +1,6 @@
+// Test doubles below stand in for the Prisma client; `any` keeps the fakes
+// lightweight (we only implement the handful of methods under test).
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { dispatchCheckIns } from "./checkins";
