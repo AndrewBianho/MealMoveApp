@@ -74,3 +74,75 @@ test("dispatchCheckIns: catches up both marks after a gap", async () => {
   assert.deepEqual(pushes, [1, 2]);
   assert.equal(updates["pk1"].nudgesSent, 2);
 });
+
+import { confirmCheckInFor, releaseClaimFor } from "./checkins";
+
+function txDb(pickupRow: any) {
+  const calls: any = { updated: null, deleted: false, listing: null, events: [] };
+  const db: any = {
+    pickup: {
+      findUnique: async () => pickupRow,
+      update: async ({ data }: any) => {
+        calls.updated = data;
+        return pickupRow;
+      },
+      delete: async () => {
+        calls.deleted = true;
+        return pickupRow;
+      },
+    },
+    foodListing: {
+      update: async ({ data }: any) => {
+        calls.listing = data;
+        return {};
+      },
+    },
+    listingEvent: {
+      create: async ({ data }: any) => {
+        calls.events.push(data);
+        return data;
+      },
+    },
+    $transaction: async (ops: Promise<unknown>[]) => Promise.all(ops),
+  };
+  return { db, calls };
+}
+
+test("confirmCheckInFor: stamps lastCheckInAt and logs checked_in, never touches the hold", async () => {
+  const { db, calls } = txDb({
+    volunteerId: "vol1",
+    listing: { status: "claimed" },
+  });
+  await confirmCheckInFor(db, "vol1", "ls1", t0);
+  assert.equal(calls.updated.lastCheckInAt.getTime(), t0);
+  assert.equal("holdUntil" in calls.updated, false);
+  assert.equal(calls.events[0].type, "checked_in");
+});
+
+test("confirmCheckInFor: rejects a non-owner", async () => {
+  const { db } = txDb({ volunteerId: "vol1", listing: { status: "claimed" } });
+  await assert.rejects(
+    () => confirmCheckInFor(db, "intruder", "ls1", t0),
+    /no longer active/
+  );
+});
+
+test("releaseClaimFor: reopens the listing and logs withdrawn (not a flake)", async () => {
+  const { db, calls } = txDb({
+    volunteerId: "vol1",
+    listing: { status: "claimed" },
+  });
+  await releaseClaimFor(db, "vol1", "ls1");
+  assert.equal(calls.deleted, true);
+  assert.equal(calls.listing.status, "open");
+  assert.equal(calls.events[0].type, "withdrawn");
+  assert.equal(calls.events[0].meta.reason, "volunteer_released");
+});
+
+test("releaseClaimFor: rejects when the claim was already swept", async () => {
+  const { db } = txDb({ volunteerId: "vol1", listing: { status: "open" } });
+  await assert.rejects(
+    () => releaseClaimFor(db, "vol1", "ls1"),
+    /no longer active/
+  );
+});

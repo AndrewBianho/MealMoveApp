@@ -43,3 +43,62 @@ export async function dispatchCheckIns(
   }
   return { nudged };
 }
+
+/** Guard: load the active claim for this listing owned by this user, or throw. */
+async function loadOwnedClaim(db: Db, userId: string, listingId: string) {
+  const pickup = await db.pickup.findUnique({
+    where: { listingId },
+    include: { listing: true },
+  });
+  if (
+    !pickup ||
+    pickup.volunteerId !== userId ||
+    pickup.listing.status !== "claimed"
+  ) {
+    throw new Error("This pickup is no longer active.");
+  }
+  return pickup;
+}
+
+/** Record a liveness confirmation. Does NOT extend the hold (liveness-only). */
+export async function confirmCheckInFor(
+  db: Db,
+  userId: string,
+  listingId: string,
+  now: number = Date.now()
+): Promise<void> {
+  await loadOwnedClaim(db, userId, listingId);
+  await db.$transaction([
+    db.pickup.update({
+      where: { listingId },
+      data: { lastCheckInAt: new Date(now) },
+    }),
+    db.listingEvent.create({
+      data: { listingId, type: "checked_in", actorId: userId },
+    }),
+  ]);
+}
+
+/** Voluntarily release a claim — reopens the listing; logged non-punitively. */
+export async function releaseClaimFor(
+  db: Db,
+  userId: string,
+  listingId: string
+): Promise<void> {
+  await loadOwnedClaim(db, userId, listingId);
+  await db.$transaction([
+    db.pickup.delete({ where: { listingId } }),
+    db.foodListing.update({
+      where: { id: listingId },
+      data: { status: "open" },
+    }),
+    db.listingEvent.create({
+      data: {
+        listingId,
+        type: "withdrawn",
+        actorId: userId,
+        meta: { reason: "volunteer_released" },
+      },
+    }),
+  ]);
+}
