@@ -112,6 +112,8 @@ model Pickup {
   claimedAt   DateTime    @default(now())
   holdUntil   DateTime // the 15-min hold; a cron releases claims past this
   deliveredAt DateTime?
+  lastCheckInAt DateTime? // last "still on it" confirmation; suppresses re-prompting
+  nudgesSent    Int       @default(0) // count of 5-min check-up nudges the cron has dispatched (0–2)
 
   @@index([volunteerId])
 }
