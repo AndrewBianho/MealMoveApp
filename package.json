@@ -12,7 +12,8 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "make-admin": "node --env-file=.env --import tsx scripts/make-admin.ts",
-    "sweep": "node --env-file=.env --import tsx scripts/sweep.ts"
+    "sweep": "node --env-file=.env --import tsx scripts/sweep.ts",
+    "test": "node --import tsx --test \"lib/**/*.test.ts\""
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
