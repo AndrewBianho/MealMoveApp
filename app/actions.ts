@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { confirmCheckInFor, releaseClaimFor } from "@/lib/checkins";
 
 const HOLD_MINUTES = 15;
 
@@ -112,6 +113,20 @@ export async function claimListing(listingId: string) {
       data: { listingId, type: "claimed", actorId: volunteerId },
     });
   });
+  refreshViews(listingId);
+}
+
+/** Record a "still on it" check-up confirmation for the caller's claim. */
+export async function confirmCheckIn(listingId: string) {
+  const userId = await currentUserId();
+  await confirmCheckInFor(prisma, userId, listingId);
+  refreshViews(listingId);
+}
+
+/** Voluntarily release the caller's claim, reopening the listing. */
+export async function releaseClaim(listingId: string) {
+  const userId = await currentUserId();
+  await releaseClaimFor(prisma, userId, listingId);
   refreshViews(listingId);
 }
 
