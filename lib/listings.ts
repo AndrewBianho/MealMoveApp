@@ -47,6 +47,8 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
     claimedAt: l.pickup?.claimedAt.getTime(),
     holdUntil: l.pickup?.holdUntil.getTime(),
     lastCheckInAt: l.pickup?.lastCheckInAt?.getTime(),
+    photoAtPickupUrl: l.pickup?.photoAtPickupUrl ?? undefined,
+    photoAtDeliveryUrl: l.pickup?.photoAtDeliveryUrl ?? undefined,
     mine: viewerId != null && l.pickup?.volunteerId === viewerId,
   };
 }

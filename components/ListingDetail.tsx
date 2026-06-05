@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useTransition } from "react";
 import { Button } from "./Button";
 import { StatusBadge } from "./StatusBadge";
 import { Toast, useToast } from "./Toast";
 import { Clock, MapPin, Users } from "./icons";
 import { cn } from "./cn";
-import { advanceListing, claimListing } from "@/app/actions";
+import { claimListing, markDelivered, startDelivery } from "@/app/actions";
 import { CheckInPrompt } from "./CheckInPrompt";
+import { ChatPanel } from "./ChatPanel";
+import { ImageUploadField } from "./ImageUploadField";
 import type { Listing, ListingStatus } from "@/lib/types";
 
 // The happy-path journey. expired / failed are terminal off-ramps and render
@@ -21,6 +24,19 @@ const STEP_LABEL: Record<string, string> = {
   "in transit": "In transit",
   delivered: "Delivered",
 };
+
+function ProofPhoto({ label, url }: { label: string; url: string }) {
+  return (
+    <figure>
+      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl">
+        <Image src={url} alt={`Food ${label}`} fill sizes="200px" className="object-cover" />
+      </div>
+      <figcaption className="mt-1 font-mono text-[10px] uppercase tracking-wide text-neutral-400">
+        {label}
+      </figcaption>
+    </figure>
+  );
+}
 
 function MetaRow({
   icon,
@@ -37,7 +53,15 @@ function MetaRow({
   );
 }
 
-export function ListingDetail({ listing }: { listing: Listing | null }) {
+export function ListingDetail({
+  listing,
+  viewerId,
+  canChat = false,
+}: {
+  listing: Listing | null;
+  viewerId?: string;
+  canChat?: boolean;
+}) {
   const { message, show } = useToast();
   const [isPending, startTransition] = useTransition();
 
@@ -68,14 +92,18 @@ export function ListingDetail({ listing }: { listing: Listing | null }) {
       show("Claimed — it's yours for the next fifteen minutes.");
     });
   }
-  function onAdvance(next: "in transit" | "delivered") {
+  function onPickupPhoto(url: string | null) {
+    if (!url) return;
     startTransition(async () => {
-      await advanceListing(id);
-      show(
-        next === "in transit"
-          ? "On your way — drive safe."
-          : "Delivered. Thank you for the rescue. 🌱"
-      );
+      await startDelivery(id, url);
+      show("On your way — drive safe.");
+    });
+  }
+  function onDeliveryPhoto(url: string | null) {
+    if (!url) return;
+    startTransition(async () => {
+      await markDelivered(id, url);
+      show("Delivered. Thank you for the rescue. 🌱");
     });
   }
 
@@ -152,6 +180,25 @@ export function ListingDetail({ listing }: { listing: Listing | null }) {
                   : "This pickup wasn't completed. The drop-off was reassigned."}
               </div>
             )}
+
+            {(listing.photoAtPickupUrl || listing.photoAtDeliveryUrl) && (
+              <div className="mt-5">
+                <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+                  Proof photos
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {listing.photoAtPickupUrl && (
+                    <ProofPhoto label="at pickup" url={listing.photoAtPickupUrl} />
+                  )}
+                  {listing.photoAtDeliveryUrl && (
+                    <ProofPhoto
+                      label="at delivery"
+                      url={listing.photoAtDeliveryUrl}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -216,26 +263,36 @@ export function ListingDetail({ listing }: { listing: Listing | null }) {
                   Claim pickup
                 </Button>
               )}
-              {listing.status === "claimed" && (
-                <Button
-                  variant="primary"
-                  className="w-full"
-                  onClick={() => onAdvance("in transit")}
-                  disabled={isPending}
-                >
-                  Start delivery
-                </Button>
-              )}
-              {listing.status === "in transit" && (
-                <Button
-                  variant="primary"
-                  className="w-full"
-                  onClick={() => onAdvance("delivered")}
-                  disabled={isPending}
-                >
-                  Mark delivered
-                </Button>
-              )}
+              {listing.status === "claimed" &&
+                (listing.mine ? (
+                  <ImageUploadField
+                    label="Pickup photo"
+                    optional={false}
+                    hint="Snap the food as you leave — required to start delivery."
+                    aspect="aspect-[4/3]"
+                    onChange={onPickupPhoto}
+                  />
+                ) : (
+                  <p className="text-sm text-neutral-600">
+                    Waiting for {listing.claimedBy ?? "the volunteer"} to pick up
+                    and start delivery.
+                  </p>
+                ))}
+              {listing.status === "in transit" &&
+                (listing.mine ? (
+                  <ImageUploadField
+                    label="Delivery photo"
+                    optional={false}
+                    hint="Snap the food at the drop-off — required to mark delivered."
+                    aspect="aspect-[4/3]"
+                    onChange={onDeliveryPhoto}
+                  />
+                ) : (
+                  <p className="text-sm text-neutral-600">
+                    {listing.claimedBy ?? "The volunteer"} is on the way to{" "}
+                    {listing.dropOff ?? "the drop-off"}.
+                  </p>
+                ))}
               {listing.status === "delivered" && (
                 <p className="text-sm text-neutral-600">
                   Complete — nothing more to do. 🌱
@@ -255,6 +312,10 @@ export function ListingDetail({ listing }: { listing: Listing | null }) {
                 lastCheckInAt={listing.lastCheckInAt}
               />
             )}
+
+          {canChat && viewerId && listing.claimedAt != null && (
+            <ChatPanel listingId={listing.id} viewerId={viewerId} />
+          )}
         </aside>
       </div>
 

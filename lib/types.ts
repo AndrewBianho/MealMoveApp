@@ -82,6 +82,10 @@ export interface Listing {
   holdUntil?: number;
   /** Epoch ms of the volunteer's last check-up confirmation, if any. */
   lastCheckInAt?: number;
+  /** Proof photo captured at pickup (claimed → in transit). */
+  photoAtPickupUrl?: string;
+  /** Proof photo captured at the drop-off (in transit → delivered). */
+  photoAtDeliveryUrl?: string;
   /** True when the current viewer is the volunteer who claimed it. */
   mine?: boolean;
 }

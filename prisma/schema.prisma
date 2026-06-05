@@ -49,6 +49,7 @@ model User {
   restaurantId String?
   pickups      Pickup[]
   events       ListingEvent[]
+  messages      Message[]
   adminActions  AdminEvent[] @relation("AdminActor")
   adminTargeted AdminEvent[] @relation("AdminTarget")
   createdAt    DateTime    @default(now())
@@ -99,6 +100,7 @@ model FoodListing {
   expiresAt    DateTime // real timestamp — "minutes left" is derived from this
   pickup       Pickup?
   events       ListingEvent[]
+  messages     Message[]
 
   @@index([status, expiresAt])
 }
@@ -114,6 +116,9 @@ model Pickup {
   deliveredAt DateTime?
   lastCheckInAt DateTime? // last "still on it" confirmation; suppresses re-prompting
   nudgesSent    Int       @default(0) // count of 5-min check-up nudges the cron has dispatched (0–2)
+  // Proof photos the volunteer captures — required to advance the claim.
+  photoAtPickupUrl   String? // food photo taken leaving the restaurant (claimed → in_transit)
+  photoAtDeliveryUrl String? // food photo taken at the drop-off (in_transit → delivered)
 
   @@index([volunteerId])
 }
@@ -145,4 +150,19 @@ model ListingEvent {
   at        DateTime    @default(now())
 
   @@index([listingId, at])
+}
+
+// One shared coordination thread per claim, keyed by listing (Pickup is 1:1
+// with FoodListing). Joins the volunteer, the restaurant, and the drop-off
+// while the claim is active; goes read-only once it ends.
+model Message {
+  id        String      @id @default(cuid())
+  listing   FoodListing @relation(fields: [listingId], references: [id])
+  listingId String
+  sender    User        @relation(fields: [senderId], references: [id])
+  senderId  String
+  body      String
+  createdAt DateTime    @default(now())
+
+  @@index([listingId, createdAt])
 }
