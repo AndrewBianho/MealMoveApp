@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { uploadImage } from "@/lib/storage";
+import { rateLimit, clientIp, LIMITS } from "@/lib/rate-limit";
+import { tooManyRequests } from "@/lib/rate-limit-http";
 
 export const runtime = "nodejs";
 
@@ -18,6 +20,11 @@ export async function POST(req: Request) {
   if (!role || !ALLOWED_ROLES.includes(role)) {
     return NextResponse.json({ error: "Not allowed." }, { status: 403 });
   }
+
+  // Throttle per user (falling back to IP) to cap abuse of the storage path.
+  const key = session?.user?.id ?? clientIp(req.headers);
+  const gate = await rateLimit(`upload:${key}`, LIMITS.upload);
+  if (!gate.ok) return tooManyRequests(gate);
 
   let form: FormData;
   try {
