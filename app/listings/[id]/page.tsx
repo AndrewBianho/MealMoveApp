@@ -18,8 +18,12 @@ export default async function ListingDetailPage({
   // Decide chat access server-side: it depends on the user's role + restaurantId
   // (not carried in the JWT session) and the claim's parties.
   let canChat = false;
+  // A pending buddy invite addressed to this viewer, and the primary's
+  // outstanding invite — both drive the buddy UI.
+  let incomingInvite: { id: string; inviterName: string } | null = null;
+  let outgoingInvite: { inviteeName: string } | null = null;
   if (viewerId) {
-    const [user, ctx] = await Promise.all([
+    const [user, ctx, mine, pending] = await Promise.all([
       prisma.user.findUnique({
         where: { id: viewerId },
         select: { id: true, role: true, restaurantId: true },
@@ -31,16 +35,35 @@ export default async function ListingDetailPage({
           restaurantId: true,
           dropOffId: true,
           status: true,
-          pickup: { select: { volunteerId: true } },
+          pickup: { select: { volunteerId: true, buddyId: true } },
         },
+      }),
+      prisma.buddyInvite.findFirst({
+        where: { listingId: params.id, inviteeId: viewerId, status: "pending" },
+        include: { inviter: { select: { name: true } } },
+      }),
+      prisma.buddyInvite.findFirst({
+        where: { listingId: params.id, status: "pending" },
+        include: { invitee: { select: { name: true } } },
       }),
     ]);
     canChat = Boolean(user && ctx && canAccessChat(user, ctx));
+    if (mine) incomingInvite = { id: mine.id, inviterName: mine.inviter.name };
+    // Only the primary should see the outgoing-invite state.
+    if (pending && ctx?.pickup?.volunteerId === viewerId) {
+      outgoingInvite = { inviteeName: pending.invitee.name };
+    }
   }
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
-      <ListingDetail listing={listing} viewerId={viewerId} canChat={canChat} />
+      <ListingDetail
+        listing={listing}
+        viewerId={viewerId}
+        canChat={canChat}
+        incomingInvite={incomingInvite}
+        outgoingInvite={outgoingInvite}
+      />
     </main>
   );
 }

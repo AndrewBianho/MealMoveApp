@@ -2,17 +2,36 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Button } from "./Button";
 import { StatusBadge } from "./StatusBadge";
 import { Toast, useToast } from "./Toast";
 import { Clock, MapPin, Users } from "./icons";
 import { cn } from "./cn";
-import { claimListing, markDelivered, startDelivery } from "@/app/actions";
+import {
+  claimListing,
+  markDelivered,
+  startDelivery,
+  cancelBuddyInvite,
+  respondToBuddyInvite,
+} from "@/app/actions";
 import { CheckInPrompt } from "./CheckInPrompt";
 import { ChatPanel } from "./ChatPanel";
+import { BuddyInvitePicker } from "./BuddyInvitePicker";
 import { ImageUploadField } from "./ImageUploadField";
 import type { Listing, ListingStatus } from "@/lib/types";
+
+/** A small initial-circle avatar, matching the clay-gradient nav treatment. */
+function Avatar({ name }: { name?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="grid h-8 w-8 place-items-center rounded-full border-2 border-white bg-gradient-to-br from-clay-200 to-clay-400 font-display text-xs font-semibold text-clay-800"
+    >
+      {(name ?? "?").charAt(0).toUpperCase()}
+    </span>
+  );
+}
 
 // The happy-path journey. expired / failed are terminal off-ramps and render
 // their own banner rather than a step.
@@ -57,13 +76,20 @@ export function ListingDetail({
   listing,
   viewerId,
   canChat = false,
+  incomingInvite = null,
+  outgoingInvite = null,
 }: {
   listing: Listing | null;
   viewerId?: string;
   canChat?: boolean;
+  /** A pending buddy invite addressed to the current viewer, if any. */
+  incomingInvite?: { id: string; inviterName: string } | null;
+  /** The primary's outstanding buddy invite, if one is awaiting a response. */
+  outgoingInvite?: { inviteeName: string } | null;
 }) {
   const { message, show } = useToast();
   const [isPending, startTransition] = useTransition();
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   if (!listing) {
     return (
@@ -106,6 +132,43 @@ export function ListingDetail({
       show("Delivered. Thank you for the rescue. 🌱");
     });
   }
+  function onAcceptInvite() {
+    if (!incomingInvite) return;
+    startTransition(async () => {
+      try {
+        await respondToBuddyInvite(incomingInvite.id, true, id);
+        show("You're on it together now. 🤝");
+      } catch {
+        show("This invite is no longer available.");
+      }
+    });
+  }
+  function onDeclineInvite() {
+    if (!incomingInvite) return;
+    startTransition(async () => {
+      try {
+        await respondToBuddyInvite(incomingInvite.id, false, id);
+        show("No worries — declined.");
+      } catch {
+        show("This invite is no longer available.");
+      }
+    });
+  }
+  function onCancelInvite() {
+    startTransition(async () => {
+      try {
+        await cancelBuddyInvite(id);
+        show("Invite cancelled.");
+      } catch {
+        show("There's no invite to cancel.");
+      }
+    });
+  }
+
+  // Buddy UI only matters while the pickup is being worked.
+  const onClaimActive =
+    listing.status === "claimed" || listing.status === "in transit";
+  const isPrimary = Boolean(listing.mine) && !listing.iAmBuddy;
 
   return (
     <div className={cn(isPending && "opacity-70 transition-opacity")}>
@@ -115,6 +178,35 @@ export function ListingDetail({
       >
         ← Feed
       </Link>
+
+      {incomingInvite && !listing.mine && onClaimActive && (
+        <div className="mb-4 rounded-xl border border-rescued-200 bg-rescued-50 p-5">
+          <p className="font-mono text-[10px] uppercase tracking-wide text-rescued-800">
+            Buddy invite
+          </p>
+          <p className="mt-1 text-sm text-rescued-800">
+            <span className="font-medium">{incomingInvite.inviterName}</span>{" "}
+            invited you to buddy this pickup — do it together so neither of you
+            has to flake.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button
+              variant="primary"
+              onClick={onAcceptInvite}
+              disabled={isPending}
+            >
+              Join the pickup
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={onDeclineInvite}
+              disabled={isPending}
+            >
+              Not this time
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         {/* Main */}
@@ -153,7 +245,10 @@ export function ListingDetail({
                 <MetaRow icon={<MapPin />}>→ drop at {listing.dropOff}</MetaRow>
               )}
               {listing.claimedBy && listing.status !== "open" && (
-                <MetaRow icon={<Users />}>claimed by {listing.claimedBy}</MetaRow>
+                <MetaRow icon={<Users />}>
+                  claimed by {listing.claimedBy}
+                  {listing.buddyName && ` + ${listing.buddyName}`}
+                </MetaRow>
               )}
             </div>
 
@@ -297,6 +392,84 @@ export function ListingDetail({
                 <p className="text-sm text-neutral-600">
                   Complete — nothing more to do. 🌱
                 </p>
+              )}
+            </div>
+          )}
+
+          {onClaimActive && (listing.buddyName || isPrimary) && (
+            <div className="rounded-xl border border-neutral-200/40 bg-white p-5">
+              {listing.buddyName ? (
+                <>
+                  <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+                    Buddies
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <span className="flex -space-x-2">
+                      <Avatar name={listing.primaryName} />
+                      <Avatar name={listing.buddyName} />
+                    </span>
+                    <span className="text-sm text-neutral-700">
+                      {listing.mine
+                        ? `You + ${listing.iAmBuddy ? listing.primaryName : listing.buddyName}`
+                        : `${listing.primaryName} + ${listing.buddyName}`}
+                      <span className="block font-mono text-[11px] text-rescued-600">
+                        on this pickup together
+                      </span>
+                    </span>
+                  </div>
+                </>
+              ) : pickerOpen ? (
+                <BuddyInvitePicker
+                  listingId={id}
+                  onInvited={(name) => {
+                    setPickerOpen(false);
+                    show(`Invite sent to ${name}.`);
+                  }}
+                  onCancel={() => setPickerOpen(false)}
+                />
+              ) : outgoingInvite ? (
+                <>
+                  <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+                    Buddy
+                  </p>
+                  <div className="rounded-md bg-urgent-50 px-4 py-3">
+                    <p className="text-sm font-medium text-urgent-800">
+                      Invite sent to {outgoingInvite.inviteeName}
+                    </p>
+                    <p className="mt-0.5 text-[13px] text-urgent-800/80">
+                      Waiting for them to accept.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={onCancelInvite}
+                      disabled={isPending}
+                      className="mt-2 text-[13px] font-medium text-urgent-800 underline hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 disabled:opacity-50"
+                    >
+                      Cancel invite
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+                    Buddy
+                  </p>
+                  <p className="mb-3 flex items-start gap-2 text-[13px] text-neutral-600">
+                    <span className="mt-0.5 text-neutral-400">
+                      <Users />
+                    </span>
+                    Doing this with someone? Invite a buddy so you&apos;ve got
+                    each other&apos;s backs.
+                  </p>
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => setPickerOpen(true)}
+                    disabled={isPending}
+                  >
+                    Invite a buddy
+                  </Button>
+                </>
               )}
             </div>
           )}

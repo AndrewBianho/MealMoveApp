@@ -149,3 +149,31 @@ test("releaseClaimFor: rejects when the claim was already swept", async () => {
     /no longer active/
   );
 });
+
+test("releaseClaimFor: the buddy steps off — claim stays claimed, partner covers", async () => {
+  const { db, calls } = txDb({
+    volunteerId: "vol1",
+    buddyId: "vol2",
+    listing: { status: "claimed" },
+  });
+  await releaseClaimFor(db, "vol2", "ls1");
+  assert.equal(calls.deleted, false); // food not reopened
+  assert.equal(calls.listing, null);
+  assert.equal(calls.updated.buddyId, null); // buddy seat cleared
+  assert.equal(calls.events[0].type, "buddy_withdrawn");
+});
+
+test("releaseClaimFor: the primary steps off — buddy is promoted, claim stays claimed", async () => {
+  const { db, calls } = txDb({
+    volunteerId: "vol1",
+    buddyId: "vol2",
+    listing: { status: "claimed" },
+  });
+  await releaseClaimFor(db, "vol1", "ls1");
+  assert.equal(calls.deleted, false);
+  assert.equal(calls.listing, null);
+  assert.equal(calls.updated.volunteerId, "vol2"); // buddy promoted
+  assert.equal(calls.updated.buddyId, null);
+  assert.equal(calls.events[0].type, "withdrawn");
+  assert.equal(calls.events[0].meta.promotedBuddy, "vol2");
+});

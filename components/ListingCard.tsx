@@ -34,6 +34,7 @@ export function ListingCard({ listing, onClaim }: ListingCardProps) {
     distance,
     status,
     claimedBy,
+    buddyName,
     dropOff,
     notes,
     imageUrl,
@@ -105,7 +106,14 @@ export function ListingCard({ listing, onClaim }: ListingCardProps) {
             Claim pickup
           </Button>
         ) : (
-          <StatusBadge status={status} />
+          <span className="flex items-center gap-2">
+            <StatusBadge status={status} />
+            {buddyName && (
+              <span className="rounded-full bg-rescued-50 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-rescued-800">
+                +1 buddy
+              </span>
+            )}
+          </span>
         )}
         <span className="font-sans text-[13px] text-neutral-600">
           {claimedBy && status !== "open" ? `by ${claimedBy}` : distance}

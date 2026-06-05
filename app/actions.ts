@@ -1,15 +1,23 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { rateLimit, resetLimit, clientIp, LIMITS } from "@/lib/rate-limit";
 import { confirmCheckInFor, releaseClaimFor } from "@/lib/checkins";
 import {
   startDeliveryWithPhotoFor,
   markDeliveredWithPhotoFor,
 } from "@/lib/photos";
+import {
+  invitableVolunteers,
+  inviteBuddyFor,
+  respondToInviteFor,
+  cancelInviteFor,
+} from "@/lib/buddies";
 
 const HOLD_MINUTES = 15;
 
@@ -27,6 +35,14 @@ export async function registerUser(input: {
   restaurantName?: string;
   restaurantAddress?: string;
 }): Promise<SignUpResult> {
+  // Throttle sign-ups per IP — registration runs bcrypt, so it's a cheap DoS
+  // and spam vector if left open. Fails open if the limiter is unavailable.
+  const ip = clientIp(headers());
+  const gate = await rateLimit(`register:${ip}`, LIMITS.register);
+  if (!gate.ok) {
+    return { ok: false, error: "Too many sign-up attempts. Please try again later." };
+  }
+
   const name = input.name?.trim();
   const email = input.email?.trim().toLowerCase();
   const password = input.password ?? "";
@@ -68,6 +84,7 @@ export async function registerUser(input: {
         data: { name, email, passwordHash, role: "volunteer" },
       });
     }
+    await resetLimit(`register:${ip}`);
     return { ok: true };
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
@@ -152,8 +169,59 @@ export async function markDelivered(listingId: string, photoUrl: string) {
   refreshViews(listingId);
 }
 
+/** Volunteers the caller can invite to buddy this pickup. */
+export async function getInvitableVolunteers(listingId: string) {
+  const inviterId = await currentUserId();
+  return invitableVolunteers(prisma, listingId, inviterId);
+}
+
+/** Invite a specific volunteer to do this pickup together. */
+export async function inviteBuddy(listingId: string, inviteeId: string) {
+  const inviterId = await currentUserId();
+  await inviteBuddyFor(prisma, inviterId, listingId, inviteeId);
+  refreshViews(listingId);
+}
+
+/** Accept or decline a buddy invite. `listingId` drives view revalidation. */
+export async function respondToBuddyInvite(
+  inviteId: string,
+  accept: boolean,
+  listingId: string
+) {
+  const inviteeId = await currentUserId();
+  await respondToInviteFor(prisma, inviteeId, inviteId, accept);
+  refreshViews(listingId);
+}
+
+/** The primary pulls back an outstanding buddy invite. */
+export async function cancelBuddyInvite(listingId: string) {
+  const inviterId = await currentUserId();
+  await cancelInviteFor(prisma, inviterId, listingId);
+  refreshViews(listingId);
+}
+
+// Bounds for a posted listing. Kept explicit so the server never trusts the
+// client's numbers — a tampered or malformed payload is rejected, not stored.
+const TITLE_MAX = 120;
+const NOTES_MAX = 500;
+const IMAGE_URL_MAX = 2048;
+const SERVINGS_MAX = 10_000;
+const MINUTES_MAX = 24 * 60; // 24 hours
+const WEIGHT_MAX = 100_000; // lbs
+
+// A finite number within [min, max]; rejects NaN/Infinity/strings-as-numbers.
+function boundedInt(value: unknown, min: number, max: number): number | null {
+  const n = typeof value === "number" ? value : NaN;
+  if (!Number.isFinite(n)) return null;
+  const i = Math.floor(n);
+  return i >= min && i <= max ? i : null;
+}
+
 // Restaurant posts surplus. Restaurants don't choose a drop-off — that's
-// decided downstream (the system recommends; the volunteer delivers).
+// decided downstream (the system recommends; the volunteer delivers). The
+// acting restaurant is resolved from the session, never trusted from the
+// client: a restaurant member posts for their own restaurant; only an
+// org_admin may post on behalf of an arbitrary restaurantId.
 export async function postListing(input: {
   restaurantId: string;
   title: string;
@@ -163,17 +231,55 @@ export async function postListing(input: {
   notes?: string;
   imageUrl?: string;
 }) {
+  const session = await auth();
+  const role = session?.user?.role;
+  if (!session?.user?.id) throw new Error("Not authenticated.");
+
+  let restaurantId: string;
+  if (role === "org_admin") {
+    if (!input.restaurantId?.trim()) throw new Error("Pick a restaurant.");
+    restaurantId = input.restaurantId.trim();
+  } else if (role === "restaurant") {
+    const me = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { restaurantId: true },
+    });
+    if (!me?.restaurantId) throw new Error("Your account has no restaurant.");
+    restaurantId = me.restaurantId; // ignore any client-supplied id
+  } else {
+    throw new Error("Only restaurants can post listings.");
+  }
+
+  const title = input.title?.trim();
+  if (!title) throw new Error("Please enter what you're sharing.");
+  if (title.length > TITLE_MAX) throw new Error("Title is too long.");
+
+  const servings = boundedInt(input.servings, 1, SERVINGS_MAX);
+  if (servings === null) throw new Error("Enter a valid number of servings.");
+
+  const minutes = boundedInt(input.minutes, 1, MINUTES_MAX);
+  if (minutes === null) throw new Error("Enter a valid pickup window.");
+
+  let weightLbs: number | null = null;
+  if (input.weightLbs != null) {
+    const w = boundedInt(input.weightLbs, 1, WEIGHT_MAX);
+    if (w === null) throw new Error("Enter a valid weight.");
+    weightLbs = w;
+  }
+
+  const notes = input.notes?.trim().slice(0, NOTES_MAX) || null;
+  const imageUrl = input.imageUrl?.trim().slice(0, IMAGE_URL_MAX) || null;
+
   const listing = await prisma.foodListing.create({
     data: {
-      title: input.title.trim(),
-      servings: input.servings,
-      weightLbs:
-        input.weightLbs && input.weightLbs > 0 ? input.weightLbs : null,
-      notes: input.notes?.trim() || null,
-      imageUrl: input.imageUrl?.trim() || null,
+      title,
+      servings,
+      weightLbs,
+      notes,
+      imageUrl,
       status: "open",
-      restaurantId: input.restaurantId,
-      expiresAt: new Date(Date.now() + input.minutes * 60_000),
+      restaurantId,
+      expiresAt: new Date(Date.now() + minutes * 60_000),
       events: { create: { type: "posted" } },
     },
   });

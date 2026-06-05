@@ -1,13 +1,18 @@
 import { prisma } from "./prisma";
+import { isOnClaim } from "./buddies";
+import { sendDropOffPickupNotice } from "./notify";
 
 // A structural slice of the Prisma client — just the methods these functions
 // touch. Lets tests inject a fake db without standing up a database.
 type Db = Pick<
   typeof prisma,
-  "pickup" | "foodListing" | "listingEvent" | "$transaction"
+  "pickup" | "foodListing" | "listingEvent" | "message" | "$transaction"
 >;
 
-/** Guard: load this user's active claim in the expected status, or throw. */
+/**
+ * Guard: load the claim in the expected status that this user is on — either the
+ * primary volunteer or the buddy (so either can capture the proof photo) — or throw.
+ */
 async function loadClaimInStatus(
   db: Db,
   userId: string,
@@ -16,13 +21,9 @@ async function loadClaimInStatus(
 ) {
   const pickup = await db.pickup.findUnique({
     where: { listingId },
-    include: { listing: true },
+    include: { listing: { include: { dropOff: true } } },
   });
-  if (
-    !pickup ||
-    pickup.volunteerId !== userId ||
-    pickup.listing.status !== status
-  ) {
+  if (!pickup || !isOnClaim(pickup, userId) || pickup.listing.status !== status) {
     throw new Error("This pickup is no longer active.");
   }
   return pickup;
@@ -37,11 +38,21 @@ export async function startDeliveryWithPhotoFor(
   db: Db,
   userId: string,
   listingId: string,
-  photoUrl: string
+  photoUrl: string,
+  notify = sendDropOffPickupNotice
 ): Promise<void> {
   const url = photoUrl?.trim();
   if (!url) throw new Error("A pickup photo is required to start delivery.");
-  await loadClaimInStatus(db, userId, listingId, "claimed");
+  const pickup = await loadClaimInStatus(db, userId, listingId, "claimed");
+  const dropOff = pickup.listing.dropOff;
+
+  // A durable "it's picked up" line in the coordination thread, posted from the
+  // volunteer who captured the photo (a participant). The drop-off, restaurant,
+  // and buddy all see it — the in-app counterpart to the push below.
+  const body = dropOff
+    ? `Picked up — on the way to ${dropOff.name} now.`
+    : "Picked up — on the way now.";
+
   await db.$transaction([
     db.pickup.update({
       where: { listingId },
@@ -62,7 +73,23 @@ export async function startDeliveryWithPhotoFor(
     db.listingEvent.create({
       data: { listingId, type: "in_transit", actorId: userId },
     }),
+    db.message.create({
+      data: { listingId, senderId: userId, body },
+    }),
   ]);
+
+  // Once the pickup is confirmed, also push the destination a "food is inbound"
+  // notice. Only when a drop-off is assigned — it's optional until set
+  // downstream. Fired after the transaction commits so a failed transition
+  // never notifies.
+  if (dropOff) {
+    await notify({
+      listingId,
+      dropOffId: dropOff.id,
+      dropOffName: dropOff.name,
+      listingTitle: pickup.listing.title,
+    });
+  }
 }
 
 /**
@@ -78,7 +105,15 @@ export async function markDeliveredWithPhotoFor(
 ): Promise<void> {
   const url = photoUrl?.trim();
   if (!url) throw new Error("A delivery photo is required to mark delivered.");
-  await loadClaimInStatus(db, userId, listingId, "in_transit");
+  const pickup = await loadClaimInStatus(db, userId, listingId, "in_transit");
+
+  // Credit every seat that showed up: a delivered event per volunteer (and the
+  // buddy, if any) so reliability — which tallies delivered events per actor —
+  // counts both. Whoever physically captured the photo owns the photo event.
+  const seats = pickup.buddyId
+    ? [pickup.volunteerId, pickup.buddyId]
+    : [pickup.volunteerId];
+
   await db.$transaction([
     db.pickup.update({
       where: { listingId },
@@ -96,8 +131,10 @@ export async function markDeliveredWithPhotoFor(
         meta: { photoUrl: url },
       },
     }),
-    db.listingEvent.create({
-      data: { listingId, type: "delivered", actorId: userId },
-    }),
+    ...seats.map((id) =>
+      db.listingEvent.create({
+        data: { listingId, type: "delivered", actorId: id },
+      })
+    ),
   ]);
 }

@@ -1,6 +1,7 @@
 import { prisma } from "./prisma";
 import { dueNudgeCount } from "./checkin-marks";
 import { sendCheckInPush } from "./notify";
+import { isOnClaim } from "./buddies";
 
 // A structural slice of the Prisma client — just the methods these functions
 // touch. Lets tests inject a fake db without standing up a database.
@@ -44,17 +45,16 @@ export async function dispatchCheckIns(
   return { nudged };
 }
 
-/** Guard: load the active claim for this listing owned by this user, or throw. */
+/**
+ * Guard: load the active claim for this listing that this user is on — either
+ * the primary volunteer or the buddy — or throw.
+ */
 async function loadOwnedClaim(db: Db, userId: string, listingId: string) {
   const pickup = await db.pickup.findUnique({
     where: { listingId },
     include: { listing: true },
   });
-  if (
-    !pickup ||
-    pickup.volunteerId !== userId ||
-    pickup.listing.status !== "claimed"
-  ) {
+  if (!pickup || !isOnClaim(pickup, userId) || pickup.listing.status !== "claimed") {
     throw new Error("This pickup is no longer active.");
   }
   return pickup;
@@ -79,13 +79,52 @@ export async function confirmCheckInFor(
   ]);
 }
 
-/** Voluntarily release a claim — reopens the listing; logged non-punitively. */
+/**
+ * Voluntarily step off a claim, logged non-punitively. Buddy-aware so the
+ * partner can cover solo:
+ *   - the buddy leaving just clears their seat; the claim stays alive;
+ *   - the primary leaving promotes the buddy to primary; the claim stays alive;
+ *   - a sole volunteer leaving reopens the listing for everyone.
+ */
 export async function releaseClaimFor(
   db: Db,
   userId: string,
   listingId: string
 ): Promise<void> {
-  await loadOwnedClaim(db, userId, listingId);
+  const pickup = await loadOwnedClaim(db, userId, listingId);
+
+  // The buddy steps off — primary still has it, food unaffected.
+  if (pickup.buddyId === userId) {
+    await db.$transaction([
+      db.pickup.update({ where: { listingId }, data: { buddyId: null } }),
+      db.listingEvent.create({
+        data: { listingId, type: "buddy_withdrawn", actorId: userId },
+      }),
+    ]);
+    return;
+  }
+
+  // The primary steps off but a buddy is on it — promote the buddy so the
+  // rescue survives. Listing stays claimed.
+  if (pickup.buddyId) {
+    await db.$transaction([
+      db.pickup.update({
+        where: { listingId },
+        data: { volunteerId: pickup.buddyId, buddyId: null },
+      }),
+      db.listingEvent.create({
+        data: {
+          listingId,
+          type: "withdrawn",
+          actorId: userId,
+          meta: { reason: "volunteer_released", promotedBuddy: pickup.buddyId },
+        },
+      }),
+    ]);
+    return;
+  }
+
+  // Sole volunteer — reopen the listing for everyone.
   await db.$transaction([
     db.pickup.delete({ where: { listingId } }),
     db.foodListing.update({

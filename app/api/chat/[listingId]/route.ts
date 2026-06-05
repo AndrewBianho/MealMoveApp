@@ -7,6 +7,8 @@ import {
   listMessages,
   postMessage,
 } from "@/lib/chat";
+import { rateLimit, LIMITS } from "@/lib/rate-limit";
+import { tooManyRequests } from "@/lib/rate-limit-http";
 
 export const runtime = "nodejs";
 
@@ -32,7 +34,7 @@ async function loadContext(listingId: string) {
         restaurantId: true,
         dropOffId: true,
         status: true,
-        pickup: { select: { volunteerId: true } },
+        pickup: { select: { volunteerId: true, buddyId: true } },
       },
     }),
   ]);
@@ -52,6 +54,10 @@ export async function GET(
 ) {
   const ctx = await loadContext(params.listingId);
   if ("error" in ctx) return ctx.error;
+
+  // Polling runs ~every 4s; this ceiling only trips on runaway clients.
+  const read = await rateLimit(`chat-read:${ctx.user.id}`, LIMITS.chatRead);
+  if (!read.ok) return tooManyRequests(read);
 
   const since = new URL(req.url).searchParams.get("since") ?? undefined;
   const messages = await listMessages(prisma, params.listingId, since);
@@ -74,6 +80,9 @@ export async function POST(
 ) {
   const ctx = await loadContext(params.listingId);
   if ("error" in ctx) return ctx.error;
+
+  const write = await rateLimit(`chat-write:${ctx.user.id}`, LIMITS.chatWrite);
+  if (!write.ok) return tooManyRequests(write);
 
   let body: unknown;
   try {

@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "./auth.config";
+import { rateLimit, resetLimit, clientIp, LIMITS } from "@/lib/rate-limit";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -16,10 +17,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
-        const email = credentials?.email ? String(credentials.email) : "";
+      async authorize(credentials, request) {
+        const email = credentials?.email ? String(credentials.email).trim().toLowerCase() : "";
         const password = credentials?.password ? String(credentials.password) : "";
         if (!email || !password) return null;
+
+        // Throttle failed logins: max 5 attempts per 15 min, keyed by IP +
+        // account so a shared campus NAT can't lock everyone out, and a
+        // successful login (below) clears the counter. Fails open if the
+        // limiter is down — we never block a real user on limiter trouble.
+        const ip = clientIp(new Headers(request?.headers));
+        const limitKey = `auth:${ip}:${email}`;
+        const gate = await rateLimit(limitKey, LIMITS.auth);
+        if (!gate.ok) return null;
 
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user?.passwordHash) return null;
@@ -27,6 +37,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) return null;
 
+        await resetLimit(limitKey);
         return { id: user.id, email: user.email, name: user.name, role: user.role };
       },
     }),

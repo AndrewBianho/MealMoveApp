@@ -17,7 +17,7 @@ function listing(over: Partial<ChatListing> = {}): ChatListing {
     restaurantId: "r1",
     dropOffId: "d1",
     status: "claimed",
-    pickup: { volunteerId: "vol1" },
+    pickup: { volunteerId: "vol1", buddyId: null },
     ...over,
   };
 }
@@ -32,6 +32,16 @@ test("canAccessChat: the claiming volunteer is in", () => {
 
 test("canAccessChat: a different volunteer is out", () => {
   assert.equal(canAccessChat(user({ id: "other" }), listing()), false);
+});
+
+test("canAccessChat: the buddy on the claim is in", () => {
+  assert.equal(
+    canAccessChat(
+      user({ id: "vol2" }),
+      listing({ pickup: { volunteerId: "vol1", buddyId: "vol2" } })
+    ),
+    true
+  );
 });
 
 test("canAccessChat: the listing's restaurant is in, a different one is out", () => {
