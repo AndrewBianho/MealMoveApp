@@ -7,12 +7,15 @@ export const runtime = "nodejs";
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB — client downscales before sending
 
 // Accepts a single image (multipart form field "file"), stores it in Supabase
-// Storage, and returns its public URL. Only restaurants and org admins may
-// upload — the food photos belong to a restaurant's listings.
+// Storage, and returns its public URL. Restaurants/org admins upload listing
+// photos; volunteers upload pickup/delivery proof photos. The bare URL is
+// harmless until a server action attaches it to a record the caller owns.
+const ALLOWED_ROLES = ["restaurant", "org_admin", "volunteer"];
+
 export async function POST(req: Request) {
   const session = await auth();
   const role = session?.user?.role;
-  if (role !== "restaurant" && role !== "org_admin") {
+  if (!role || !ALLOWED_ROLES.includes(role)) {
     return NextResponse.json({ error: "Not allowed." }, { status: 403 });
   }
 

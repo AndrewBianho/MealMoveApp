@@ -32,12 +32,14 @@ export function ImageUploadField({
   label,
   hint,
   aspect = "aspect-[16/9]",
+  optional = true,
 }: {
   value?: string | null;
   onChange: (url: string | null) => void;
   label: string;
   hint?: string;
   aspect?: string;
+  optional?: boolean;
 }) {
   const [preview, setPreview] = useState<string | null>(value ?? null);
   const [busy, setBusy] = useState(false);
@@ -134,7 +136,8 @@ export function ImageUploadField({
   return (
     <div>
       <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-600">
-        {label} <span className="text-neutral-400">(optional)</span>
+        {label}{" "}
+        {optional && <span className="text-neutral-400">(optional)</span>}
       </span>
 
       {preview ? (

@@ -6,6 +6,10 @@ import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { confirmCheckInFor, releaseClaimFor } from "@/lib/checkins";
+import {
+  startDeliveryWithPhotoFor,
+  markDeliveredWithPhotoFor,
+} from "@/lib/photos";
 
 const HOLD_MINUTES = 15;
 
@@ -84,6 +88,7 @@ function refreshViews(listingId?: string) {
   revalidatePath("/");
   revalidatePath("/pickups");
   revalidatePath("/restaurant");
+  revalidatePath("/dropoff");
   if (listingId) revalidatePath(`/listings/${listingId}`);
 }
 
@@ -130,30 +135,20 @@ export async function releaseClaim(listingId: string) {
   refreshViews(listingId);
 }
 
-const NEXT_STATUS = { claimed: "in_transit", in_transit: "delivered" } as const;
+/**
+ * Capture the pickup photo and advance claimed → in_transit. The photo is
+ * required — it's the proof a pickup actually happened (anti-flaking).
+ */
+export async function startDelivery(listingId: string, photoUrl: string) {
+  const userId = await currentUserId();
+  await startDeliveryWithPhotoFor(prisma, userId, listingId, photoUrl);
+  refreshViews(listingId);
+}
 
-/** Advance claimed → in_transit → delivered, logging each transition. */
-export async function advanceListing(listingId: string) {
-  const volunteerId = await currentUserId();
-  await prisma.$transaction(async (tx) => {
-    const listing = await tx.foodListing.findUnique({ where: { id: listingId } });
-    if (!listing) throw new Error("Listing not found.");
-    const next = NEXT_STATUS[listing.status as keyof typeof NEXT_STATUS];
-    if (!next) return;
-    await tx.foodListing.update({
-      where: { id: listingId },
-      data: { status: next },
-    });
-    if (next === "delivered") {
-      await tx.pickup.update({
-        where: { listingId },
-        data: { deliveredAt: new Date() },
-      });
-    }
-    await tx.listingEvent.create({
-      data: { listingId, type: next, actorId: volunteerId },
-    });
-  });
+/** Capture the delivery photo and complete in_transit → delivered. */
+export async function markDelivered(listingId: string, photoUrl: string) {
+  const userId = await currentUserId();
+  await markDeliveredWithPhotoFor(prisma, userId, listingId, photoUrl);
   refreshViews(listingId);
 }
 
