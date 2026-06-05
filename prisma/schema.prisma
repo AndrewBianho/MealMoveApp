@@ -39,6 +39,15 @@ enum FoodCategory {
   beverages
 }
 
+// Lifecycle of a buddy invite — one volunteer asking another to do a pickup
+// together. Pending until the invitee responds; cancelled if the inviter pulls it.
+enum BuddyInviteStatus {
+  pending
+  accepted
+  declined
+  cancelled
+}
+
 model User {
   id           String      @id @default(cuid())
   email        String      @unique
@@ -48,8 +57,11 @@ model User {
   restaurant   Restaurant? @relation(fields: [restaurantId], references: [id])
   restaurantId String?
   pickups      Pickup[]
+  buddyPickups Pickup[]    @relation("PickupBuddy") // pickups where this user is the second seat
   events       ListingEvent[]
   messages      Message[]
+  buddyInvitesSent     BuddyInvite[] @relation("InviteInviter")
+  buddyInvitesReceived BuddyInvite[] @relation("InviteInvitee")
   adminActions  AdminEvent[] @relation("AdminActor")
   adminTargeted AdminEvent[] @relation("AdminTarget")
   createdAt    DateTime    @default(now())
@@ -101,6 +113,7 @@ model FoodListing {
   pickup       Pickup?
   events       ListingEvent[]
   messages     Message[]
+  buddyInvites BuddyInvite[]
 
   @@index([status, expiresAt])
 }
@@ -111,6 +124,11 @@ model Pickup {
   listingId   String      @unique
   volunteer   User        @relation(fields: [volunteerId], references: [id])
   volunteerId String
+  // Optional second volunteer doing this pickup together — the buddy. If the
+  // primary bails, the buddy is promoted to volunteerId so the food still gets
+  // rescued (partner covers solo).
+  buddy       User?       @relation("PickupBuddy", fields: [buddyId], references: [id])
+  buddyId     String?
   claimedAt   DateTime    @default(now())
   holdUntil   DateTime // the 15-min hold; a cron releases claims past this
   deliveredAt DateTime?
@@ -121,6 +139,25 @@ model Pickup {
   photoAtDeliveryUrl String? // food photo taken at the drop-off (in_transit → delivered)
 
   @@index([volunteerId])
+  @@index([buddyId])
+}
+
+// One volunteer inviting another to do a specific pickup together. Pending until
+// the invitee responds; on accept the invitee becomes the Pickup's buddy.
+model BuddyInvite {
+  id          String            @id @default(cuid())
+  listing     FoodListing       @relation(fields: [listingId], references: [id])
+  listingId   String
+  inviter     User              @relation("InviteInviter", fields: [inviterId], references: [id])
+  inviterId   String
+  invitee     User              @relation("InviteInvitee", fields: [inviteeId], references: [id])
+  inviteeId   String
+  status      BuddyInviteStatus @default(pending)
+  createdAt   DateTime          @default(now())
+  respondedAt DateTime?
+
+  @@unique([listingId, inviteeId]) // at most one invite per person per listing
+  @@index([inviteeId, status]) // a volunteer's pending invites
 }
 
 // Append-only log of admin actions (role changes) — who granted authority to

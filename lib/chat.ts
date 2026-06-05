@@ -21,7 +21,7 @@ export interface ChatListing {
   restaurantId: string;
   dropOffId: string | null;
   status: string;
-  pickup: { volunteerId: string } | null;
+  pickup: { volunteerId: string; buddyId: string | null } | null;
 }
 
 /**
@@ -40,7 +40,11 @@ export function canAccessChat(user: ChatUser, listing: ChatListing): boolean {
     case "org_admin":
       return true;
     case "volunteer":
-      return listing.pickup?.volunteerId === user.id;
+      // Either seat on the claim — the primary volunteer or the buddy.
+      return (
+        listing.pickup?.volunteerId === user.id ||
+        listing.pickup?.buddyId === user.id
+      );
     case "restaurant":
       return (
         user.restaurantId != null && user.restaurantId === listing.restaurantId

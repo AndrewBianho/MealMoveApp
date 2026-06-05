@@ -6,7 +6,7 @@ import type { Listing, ListingStatus } from "./types";
 const listingInclude = {
   restaurant: true,
   dropOff: true,
-  pickup: { include: { volunteer: true } },
+  pickup: { include: { volunteer: true, buddy: true } },
 } satisfies Prisma.FoodListingInclude;
 
 type DbListing = Prisma.FoodListingGetPayload<{ include: typeof listingInclude }>;
@@ -49,7 +49,12 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
     lastCheckInAt: l.pickup?.lastCheckInAt?.getTime(),
     photoAtPickupUrl: l.pickup?.photoAtPickupUrl ?? undefined,
     photoAtDeliveryUrl: l.pickup?.photoAtDeliveryUrl ?? undefined,
-    mine: viewerId != null && l.pickup?.volunteerId === viewerId,
+    mine:
+      viewerId != null &&
+      (l.pickup?.volunteerId === viewerId || l.pickup?.buddyId === viewerId),
+    primaryName: l.pickup?.volunteer.name,
+    buddyName: l.pickup?.buddy?.name ?? undefined,
+    iAmBuddy: viewerId != null && l.pickup?.buddyId === viewerId,
   };
 }
 

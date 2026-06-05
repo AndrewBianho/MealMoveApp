@@ -86,8 +86,14 @@ export interface Listing {
   photoAtPickupUrl?: string;
   /** Proof photo captured at the drop-off (in transit → delivered). */
   photoAtDeliveryUrl?: string;
-  /** True when the current viewer is the volunteer who claimed it. */
+  /** True when the current viewer is on the claim — primary volunteer or buddy. */
   mine?: boolean;
+  /** Primary volunteer's name (same as claimedBy; explicit for the buddy UI). */
+  primaryName?: string;
+  /** The buddy's name, when a second volunteer has joined the pickup. */
+  buddyName?: string;
+  /** True when the current viewer is the buddy (not the primary) on this claim. */
+  iAmBuddy?: boolean;
 }
 
 export interface Volunteer {

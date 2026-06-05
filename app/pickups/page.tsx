@@ -1,16 +1,30 @@
 import { ListingCard } from "@/components/ListingCard";
 import { ReliabilityMeter } from "@/components/ReliabilityMeter";
 import { getListings } from "@/lib/listings";
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function PickupsPage() {
+  const session = await auth();
+  const viewerId = session?.user?.id;
   const all = await getListings();
   const mine = all.filter((l) => l.claimedBy === "You");
   const active = mine.filter((l) => ["claimed", "in transit"].includes(l.status));
   const past = mine.filter((l) =>
     ["delivered", "expired", "failed"].includes(l.status)
   );
+
+  // Pickups this volunteer has been invited to buddy — tap through to accept.
+  const invites = viewerId
+    ? await prisma.buddyInvite.findMany({
+        where: { inviteeId: viewerId, status: "pending" },
+        select: { listingId: true },
+      })
+    : [];
+  const invitedIds = new Set(invites.map((i) => i.listingId));
+  const invited = all.filter((l) => invitedIds.has(l.id));
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
@@ -27,6 +41,20 @@ export default async function PickupsPage() {
         </p>
         <ReliabilityMeter name="On-time completion" pct={91} />
       </div>
+
+      {invited.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-1 text-lg font-medium">Buddy invites</h2>
+          <p className="mb-4 text-sm text-neutral-600">
+            Volunteers who asked you to join them — open one to accept.
+          </p>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {invited.map((l) => (
+              <ListingCard key={l.id} listing={l} />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="mb-8">
         <h2 className="mb-4 text-lg font-medium">Active</h2>

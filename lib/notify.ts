@@ -22,3 +22,49 @@ export async function sendCheckInPush(push: CheckInPush): Promise<void> {
     );
   }
 }
+
+export interface BuddyInvitePush {
+  inviteId: string;
+  listingId: string;
+  inviteeId: string;
+  listingTitle: string;
+  inviterName: string;
+}
+
+/**
+ * Integration seam for the buddy-invite push notification. No-op until Firebase
+ * Cloud Messaging is provisioned — same seam pattern as `sendCheckInPush`. When
+ * wired, look up the invitee's FCM token(s) and send via firebase-admin here.
+ */
+export async function sendBuddyInvitePush(push: BuddyInvitePush): Promise<void> {
+  if (process.env.NODE_ENV !== "production") {
+    console.log(
+      `[buddy] would push volunteer ${push.inviteeId}: ${push.inviterName} invited you to buddy "${push.listingTitle}"`
+    );
+  }
+}
+
+export interface DropOffPickupNotice {
+  listingId: string;
+  dropOffId: string;
+  dropOffName: string;
+  listingTitle: string;
+}
+
+/**
+ * Integration seam for the "your delivery is on its way" notice to a drop-off,
+ * fired once a volunteer captures the pickup photo (claimed → in_transit). No-op
+ * until Firebase Cloud Messaging is provisioned — same seam pattern as the other
+ * pushes. When wired, notify the drop-off admins here (the schema doesn't tie an
+ * admin to a specific DropOff, so this mirrors the /dropoff page and reaches all
+ * drop-off admins).
+ */
+export async function sendDropOffPickupNotice(
+  notice: DropOffPickupNotice
+): Promise<void> {
+  if (process.env.NODE_ENV !== "production") {
+    console.log(
+      `[drop-off] would notify ${notice.dropOffName}: "${notice.listingTitle}" was just picked up and is on its way.`
+    );
+  }
+}
