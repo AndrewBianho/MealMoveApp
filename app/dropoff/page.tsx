@@ -15,11 +15,7 @@ export default async function DropoffPage() {
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
       <header className="mb-6">
-        <h1 className="text-[32px] font-medium leading-tight">Drop-off</h1>
-        <p className="mt-1 text-sm text-neutral-600">
-          Your locations and what they can take, plus what&apos;s headed their
-          way.
-        </p>
+        <h1 className="text-[32px] font-medium leading-tight">Drop-off locations</h1>
       </header>
 
       <section className="mb-8">

@@ -13,10 +13,7 @@ export default async function ImpactPage() {
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
       <header className="mb-6">
-        <h1 className="text-[32px] font-medium leading-tight">Impact</h1>
-        <p className="mt-1 text-sm text-neutral-600">
-          What the chapter has rescued, and who keeps it running.
-        </p>
+        <h1 className="text-[32px] font-medium leading-tight">Chapter impact</h1>
       </header>
 
       <div className="mb-10 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
