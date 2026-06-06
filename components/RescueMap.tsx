@@ -205,9 +205,8 @@ export function RescueMap({
     const key = points.map((p) => `${p[0]},${p[1]}`).join(";");
     const cached = routeCache.current.get(key);
     if (cached !== undefined) return cached;
-    const coordStr = points.map((p) => `${p[0]},${p[1]}`).join(";");
     const url =
-      `https://api.mapbox.com/directions/v5/mapbox/driving/${coordStr}` +
+      `https://api.mapbox.com/directions/v5/mapbox/driving/${key}` +
       `?geometries=geojson&overview=full&access_token=${TOKEN}`;
     try {
       const res = await fetch(url);

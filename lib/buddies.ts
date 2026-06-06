@@ -162,6 +162,13 @@ export async function respondToInviteFor(
   if (pickup.volunteerId === inviteeId) {
     throw new Error("You're already on this pickup.");
   }
+  // The invite is only valid while its inviter is still the claim's primary. If
+  // the claim was released and re-claimed (or the primary changed) since the
+  // invite went out, it's stale — don't let it graft a buddy onto a pickup the
+  // current volunteer never invited anyone to.
+  if (pickup.volunteerId !== invite.inviterId) {
+    throw new Error("This invite is no longer available.");
+  }
 
   await db.$transaction([
     db.pickup.update({

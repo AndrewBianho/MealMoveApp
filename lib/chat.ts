@@ -63,10 +63,16 @@ export function isChatActive(listing: Pick<ChatListing, "status">): boolean {
 
 /** Messages for a thread, oldest first. `sinceIso` enables incremental polling. */
 export function listMessages(db: Db, listingId: string, sinceIso?: string) {
+  // Validate the cursor: a malformed `since` would otherwise become an Invalid
+  // Date and make Prisma throw (a client-triggerable 500). Use `gte` (not `gt`)
+  // so a message written in the same millisecond as the cursor isn't skipped —
+  // callers de-duplicate by id, so re-seeing the boundary row is harmless.
+  const since = sinceIso ? new Date(sinceIso) : null;
+  const validSince = since && !Number.isNaN(since.getTime()) ? since : null;
   return db.message.findMany({
     where: {
       listingId,
-      ...(sinceIso ? { createdAt: { gt: new Date(sinceIso) } } : {}),
+      ...(validSince ? { createdAt: { gte: validSince } } : {}),
     },
     orderBy: { createdAt: "asc" },
     include: { sender: { select: { id: true, name: true, role: true } } },

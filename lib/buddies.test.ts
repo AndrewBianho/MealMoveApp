@@ -171,7 +171,7 @@ test("inviteBuddyFor: rejects when the claim is no longer active", async () => {
 
 test("respondToInviteFor: accepting sets the buddy seat and logs buddy_joined", async () => {
   const { db, calls } = fakeDb({
-    invite: { id: "inv1", inviteeId: "volB", listingId: "ls1", status: "pending" },
+    invite: { id: "inv1", inviterId: "volA", inviteeId: "volB", listingId: "ls1", status: "pending" },
     pickup: { volunteerId: "volA", buddyId: null, listing: { status: "claimed" } },
   });
   await respondToInviteFor(db, "volB", "inv1", true, t0);
@@ -209,6 +209,19 @@ test("respondToInviteFor: accepting rejects when a buddy already joined", async 
   await assert.rejects(
     () => respondToInviteFor(db, "volB", "inv1", true, t0),
     /already has a buddy/
+  );
+});
+
+test("respondToInviteFor: accepting rejects a stale invite from a former primary", async () => {
+  // A invited B, then released the claim; C re-claimed. B's old invite must not
+  // graft B onto C's fresh claim.
+  const { db } = fakeDb({
+    invite: { id: "inv1", inviterId: "volA", inviteeId: "volB", listingId: "ls1", status: "pending" },
+    pickup: { volunteerId: "volC", buddyId: null, listing: { status: "claimed" } },
+  });
+  await assert.rejects(
+    () => respondToInviteFor(db, "volB", "inv1", true, t0),
+    /no longer available/
   );
 });
 

@@ -29,6 +29,12 @@ export async function runSweep(): Promise<{
         where: { id: listing.id },
         data: { status: "open" },
       }),
+      // Cancel any pending buddy invite so a stale one can't later attach a
+      // buddy to whoever re-claims this re-opened listing.
+      prisma.buddyInvite.updateMany({
+        where: { listingId: listing.id, status: "pending" },
+        data: { status: "cancelled", respondedAt: now },
+      }),
       prisma.listingEvent.create({
         data: {
           listingId: listing.id,

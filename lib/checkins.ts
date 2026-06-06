@@ -7,7 +7,7 @@ import { isOnClaim } from "./buddies";
 // touch. Lets tests inject a fake db without standing up a database.
 type Db = Pick<
   typeof prisma,
-  "pickup" | "foodListing" | "listingEvent" | "$transaction"
+  "pickup" | "foodListing" | "listingEvent" | "buddyInvite" | "$transaction"
 >;
 
 /**
@@ -124,12 +124,17 @@ export async function releaseClaimFor(
     return;
   }
 
-  // Sole volunteer — reopen the listing for everyone.
+  // Sole volunteer — reopen the listing for everyone, and cancel any pending
+  // buddy invite so a stale one can't later attach a buddy to whoever re-claims.
   await db.$transaction([
     db.pickup.delete({ where: { listingId } }),
     db.foodListing.update({
       where: { id: listingId },
       data: { status: "open" },
+    }),
+    db.buddyInvite.updateMany({
+      where: { listingId, status: "pending" },
+      data: { status: "cancelled", respondedAt: new Date() },
     }),
     db.listingEvent.create({
       data: {

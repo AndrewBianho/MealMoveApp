@@ -47,14 +47,23 @@ export function evaluateWindow(
   };
 }
 
-/** Best-effort client IP from proxy headers. Stable sentinel when unknown. */
+/**
+ * Best-effort client IP from proxy headers. Prefers `x-real-ip` — a single value
+ * set by the trusted proxy (e.g. Vercel) — over `x-forwarded-for`, whose
+ * left-most entry is client-influenced and spoofable when the edge doesn't
+ * sanitize it. Stable sentinel when unknown. NOTE: IP-keyed limits assume a
+ * trusted proxy injects these headers; with the app directly exposed they're
+ * spoofable, but the limiter is best-effort and fails open regardless.
+ */
 export function clientIp(headers: { get(name: string): string | null }): string {
+  const real = headers.get("x-real-ip")?.trim();
+  if (real) return real;
   const fwd = headers.get("x-forwarded-for");
   if (fwd) {
     const first = fwd.split(",")[0]?.trim();
     if (first) return first;
   }
-  return headers.get("x-real-ip")?.trim() || "unknown";
+  return "unknown";
 }
 
 // --- in-memory backend ------------------------------------------------------

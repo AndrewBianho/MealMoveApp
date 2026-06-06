@@ -118,14 +118,20 @@ function hashToken(raw: string): string {
   return createHash("sha256").update(raw).digest("hex");
 }
 
-// Build the app's origin from the incoming request, falling back to APP_URL.
-// Used to construct the absolute reset link in the email.
-function requestOrigin(): string {
-  const h = headers();
+// The absolute origin for the reset link. We REQUIRE APP_URL rather than derive
+// the host from request headers: `x-forwarded-host` is attacker-controllable, so
+// trusting it lets someone trigger a victim's reset and have the (valid) token
+// emailed with a link pointing at their own domain — reset-link poisoning, i.e.
+// account takeover. In production an unset APP_URL returns null (we skip the
+// email rather than send an unsafe link); in dev we fall back to the request
+// host purely for local convenience, where the link is only logged, never sent.
+function requestOrigin(): string | null {
   const env = process.env.APP_URL?.replace(/\/$/, "");
   if (env) return env;
+  if (process.env.NODE_ENV === "production") return null;
+  const h = headers();
   const host = h.get("x-forwarded-host") ?? h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? "https";
+  const proto = h.get("x-forwarded-proto") ?? "http";
   return host ? `${proto}://${host}` : "http://localhost:3000";
 }
 
@@ -158,8 +164,16 @@ export async function requestPasswordReset(
         },
       }),
     ]);
-    const link = `${requestOrigin()}/reset-password?token=${raw}`;
-    await sendPasswordResetEmail(email, link);
+    const origin = requestOrigin();
+    if (origin) {
+      await sendPasswordResetEmail(email, `${origin}/reset-password?token=${raw}`);
+    } else {
+      // No safe origin (APP_URL unset in production): don't email a header-derived
+      // link. The token simply goes unused and expires.
+      console.error(
+        "[password-reset] APP_URL is not set — skipping email to avoid an unsafe reset link."
+      );
+    }
   }
   return { ok: true };
 }

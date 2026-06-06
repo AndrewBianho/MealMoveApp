@@ -9,8 +9,9 @@ export const dynamic = "force-dynamic";
 export default async function PickupsPage() {
   const session = await auth();
   const viewerId = session?.user?.id;
-  const all = await getListings();
-  const mine = all.filter((l) => l.claimedBy === "You");
+  const all = await getListings(viewerId);
+  // `mine` is viewer-aware and covers both seats — the primary and the buddy.
+  const mine = all.filter((l) => l.mine);
   const active = mine.filter((l) => ["claimed", "in transit"].includes(l.status));
   const past = mine.filter((l) =>
     ["delivered", "expired", "failed"].includes(l.status)
