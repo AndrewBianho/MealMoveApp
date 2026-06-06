@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   canAccessChat,
   isChatActive,
+  listMessages,
   postMessage,
   type ChatListing,
   type ChatUser,
@@ -118,4 +119,24 @@ test("postMessage: rejects once the claim is closed", async () => {
 test("postMessage: rejects an empty body", async () => {
   const { db } = fakeDb();
   await assert.rejects(() => postMessage(db, user(), listing(), "   "), /empty/);
+});
+
+test("listMessages: ignores a malformed `since`, and pages with gte (no same-ms loss)", async () => {
+  const captured: any[] = [];
+  const db: any = {
+    message: {
+      findMany: async (args: any) => {
+        captured.push(args);
+        return [];
+      },
+    },
+  };
+  // A garbage cursor must not become an Invalid Date (which would throw a 500);
+  // it's dropped, so the query carries no date filter.
+  await listMessages(db, "ls1", "not-a-date");
+  assert.equal("createdAt" in captured[0].where, false);
+  // A valid cursor pages with `gte` so a same-millisecond message isn't skipped.
+  const iso = new Date(1_000_000_000_000).toISOString();
+  await listMessages(db, "ls1", iso);
+  assert.equal(captured[1].where.createdAt.gte.getTime(), 1_000_000_000_000);
 });

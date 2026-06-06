@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash, randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import bcrypt from "bcryptjs";
@@ -7,6 +8,9 @@ import { Prisma } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, resetLimit, clientIp, LIMITS } from "@/lib/rate-limit";
+import { passwordValid } from "@/lib/password";
+import { sendPasswordResetEmail } from "@/lib/email";
+import { geocodeAddress } from "@/lib/geocode";
 import { confirmCheckInFor, releaseClaimFor } from "@/lib/checkins";
 import {
   startDeliveryWithPhotoFor,
@@ -30,6 +34,7 @@ type SignUpResult = { ok: true } | { ok: false; error: string };
 export async function registerUser(input: {
   name: string;
   email: string;
+  phone: string;
   password: string;
   role: "volunteer" | "restaurant";
   restaurantName?: string;
@@ -45,13 +50,17 @@ export async function registerUser(input: {
 
   const name = input.name?.trim();
   const email = input.email?.trim().toLowerCase();
+  const phone = (input.phone ?? "").replace(/\D/g, ""); // keep digits only
   const password = input.password ?? "";
 
   if (!name) return { ok: false, error: "Please enter your name." };
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return { ok: false, error: "Please enter a valid email address." };
   }
-  if (password.length < 8) {
+  if (phone.length !== 10) {
+    return { ok: false, error: "Please enter a valid 10-digit phone number." };
+  }
+  if (!passwordValid(password)) {
     return { ok: false, error: "Password must be at least 8 characters." };
   }
   // Guard the role server-side — never trust the client to send a safe value.
@@ -61,27 +70,34 @@ export async function registerUser(input: {
   if (input.role === "restaurant" && !input.restaurantName?.trim()) {
     return { ok: false, error: "Please enter your restaurant's name." };
   }
+  if (input.role === "restaurant" && !input.restaurantAddress?.trim()) {
+    return { ok: false, error: "Please enter your restaurant's address." };
+  }
 
   const passwordHash = await bcrypt.hash(password, 10);
 
   try {
     if (input.role === "restaurant") {
+      const address = input.restaurantAddress!.trim();
+      // Locate the address so the restaurant lands a real pin on the map;
+      // fall back to campus center if geocoding can't place it.
+      const geo = await geocodeAddress(address);
       await prisma.$transaction(async (tx) => {
         const restaurant = await tx.restaurant.create({
           data: {
             name: input.restaurantName!.trim(),
-            address: input.restaurantAddress?.trim() || "Campus",
-            lat: 0,
-            lng: 0,
+            address,
+            lat: geo?.lat ?? 40.04,
+            lng: geo?.lng ?? -75.34,
           },
         });
         await tx.user.create({
-          data: { name, email, passwordHash, role: "restaurant", restaurantId: restaurant.id },
+          data: { name, email, phone, passwordHash, role: "restaurant", restaurantId: restaurant.id },
         });
       });
     } else {
       await prisma.user.create({
-        data: { name, email, passwordHash, role: "volunteer" },
+        data: { name, email, phone, passwordHash, role: "volunteer" },
       });
     }
     await resetLimit(`register:${ip}`);
@@ -92,6 +108,114 @@ export async function registerUser(input: {
     }
     return { ok: false, error: "Something went wrong. Please try again." };
   }
+}
+
+// Password reset is single-use and time-boxed. We store only the sha256 of the
+// token; the raw token travels only in the emailed link.
+const RESET_TTL_MS = 60 * 60_000; // 1 hour
+
+function hashToken(raw: string): string {
+  return createHash("sha256").update(raw).digest("hex");
+}
+
+// The absolute origin for the reset link. We REQUIRE APP_URL rather than derive
+// the host from request headers: `x-forwarded-host` is attacker-controllable, so
+// trusting it lets someone trigger a victim's reset and have the (valid) token
+// emailed with a link pointing at their own domain — reset-link poisoning, i.e.
+// account takeover. In production an unset APP_URL returns null (we skip the
+// email rather than send an unsafe link); in dev we fall back to the request
+// host purely for local convenience, where the link is only logged, never sent.
+function requestOrigin(): string | null {
+  const env = process.env.APP_URL?.replace(/\/$/, "");
+  if (env) return env;
+  if (process.env.NODE_ENV === "production") return null;
+  const h = headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "http";
+  return host ? `${proto}://${host}` : "http://localhost:3000";
+}
+
+/**
+ * Start a password reset. Always returns ok — we never reveal whether an email
+ * is registered (no account enumeration). When the account exists we issue a
+ * fresh single-use token (invalidating any prior ones) and email the link.
+ */
+export async function requestPasswordReset(
+  emailInput: string
+): Promise<{ ok: true }> {
+  const ip = clientIp(headers());
+  const gate = await rateLimit(`reset-req:${ip}`, LIMITS.passwordReset);
+  if (!gate.ok) return { ok: true }; // stay silent even when throttled
+
+  const email = (emailInput ?? "").trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: true };
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (user) {
+    const raw = randomBytes(32).toString("hex");
+    await prisma.$transaction([
+      // One live token per user — drop any earlier ones.
+      prisma.passwordResetToken.deleteMany({ where: { userId: user.id } }),
+      prisma.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          tokenHash: hashToken(raw),
+          expiresAt: new Date(Date.now() + RESET_TTL_MS),
+        },
+      }),
+    ]);
+    const origin = requestOrigin();
+    if (origin) {
+      await sendPasswordResetEmail(email, `${origin}/reset-password?token=${raw}`);
+    } else {
+      // No safe origin (APP_URL unset in production): don't email a header-derived
+      // link. The token simply goes unused and expires.
+      console.error(
+        "[password-reset] APP_URL is not set — skipping email to avoid an unsafe reset link."
+      );
+    }
+  }
+  return { ok: true };
+}
+
+/**
+ * Complete a password reset: verify the token is real, unused and unexpired,
+ * then set the new password and burn the token in one transaction.
+ */
+export async function resetPassword(
+  token: string,
+  newPassword: string
+): Promise<SignUpResult> {
+  const ip = clientIp(headers());
+  const gate = await rateLimit(`reset-do:${ip}`, LIMITS.passwordReset);
+  if (!gate.ok) {
+    return { ok: false, error: "Too many attempts. Please try again later." };
+  }
+
+  if (!token) return { ok: false, error: "This reset link is invalid." };
+  if (!passwordValid(newPassword)) {
+    return { ok: false, error: "Password must be at least 8 characters." };
+  }
+
+  const record = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash: hashToken(token) },
+  });
+  if (!record || record.usedAt || record.expiresAt < new Date()) {
+    return { ok: false, error: "This reset link is invalid or has expired." };
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: record.userId },
+      data: { passwordHash },
+    }),
+    prisma.passwordResetToken.update({
+      where: { id: record.id },
+      data: { usedAt: new Date() },
+    }),
+  ]);
+  return { ok: true };
 }
 
 // The acting user comes from the authenticated session.

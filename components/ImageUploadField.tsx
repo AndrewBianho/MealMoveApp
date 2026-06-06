@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Camera, Upload, X } from "./icons";
 import { cn } from "./cn";
+import { primaryFill } from "./styles";
 
 // Downscale to keep phone photos small (fast uploads, well under the 5 MB cap)
 // and re-encode as JPEG. Works on both a File (upload) and a canvas blob (camera).
@@ -175,10 +176,7 @@ export function ImageUploadField({
                   setError(null);
                   setCameraOpen(true);
                 }}
-                className={cn(
-                  btn,
-                  "bg-gradient-to-b from-rescued-400 to-rescued-600 text-white shadow-glow hover:-translate-y-0.5"
-                )}
+                className={cn(btn, primaryFill, "hover:-translate-y-0.5")}
               >
                 <Camera /> Take photo
               </button>
@@ -242,10 +240,7 @@ export function ImageUploadField({
               <button
                 type="button"
                 onClick={capture}
-                className={cn(
-                  btn,
-                  "bg-gradient-to-b from-rescued-400 to-rescued-600 px-5 text-white shadow-glow"
-                )}
+                className={cn(btn, primaryFill, "px-5")}
               >
                 <Camera /> Capture
               </button>

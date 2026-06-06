@@ -11,27 +11,45 @@ export async function getMapData(): Promise<{
       include: {
         listings: {
           where: { status: { in: ["open", "claimed", "in_transit"] } },
-          select: { servings: true, category: true, perishable: true },
+          select: {
+            servings: true,
+            category: true,
+            perishable: true,
+            status: true,
+            expiresAt: true,
+          },
         },
       },
     }),
     prisma.dropOff.findMany({ orderBy: { name: "asc" } }),
   ]);
 
+  const now = Date.now();
   const mapRestaurants: MapRestaurant[] = restaurants
     .filter((r) => r.listings.length > 0)
-    .map((r) => ({
-      id: r.id,
-      name: r.name,
-      lat: r.lat,
-      lng: r.lng,
-      servings: r.listings.reduce((sum, l) => sum + l.servings, 0),
-      categories: Array.from(
-        new Set(r.listings.map((l) => l.category))
-      ) as FoodCategory[],
-      perishable: r.listings.some((l) => l.perishable),
-      count: r.listings.length,
-    }));
+    .map((r) => {
+      // Urgency is about food still up for grabs — only open listings count.
+      const openExpiries = r.listings
+        .filter((l) => l.status === "open")
+        .map((l) => l.expiresAt.getTime());
+      const minutesLeft =
+        openExpiries.length > 0
+          ? Math.round((Math.min(...openExpiries) - now) / 60_000)
+          : undefined;
+      return {
+        id: r.id,
+        name: r.name,
+        lat: r.lat,
+        lng: r.lng,
+        servings: r.listings.reduce((sum, l) => sum + l.servings, 0),
+        categories: Array.from(
+          new Set(r.listings.map((l) => l.category))
+        ) as FoodCategory[],
+        perishable: r.listings.some((l) => l.perishable),
+        count: r.listings.length,
+        minutesLeft,
+      };
+    });
 
   const mapDropOffs: DropOffLocation[] = dropOffs.map((d) => ({
     id: d.id,

@@ -81,7 +81,7 @@ test("dispatchCheckIns: catches up both marks after a gap", async () => {
 import { confirmCheckInFor, releaseClaimFor } from "./checkins";
 
 function txDb(pickupRow: any) {
-  const calls: any = { updated: null, deleted: false, listing: null, events: [] };
+  const calls: any = { updated: null, deleted: false, listing: null, events: [], invitesCancelled: null };
   const db: any = {
     pickup: {
       findUnique: async () => pickupRow,
@@ -104,6 +104,12 @@ function txDb(pickupRow: any) {
       create: async ({ data }: any) => {
         calls.events.push(data);
         return data;
+      },
+    },
+    buddyInvite: {
+      updateMany: async ({ data }: any) => {
+        calls.invitesCancelled = data.status;
+        return { count: 1 };
       },
     },
     $transaction: async (ops: Promise<unknown>[]) => Promise.all(ops),
@@ -138,6 +144,7 @@ test("releaseClaimFor: reopens the listing and logs withdrawn (not a flake)", as
   await releaseClaimFor(db, "vol1", "ls1");
   assert.equal(calls.deleted, true);
   assert.equal(calls.listing.status, "open");
+  assert.equal(calls.invitesCancelled, "cancelled"); // stale invites cleared
   assert.equal(calls.events[0].type, "withdrawn");
   assert.equal(calls.events[0].meta.reason, "volunteer_released");
 });

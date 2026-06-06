@@ -53,7 +53,12 @@ test("clientIp: takes the first hop of x-forwarded-for", () => {
   assert.equal(clientIp(h), "203.0.113.7");
 });
 
-test("clientIp: falls back to x-real-ip, then a stable sentinel", () => {
+test("clientIp: prefers x-real-ip, then x-forwarded-for, then a stable sentinel", () => {
+  // The proxy-injected x-real-ip wins over a client-influenced XFF list.
+  assert.equal(
+    clientIp(new Headers({ "x-real-ip": "198.51.100.4", "x-forwarded-for": "1.2.3.4" })),
+    "198.51.100.4"
+  );
   assert.equal(clientIp(new Headers({ "x-real-ip": "198.51.100.4" })), "198.51.100.4");
   assert.equal(clientIp(new Headers()), "unknown");
 });

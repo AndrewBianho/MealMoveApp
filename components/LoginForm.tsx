@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { Button } from "./Button";
@@ -48,9 +49,20 @@ export function LoginForm() {
         />
       </div>
       <div>
-        <label className={labelCls} htmlFor="password">
-          Password
-        </label>
+        <div className="mb-1.5 flex items-baseline justify-between">
+          <label
+            className="font-mono text-[10px] uppercase tracking-wide text-neutral-600"
+            htmlFor="password"
+          >
+            Password
+          </label>
+          <Link
+            href="/forgot-password"
+            className="font-mono text-[10px] uppercase tracking-wide text-rescued-600 hover:underline"
+          >
+            Forgot password?
+          </Link>
+        </div>
         <input
           id="password"
           type="password"

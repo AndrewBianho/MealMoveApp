@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { getInvitableVolunteers, inviteBuddy } from "@/app/actions";
+import { Avatar } from "./Avatar";
 
 type Volunteer = { id: string; name: string };
 type LoadState =
@@ -112,12 +113,7 @@ export function BuddyInvitePicker({
                 className="flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl px-3 py-2 text-left text-sm transition-colors hover:bg-rescued-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 disabled:opacity-50"
               >
                 <span className="flex items-center gap-2.5">
-                  <span
-                    aria-hidden="true"
-                    className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-clay-200 to-clay-400 font-display text-xs font-semibold text-clay-800"
-                  >
-                    {v.name.charAt(0).toUpperCase()}
-                  </span>
+                  <Avatar name={v.name} />
                   {v.name}
                 </span>
                 <span className="font-mono text-[11px] uppercase tracking-wide text-rescued-600">

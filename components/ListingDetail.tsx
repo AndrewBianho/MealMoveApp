@@ -17,21 +17,10 @@ import {
 } from "@/app/actions";
 import { CheckInPrompt } from "./CheckInPrompt";
 import { ChatPanel } from "./ChatPanel";
+import { Avatar } from "./Avatar";
 import { BuddyInvitePicker } from "./BuddyInvitePicker";
 import { ImageUploadField } from "./ImageUploadField";
 import type { Listing, ListingStatus } from "@/lib/types";
-
-/** A small initial-circle avatar, matching the clay-gradient nav treatment. */
-function Avatar({ name }: { name?: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="grid h-8 w-8 place-items-center rounded-full border-2 border-white bg-gradient-to-br from-clay-200 to-clay-400 font-display text-xs font-semibold text-clay-800"
-    >
-      {(name ?? "?").charAt(0).toUpperCase()}
-    </span>
-  );
-}
 
 // The happy-path journey. expired / failed are terminal off-ramps and render
 // their own banner rather than a step.
@@ -405,8 +394,8 @@ export function ListingDetail({
                   </p>
                   <div className="flex items-center gap-3">
                     <span className="flex -space-x-2">
-                      <Avatar name={listing.primaryName} />
-                      <Avatar name={listing.buddyName} />
+                      <Avatar name={listing.primaryName} className="border-2 border-white" />
+                      <Avatar name={listing.buddyName} className="border-2 border-white" />
                     </span>
                     <span className="text-sm text-neutral-700">
                       {listing.mine

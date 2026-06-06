@@ -52,6 +52,7 @@ model User {
   id           String      @id @default(cuid())
   email        String      @unique
   name         String
+  phone        String? // contact number for pickup coordination; never shown to admins
   role         Role        @default(volunteer)
   passwordHash String? // bcrypt hash for the Credentials provider
   restaurant   Restaurant? @relation(fields: [restaurantId], references: [id])
@@ -64,7 +65,23 @@ model User {
   buddyInvitesReceived BuddyInvite[] @relation("InviteInvitee")
   adminActions  AdminEvent[] @relation("AdminActor")
   adminTargeted AdminEvent[] @relation("AdminTarget")
+  passwordResetTokens PasswordResetToken[]
   createdAt    DateTime    @default(now())
+}
+
+// Single-use, time-boxed tokens for the email password-reset flow. Only the
+// sha256 hash of the token is stored — the raw token lives solely in the emailed
+// link, so a database leak can't be replayed to seize accounts.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
+  tokenHash String    @unique // sha256 of the raw token
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model Restaurant {

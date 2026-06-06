@@ -17,30 +17,48 @@ export const runtime = "nodejs";
 // session doesn't carry.
 async function loadContext(listingId: string) {
   const session = await auth();
-  if (!session?.user?.id) {
+  const sid = session?.user?.id;
+  const role = session?.user?.role;
+  if (!sid || !role) {
     return {
       error: NextResponse.json({ error: "Not authenticated." }, { status: 401 }),
     } as const;
   }
-  const [user, listing] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, restaurantId: true },
-    }),
-    prisma.foodListing.findUnique({
-      where: { id: listingId },
-      select: {
-        id: true,
-        restaurantId: true,
-        dropOffId: true,
-        status: true,
-        pickup: { select: { volunteerId: true, buddyId: true } },
-      },
-    }),
-  ]);
-  if (!user || !listing) {
+
+  // The session (JWT) already carries id + role; only a restaurant member needs
+  // a DB read, for their restaurantId. Skipping it for the other roles halves
+  // the queries on this ~4s poll path.
+  const listingP = prisma.foodListing.findUnique({
+    where: { id: listingId },
+    select: {
+      id: true,
+      restaurantId: true,
+      dropOffId: true,
+      status: true,
+      pickup: { select: { volunteerId: true, buddyId: true } },
+    },
+  });
+
+  let listing: Awaited<typeof listingP>;
+  let restaurantId: string | null = null;
+  if (role === "restaurant") {
+    const [u, l] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: sid },
+        select: { restaurantId: true },
+      }),
+      listingP,
+    ]);
+    restaurantId = u?.restaurantId ?? null;
+    listing = l;
+  } else {
+    listing = await listingP;
+  }
+
+  if (!listing) {
     return { error: NextResponse.json({ error: "Not found." }, { status: 404 }) } as const;
   }
+  const user = { id: sid, role, restaurantId };
   if (!canAccessChat(user, listing)) {
     return { error: NextResponse.json({ error: "Not allowed." }, { status: 403 }) } as const;
   }

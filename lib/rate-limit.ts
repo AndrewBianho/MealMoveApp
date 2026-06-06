@@ -47,14 +47,23 @@ export function evaluateWindow(
   };
 }
 
-/** Best-effort client IP from proxy headers. Stable sentinel when unknown. */
+/**
+ * Best-effort client IP from proxy headers. Prefers `x-real-ip` — a single value
+ * set by the trusted proxy (e.g. Vercel) — over `x-forwarded-for`, whose
+ * left-most entry is client-influenced and spoofable when the edge doesn't
+ * sanitize it. Stable sentinel when unknown. NOTE: IP-keyed limits assume a
+ * trusted proxy injects these headers; with the app directly exposed they're
+ * spoofable, but the limiter is best-effort and fails open regardless.
+ */
 export function clientIp(headers: { get(name: string): string | null }): string {
+  const real = headers.get("x-real-ip")?.trim();
+  if (real) return real;
   const fwd = headers.get("x-forwarded-for");
   if (fwd) {
     const first = fwd.split(",")[0]?.trim();
     if (first) return first;
   }
-  return headers.get("x-real-ip")?.trim() || "unknown";
+  return "unknown";
 }
 
 // --- in-memory backend ------------------------------------------------------
@@ -170,6 +179,9 @@ export const LIMITS = {
   // Sign-up: a bit looser than login so an onboarding event behind one campus
   // NAT isn't blocked, while still capping bcrypt-spam from a single source.
   register: { limit: 10, windowMs: 15 * 60_000 },
+  // Password-reset requests: 5 per 15 min per IP — caps email-spam and bcrypt
+  // work without blocking a user who legitimately fumbles a couple of times.
+  passwordReset: { limit: 5, windowMs: 15 * 60_000 },
   // Image uploads: generous, but caps abuse of the storage path.
   upload: { limit: 30, windowMs: 60_000 },
   // Chat polling runs every ~4s (~15/min); 120/min leaves wide headroom.

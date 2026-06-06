@@ -35,7 +35,7 @@ export const authConfig = {
     authorized({ auth, request: { nextUrl } }) {
       const user = auth?.user;
       const path = nextUrl.pathname;
-      const isAuthPage = path === "/login" || path === "/signup";
+      const isAuthPage = ["/login", "/signup", "/forgot-password", "/reset-password"].includes(path);
 
       if (!user) return isAuthPage; // signed out: only the auth pages are open
 
