@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { Button } from "./Button";
+import { PasswordField } from "./PasswordField";
 import { cn } from "./cn";
+import { passwordValid } from "@/lib/password";
 import { registerUser } from "@/app/actions";
 
 type Role = "volunteer" | "restaurant";
@@ -12,20 +14,37 @@ export function SignupForm() {
   const [role, setRole] = useState<Role>("volunteer");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
   const [restaurantAddress, setRestaurantAddress] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Every field must be filled and valid before we try to register. Rather than
+  // disable the button, we let the user click and tell them what's missing.
+  const incomplete =
+    !name.trim() ||
+    !email.trim() ||
+    phone.replace(/\D/g, "").length !== 10 ||
+    !passwordValid(password) ||
+    (role === "restaurant" && (!restaurantName.trim() || !restaurantAddress.trim()));
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (incomplete) {
+      setError("Please complete all parts of the sign-up.");
+      return;
+    }
+
     setLoading(true);
 
     const res = await registerUser({
       name,
       email,
+      phone,
       password,
       role,
       restaurantName: role === "restaurant" ? restaurantName : undefined,
@@ -95,6 +114,26 @@ export function SignupForm() {
         />
       </div>
 
+      <div>
+        <label className={labelCls} htmlFor="phone">
+          Phone number
+        </label>
+        <input
+          id="phone"
+          type="tel"
+          autoComplete="tel"
+          inputMode="tel"
+          className={fieldCls}
+          placeholder="(555) 123-4567"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+        <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-neutral-500">
+          Your number won&apos;t be shared with admins — it&apos;s only used to
+          coordinate pickups.
+        </p>
+      </div>
+
       {role === "restaurant" && (
         <>
           <div>
@@ -111,7 +150,7 @@ export function SignupForm() {
           </div>
           <div>
             <label className={labelCls} htmlFor="raddr">
-              Address <span className="text-neutral-400">(optional)</span>
+              Address
             </label>
             <input
               id="raddr"
@@ -139,20 +178,7 @@ export function SignupForm() {
         />
       </div>
 
-      <div>
-        <label className={labelCls} htmlFor="password">
-          Password <span className="text-neutral-400">(8+ characters)</span>
-        </label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="new-password"
-          className={fieldCls}
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </div>
+      <PasswordField value={password} onChange={setPassword} />
 
       {error && <p className="text-sm text-failed-600">{error}</p>}
 
@@ -160,7 +186,7 @@ export function SignupForm() {
         type="submit"
         variant="primary"
         className="w-full"
-        disabled={loading || !name || !email || password.length < 8}
+        disabled={loading}
       >
         {loading ? "Creating account…" : "Create account"}
       </Button>

@@ -24,8 +24,8 @@ export const DROP_OFFS: {
     refrigerated: true,
     capacity: 60,
     notes: "Refrigerated. No nut-containing items.",
-    lat: 40.045,
-    lng: -75.345,
+    lat: 40.0362, // Malvern
+    lng: -75.5138,
   },
   {
     name: "St. Mark's Shelter",
@@ -33,8 +33,8 @@ export const DROP_OFFS: {
     refrigerated: false,
     capacity: 120,
     notes: "Hot meals welcome before 7pm. Not refrigerated.",
-    lat: 40.03,
-    lng: -75.33,
+    lat: 40.0429, // Paoli
+    lng: -75.4707,
   },
   {
     name: "Campus Pantry — Student Union",
@@ -42,8 +42,8 @@ export const DROP_OFFS: {
     refrigerated: false,
     capacity: 200,
     notes: "Shelf-stable & produce only. No prepared or dairy.",
-    lat: 40.042,
-    lng: -75.338,
+    lat: 40.0454, // Berwyn
+    lng: -75.4438,
   },
   {
     name: "Grace Kitchen",
@@ -51,8 +51,8 @@ export const DROP_OFFS: {
     refrigerated: true,
     capacity: 80,
     notes: "Full-service kitchen. Accepts everything.",
-    lat: 40.05,
-    lng: -75.325,
+    lat: 40.0370, // Frazer
+    lng: -75.5550,
   },
 ];
 

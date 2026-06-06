@@ -170,6 +170,9 @@ export const LIMITS = {
   // Sign-up: a bit looser than login so an onboarding event behind one campus
   // NAT isn't blocked, while still capping bcrypt-spam from a single source.
   register: { limit: 10, windowMs: 15 * 60_000 },
+  // Password-reset requests: 5 per 15 min per IP — caps email-spam and bcrypt
+  // work without blocking a user who legitimately fumbles a couple of times.
+  passwordReset: { limit: 5, windowMs: 15 * 60_000 },
   // Image uploads: generous, but caps abuse of the storage path.
   upload: { limit: 30, windowMs: 60_000 },
   // Chat polling runs every ~4s (~15/min); 120/min leaves wide headroom.

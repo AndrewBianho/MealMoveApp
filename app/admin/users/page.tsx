@@ -9,9 +9,17 @@ const MANAGED: ManagedRole[] = ["volunteer", "drop_off_admin", "org_admin"];
 
 export default async function AdminUsersPage() {
   const session = await auth();
+  // Explicit select — phone is deliberately omitted so a volunteer's number is
+  // never even fetched into admin-facing code (the sign-up promise, kept in code).
   const users = await prisma.user.findMany({
     orderBy: [{ role: "asc" }, { name: "asc" }],
-    include: { restaurant: { select: { name: true } } },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      restaurant: { select: { name: true } },
+    },
   });
 
   return (

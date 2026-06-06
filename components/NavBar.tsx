@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
+import { Avatar } from "./Avatar";
 import { cn } from "./cn";
 import type { Role } from "@prisma/client";
 
@@ -24,14 +25,6 @@ const NAV_BY_ROLE: Record<Role, Item[]> = {
   org_admin: [FEED, MAP, PICKUPS, RESTAURANT, DROPOFF, IMPACT, MEMBERS],
 };
 
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((p) => p[0]?.toLowerCase() ?? "")
-    .join("");
-}
-
 export function NavBar({ role, name }: { role: Role; name: string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -50,8 +43,9 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
           <Link
             key={item.href}
             href={item.href}
+            aria-current={isActive(item.href) ? "page" : undefined}
             className={cn(
-              "rounded-full px-4 py-1.5 text-sm font-semibold transition-all",
+              "rounded-full px-4 py-1.5 text-sm font-semibold transition duration-150",
               isActive(item.href)
                 ? "bg-neutral-900 text-neutral-50 shadow-card"
                 : "text-neutral-600 hover:bg-white hover:text-neutral-900 hover:shadow-card"
@@ -63,16 +57,14 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
       </nav>
 
       {/* Desktop: user + sign out */}
-      <div className="ml-auto hidden items-center gap-3 md:flex">
-        <span className="font-mono text-xs uppercase tracking-wide text-neutral-600">
+      <div className="ml-auto hidden items-center gap-2.5 md:flex">
+        <span className="rounded-full bg-neutral-100 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
           {roleLabel}
         </span>
-        <span className="grid h-8 w-8 place-items-center rounded-full bg-gradient-to-br from-clay-200 to-clay-400 font-mono text-xs font-medium text-white shadow-card">
-          {initials(name)}
-        </span>
+        <Avatar name={name} className="shadow-card" />
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="text-sm text-neutral-600 transition-colors hover:text-neutral-900"
+          className="rounded-full px-3 py-1.5 text-sm font-semibold text-neutral-600 transition duration-150 hover:bg-white hover:text-neutral-900 hover:shadow-card"
         >
           Sign out
         </button>
@@ -84,7 +76,7 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
         aria-label="Menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="ml-auto grid h-9 w-9 place-items-center rounded-md text-neutral-700 hover:bg-neutral-100 md:hidden"
+        className="ml-auto grid h-9 w-9 place-items-center rounded-full text-neutral-700 transition duration-150 hover:bg-white hover:text-neutral-900 hover:shadow-card md:hidden"
       >
         <svg
           viewBox="0 0 24 24"
@@ -112,6 +104,7 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
                 key={item.href}
                 href={item.href}
                 onClick={() => setOpen(false)}
+                aria-current={isActive(item.href) ? "page" : undefined}
                 className={cn(
                   "rounded-xl px-3 py-2.5 text-sm transition-colors",
                   isActive(item.href)

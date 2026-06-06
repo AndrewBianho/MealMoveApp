@@ -1,11 +1,11 @@
 import type { ButtonHTMLAttributes } from "react";
 import { cn } from "./cn";
+import { primaryFill } from "./styles";
 
 type Variant = "primary" | "secondary" | "danger" | "ghost";
 
 const VARIANTS: Record<Variant, string> = {
-  primary:
-    "bg-gradient-to-b from-rescued-400 to-rescued-600 text-white shadow-glow hover:-translate-y-0.5 hover:shadow-lift",
+  primary: cn(primaryFill, "hover:-translate-y-0.5 hover:shadow-lift"),
   secondary:
     "bg-white text-neutral-900 shadow-[inset_0_0_0_2px_rgba(51,52,44,0.12)] hover:shadow-[inset_0_0_0_2px_rgba(51,52,44,0.28)] hover:-translate-y-0.5",
   danger:

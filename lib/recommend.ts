@@ -46,3 +46,29 @@ export function recommendDropOff(
 ): RankedDropOff | null {
   return rankDropOffs(r, dropOffs).find((x) => x.eligible) ?? null;
 }
+
+export interface RankedRestaurant {
+  restaurant: MapRestaurant;
+  miles: number;
+  /** Can this drop-off take everything the restaurant has on offer? */
+  eligible: boolean;
+  reason?: string;
+}
+
+// The mirror of rankDropOffs, from the drop-off's side: which restaurants can it
+// take food from, nearest first. Reuses the same `eligibility` so the two
+// directions can never disagree. Used when a drop-off is selected on the map.
+export function rankRestaurantsForDropOff(
+  d: DropOffLocation,
+  restaurants: MapRestaurant[]
+): RankedRestaurant[] {
+  return restaurants
+    .map((r) => {
+      const { eligible, reason } = eligibility(r, d);
+      return { restaurant: r, miles: milesBetween(d.lat, d.lng, r.lat, r.lng), eligible, reason };
+    })
+    .sort((a, b) => {
+      if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
+      return a.miles - b.miles;
+    });
+}

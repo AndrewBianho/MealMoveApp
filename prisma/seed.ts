@@ -11,11 +11,26 @@ function toEnum(status: string): ListingStatus {
   return status.replace(/ /g, "_") as ListingStatus;
 }
 
-const jitter = () => (Math.random() - 0.5) * 0.02;
+// Spread restaurants deterministically around Malvern Prep so the rescue map
+// shows realistic, spaced-out routes (not a single cluster). Place restaurant i
+// on a golden-angle spiral, radius cycling 1.5/3/4.5 mi, converting miles→deg.
+const MALVERN = { lat: 40.02724, lng: -75.51239 };
+const GOLDEN = 2.399963229728653; // radians
+function placeAround(i: number): { lat: number; lng: number } {
+  const miles = [1.5, 3, 4.5][i % 3];
+  const angle = i * GOLDEN;
+  const dLat = (miles * Math.cos(angle)) / 69;
+  const dLng = (miles * Math.sin(angle)) / (69 * Math.cos((MALVERN.lat * Math.PI) / 180));
+  return { lat: MALVERN.lat + dLat, lng: MALVERN.lng + dLng };
+}
 
 async function main() {
-  // Wipe in FK-safe order.
+  // Wipe in FK-safe order — children before parents.
+  await prisma.message.deleteMany();
+  await prisma.buddyInvite.deleteMany();
   await prisma.listingEvent.deleteMany();
+  await prisma.adminEvent.deleteMany();
+  await prisma.passwordResetToken.deleteMany();
   await prisma.pickup.deleteMany();
   await prisma.foodListing.deleteMany();
   await prisma.dropOff.deleteMany();
@@ -25,13 +40,15 @@ async function main() {
   // All demo accounts share the password "password".
   const passwordHash = await bcrypt.hash("password", 10);
 
-  // Restaurants, derived from unique listing sources.
+  // Restaurants, derived from unique listing sources — spread around Malvern Prep.
   const restaurantId = new Map<string, string>();
-  for (const name of Array.from(new Set(LISTINGS.map((l) => l.source)))) {
+  const sources = Array.from(new Set(LISTINGS.map((l) => l.source)));
+  for (let i = 0; i < sources.length; i++) {
+    const { lat, lng } = placeAround(i);
     const r = await prisma.restaurant.create({
-      data: { name, address: "Campus", lat: 40.04 + jitter(), lng: -75.34 + jitter() },
+      data: { name: sources[i], address: "Main Line", lat, lng },
     });
-    restaurantId.set(name, r.id);
+    restaurantId.set(sources[i], r.id);
   }
 
   // Drop-off locations, with their real intake constraints.

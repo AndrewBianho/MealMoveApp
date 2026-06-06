@@ -4,21 +4,18 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef } from "react";
 import type { Map as MapboxMap } from "mapbox-gl";
 import type { Listing } from "@/lib/types";
+import { escapeHtml } from "@/lib/escapeHtml";
+import { RAMP } from "@/lib/rampColors";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
-// Same urgency palette as the listing-card strip (tokens from tailwind.config).
+// Same urgency palette as the listing-card strip; hex mirrors the ramp tokens
+// via lib/rampColors (raw-DOM pins can't read Tailwind).
 function urgencyColor(l: Listing): string {
-  if (["delivered", "expired", "failed"].includes(l.status)) return "#A89E8B";
-  if (l.minutesLeft < 10) return "#D4654F";
-  if (l.minutesLeft < 35) return "#B5862C";
-  return "#5F7E50";
-}
-
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"]/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c] as string
-  );
+  if (["delivered", "expired", "failed"].includes(l.status)) return RAMP.neutral400;
+  if (l.minutesLeft < 10) return RAMP.failed400;
+  if (l.minutesLeft < 35) return RAMP.urgent600;
+  return RAMP.rescued600;
 }
 
 // Great-circle distance in miles.
