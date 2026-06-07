@@ -1,6 +1,7 @@
 // Mock data used to seed the database and to drive the static style guide.
 // Shapes match lib/types so the seed maps cleanly onto the schema.
 import type { FoodCategory, Listing } from "./types";
+import type { RetrievalHours } from "./hours";
 
 export const CURRENT_USER = { name: "You", role: "volunteer" as const };
 
@@ -17,6 +18,7 @@ export const DROP_OFFS: {
   notes: string;
   lat: number;
   lng: number;
+  retrievalHours?: RetrievalHours;
 }[] = [
   {
     name: "Community Fridge — 4th & Elm",
@@ -26,6 +28,15 @@ export const DROP_OFFS: {
     notes: "Refrigerated. No nut-containing items.",
     lat: 40.0362, // Malvern
     lng: -75.5138,
+    retrievalHours: {
+      mon: [{ open: "08:00", close: "20:00" }],
+      tue: [{ open: "08:00", close: "20:00" }],
+      wed: [{ open: "08:00", close: "20:00" }],
+      thu: [{ open: "08:00", close: "20:00" }],
+      fri: [{ open: "08:00", close: "20:00" }],
+      sat: [{ open: "10:00", close: "16:00" }],
+      sun: [],
+    },
   },
   {
     name: "St. Mark's Shelter",
@@ -35,6 +46,15 @@ export const DROP_OFFS: {
     notes: "Hot meals welcome before 7pm. Not refrigerated.",
     lat: 40.0429, // Paoli
     lng: -75.4707,
+    retrievalHours: {
+      mon: [{ open: "11:00", close: "14:00" }, { open: "17:00", close: "19:00" }],
+      tue: [{ open: "11:00", close: "14:00" }, { open: "17:00", close: "19:00" }],
+      wed: [{ open: "11:00", close: "14:00" }, { open: "17:00", close: "19:00" }],
+      thu: [{ open: "11:00", close: "14:00" }, { open: "17:00", close: "19:00" }],
+      fri: [{ open: "11:00", close: "14:00" }, { open: "17:00", close: "19:00" }],
+      sat: [],
+      sun: [],
+    },
   },
   {
     name: "Campus Pantry — Student Union",

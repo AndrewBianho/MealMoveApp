@@ -2,6 +2,8 @@
 // (FoodListing, Pickup, User). Kept framework-free so they can be the
 // single source of truth for both server and client code.
 
+import type { RetrievalHours } from "./hours";
+
 export type Role = "volunteer" | "restaurant" | "drop_off_admin" | "org_admin";
 
 export type ListingStatus =
@@ -30,6 +32,7 @@ export interface DropOffLocation {
   refrigerated: boolean;
   capacity: number;
   notes?: string;
+  retrievalHours?: RetrievalHours;
 }
 
 /** A restaurant on the map, summarizing its active (open/claimed) listings. */
@@ -70,6 +73,8 @@ export interface Listing {
   claimedBy?: string;
   /** Drop-off destination, shown once claimed. */
   dropOff?: string;
+  /** The drop-off's structured retrieval hours, for the open-now badge. */
+  dropOffHours?: RetrievalHours;
   /** Source restaurant coordinates, for the map (present on DB-backed data). */
   lat?: number;
   lng?: number;

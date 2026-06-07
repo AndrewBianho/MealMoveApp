@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ListingCard } from "@/components/ListingCard";
+import { RetrievalHoursDisplay } from "@/components/RetrievalHoursDisplay";
 import { getDropOffDetail } from "@/lib/listings";
+import { parseStoredHours } from "@/lib/hours";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +79,9 @@ export default async function DropOffDetailPage({
         {dropOff.notes && (
           <p className="mt-2 text-sm text-neutral-600">{dropOff.notes}</p>
         )}
+        <div className="mt-4 border-t border-neutral-200/40 pt-4">
+          <RetrievalHoursDisplay hours={parseStoredHours(dropOff.retrievalHours)} />
+        </div>
       </section>
 
       <section className="mb-8">

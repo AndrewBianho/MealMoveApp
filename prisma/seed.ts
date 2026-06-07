@@ -1,6 +1,6 @@
 // Seeds the database from lib/mock.ts so the shapes line up exactly with what
 // the frontend already renders. Safe to re-run — it wipes first (dev only).
-import { PrismaClient, type ListingStatus } from "@prisma/client";
+import { PrismaClient, Prisma, type ListingStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { DROP_OFFS, LISTINGS, RESTAURANT } from "../lib/mock";
 
@@ -64,6 +64,9 @@ async function main() {
         refrigerated: d.refrigerated,
         capacity: d.capacity,
         notes: d.notes,
+        ...(d.retrievalHours
+          ? { retrievalHours: d.retrievalHours as unknown as Prisma.InputJsonValue }
+          : {}),
       },
     });
     dropOffId.set(d.name, created.id);
