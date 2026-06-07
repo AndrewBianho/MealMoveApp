@@ -6,10 +6,14 @@ import { Button } from "./Button";
 import { StatusBadge } from "./StatusBadge";
 import type { Listing } from "@/lib/types";
 
+export type ListingCardAudience = "volunteer" | "restaurant" | "dropoff";
+
 interface ListingCardProps {
   listing: Listing;
   /** When provided and the listing is open, the footer shows a claim button. */
   onClaim?: (id: string) => void;
+  /** Who's viewing — tunes which facts/lines show. Defaults to the volunteer view. */
+  audience?: ListingCardAudience;
 }
 
 const SPENT: Listing["status"][] = ["delivered", "expired", "failed"];
@@ -56,7 +60,11 @@ function urgency(listing: Listing) {
   };
 }
 
-export function ListingCard({ listing, onClaim }: ListingCardProps) {
+export function ListingCard({
+  listing,
+  onClaim,
+  audience = "volunteer",
+}: ListingCardProps) {
   const {
     id,
     title,
@@ -77,6 +85,13 @@ export function ListingCard({ listing, onClaim }: ListingCardProps) {
   const u = urgency(listing);
   const img = imageUrl ?? DEFAULT_IMAGE;
   const isPlaceholder = !imageUrl;
+
+  // Audience tuning: distance is only meaningful to a volunteer; the source line
+  // is redundant for a restaurant (it's them); the → drop-off line is redundant
+  // for a drop-off admin (it's them).
+  const showDistance = audience === "volunteer";
+  const showSource = audience !== "restaurant";
+  const showRoute = audience !== "dropoff";
 
   const chip = (
     <span
@@ -120,11 +135,15 @@ export function ListingCard({ listing, onClaim }: ListingCardProps) {
               <span className="text-lg font-semibold">{servings}</span>
               <span className="ml-1 text-[11px] text-neutral-500">servings</span>
             </span>
-            <span className="text-neutral-300">·</span>
-            <span className="text-neutral-900">
-              <span className="text-base font-semibold">{distance}</span>
-              <span className="ml-1 text-[11px] text-neutral-500">away</span>
-            </span>
+            {showDistance && (
+              <>
+                <span className="text-neutral-300">·</span>
+                <span className="text-neutral-900">
+                  <span className="text-base font-semibold">{distance}</span>
+                  <span className="ml-1 text-[11px] text-neutral-500">away</span>
+                </span>
+              </>
+            )}
           </div>
 
           {/* Tier 3 — supporting context. */}
@@ -134,13 +153,15 @@ export function ListingCard({ listing, onClaim }: ListingCardProps) {
                 {category}
               </span>
             )}
-            <span className="flex items-center gap-1.5">
-              <MapPin className="text-neutral-400" />
-              {source}
-            </span>
+            {showSource && (
+              <span className="flex items-center gap-1.5">
+                <MapPin className="text-neutral-400" />
+                {audience === "dropoff" ? `from ${source}` : source}
+              </span>
+            )}
           </div>
 
-          {dropOff && (
+          {dropOff && showRoute && (
             <p className="mt-1.5 flex items-center gap-1.5 font-sans text-[13px] text-clay-600">
               <ArrowRight className="text-clay-400" />
               {dropOff}
