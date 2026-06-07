@@ -20,6 +20,10 @@ const STATUSES: ListingStatus[] = [
 const CLAIMABLE = LISTINGS.filter((l) => l.status === "open");
 const UNCLAIMABLE = LISTINGS.filter((l) => l.status !== "open");
 
+// A claimed listing (has source, drop-off, and a claimant) to show how the card
+// reframes itself per audience.
+const AUDIENCE_DEMO = LISTINGS.find((l) => l.status === "claimed") ?? LISTINGS[0];
+
 function Section({
   title,
   hint,
@@ -114,6 +118,32 @@ export default function StyleGuidePage() {
                 <ListingCard key={l.id} listing={l} />
               ))}
             </div>
+          </div>
+        </div>
+      </Section>
+
+      <Section
+        title="Listing cards by audience"
+        hint="One claimed listing seen by each account type. Volunteers get servings · distance and the claim affordance. Restaurants drop the meaningless distance and their own (redundant) source line, keeping the → drop-off destination. Drop-off admins drop the distance and the self-referential → drop-off line, and surface 'from {restaurant}' instead."
+      >
+        <div className="grid gap-6 md:grid-cols-3">
+          <div>
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+              volunteer
+            </p>
+            <ListingCard listing={AUDIENCE_DEMO} audience="volunteer" />
+          </div>
+          <div>
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+              restaurant
+            </p>
+            <ListingCard listing={AUDIENCE_DEMO} audience="restaurant" />
+          </div>
+          <div>
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+              drop-off
+            </p>
+            <ListingCard listing={AUDIENCE_DEMO} audience="dropoff" />
           </div>
         </div>
       </Section>
