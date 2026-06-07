@@ -229,7 +229,7 @@ export function RestaurantConsole({
           {live.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2">
               {live.map((l) => (
-                <ListingCard key={l.id} listing={l} />
+                <ListingCard key={l.id} listing={l} audience="restaurant" />
               ))}
             </div>
           ) : (
@@ -244,7 +244,7 @@ export function RestaurantConsole({
           {past.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2">
               {past.map((l) => (
-                <ListingCard key={l.id} listing={l} />
+                <ListingCard key={l.id} listing={l} audience="restaurant" />
               ))}
             </div>
           ) : (

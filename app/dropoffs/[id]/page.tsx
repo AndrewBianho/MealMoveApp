@@ -84,7 +84,7 @@ export default async function DropOffDetailPage({
         {incoming.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {incoming.map((l) => (
-              <ListingCard key={l.id} listing={l} />
+              <ListingCard key={l.id} listing={l} audience="dropoff" />
             ))}
           </div>
         ) : (
@@ -97,7 +97,7 @@ export default async function DropOffDetailPage({
         {arrived.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {arrived.map((l) => (
-              <ListingCard key={l.id} listing={l} />
+              <ListingCard key={l.id} listing={l} audience="dropoff" />
             ))}
           </div>
         ) : (
