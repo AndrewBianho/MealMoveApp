@@ -112,3 +112,15 @@ export interface ImpactStat {
   label: string;
   value: string;
 }
+
+// One volunteer's lifetime numbers for their profile. Counts (no status hue);
+// completionRate is 0–100. Both seats are credited because delivered events are
+// written per-seat (primary and buddy).
+export interface VolunteerImpact {
+  mealsRescued: number;
+  lbsSaved: number;
+  pickupsCompleted: number;
+  restaurantsHelped: number;
+  completionRate: number; // 0–100, integer
+  attempts: number; // delivered + released + failed
+}
