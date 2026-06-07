@@ -1,5 +1,6 @@
 import { ListingCard } from "@/components/ListingCard";
 import { DropOffNotesEditor } from "@/components/DropOffNotesEditor";
+import { RetrievalHoursEditor } from "@/components/RetrievalHoursEditor";
 import { getDropOffs } from "@/lib/map";
 import { getListings } from "@/lib/listings";
 
@@ -53,6 +54,7 @@ export default async function DropoffPage() {
                 holds up to {d.capacity} servings
               </p>
               <DropOffNotesEditor dropOffId={d.id} initialNotes={d.notes ?? ""} />
+              <RetrievalHoursEditor dropOffId={d.id} initialHours={d.retrievalHours} />
             </div>
           ))}
         </div>
@@ -63,7 +65,7 @@ export default async function DropoffPage() {
         {incoming.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {incoming.map((l) => (
-              <ListingCard key={l.id} listing={l} />
+              <ListingCard key={l.id} listing={l} audience="dropoff" />
             ))}
           </div>
         ) : (
@@ -76,7 +78,7 @@ export default async function DropoffPage() {
         {arrived.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {arrived.map((l) => (
-              <ListingCard key={l.id} listing={l} />
+              <ListingCard key={l.id} listing={l} audience="dropoff" />
             ))}
           </div>
         ) : (

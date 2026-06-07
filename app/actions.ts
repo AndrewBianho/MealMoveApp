@@ -22,6 +22,7 @@ import {
   respondToInviteFor,
   cancelInviteFor,
 } from "@/lib/buddies";
+import { validateRetrievalHours } from "@/lib/hours";
 
 const HOLD_MINUTES = 15;
 
@@ -458,6 +459,29 @@ export async function updateDropOffNotes(
   });
   revalidatePath("/dropoff");
   revalidatePath(`/dropoffs/${dropOffId}`);
+  return { ok: true };
+}
+
+/** A drop-off admin sets the structured food-retrieval hours for a location. */
+export async function updateRetrievalHours(
+  dropOffId: string,
+  hours: unknown
+): Promise<SignUpResult> {
+  const session = await auth();
+  const role = session?.user?.role;
+  if (role !== "drop_off_admin" && role !== "org_admin") {
+    return { ok: false, error: "Only drop-off admins can edit this." };
+  }
+  const res = validateRetrievalHours(hours);
+  if (!res.ok) return { ok: false, error: res.error };
+  await prisma.dropOff.update({
+    where: { id: dropOffId },
+    data: { retrievalHours: res.hours as unknown as Prisma.InputJsonValue },
+  });
+  revalidatePath("/dropoff");
+  revalidatePath(`/dropoffs/${dropOffId}`);
+  revalidatePath("/");
+  revalidatePath("/map");
   return { ok: true };
 }
 

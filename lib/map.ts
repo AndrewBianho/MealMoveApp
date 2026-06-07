@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { parseStoredHours } from "./hours";
 import type { DropOffLocation, FoodCategory, MapRestaurant } from "./types";
 
 // Restaurants (with active listings summarized) + all drop-offs, for the map.
@@ -60,6 +61,7 @@ export async function getMapData(): Promise<{
     refrigerated: d.refrigerated,
     capacity: d.capacity,
     notes: d.notes ?? undefined,
+    retrievalHours: parseStoredHours(d.retrievalHours) ?? undefined,
   }));
 
   return { restaurants: mapRestaurants, dropOffs: mapDropOffs };
@@ -76,5 +78,6 @@ export async function getDropOffs(): Promise<DropOffLocation[]> {
     refrigerated: d.refrigerated,
     capacity: d.capacity,
     notes: d.notes ?? undefined,
+    retrievalHours: parseStoredHours(d.retrievalHours) ?? undefined,
   }));
 }

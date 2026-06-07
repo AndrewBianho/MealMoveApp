@@ -61,7 +61,14 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
         <span className="rounded-full bg-neutral-100 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
           {roleLabel}
         </span>
-        <Avatar name={name} className="shadow-card" />
+        <Link
+          href="/profile"
+          aria-label="Your profile"
+          aria-current={isActive("/profile") ? "page" : undefined}
+          className="rounded-full transition duration-150 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
+        >
+          <Avatar name={name} className="shadow-card" />
+        </Link>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
           className="rounded-full px-3 py-1.5 text-sm font-semibold text-neutral-600 transition duration-150 hover:bg-white hover:text-neutral-900 hover:shadow-card"
@@ -115,6 +122,19 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
                 {item.label}
               </Link>
             ))}
+            <Link
+              href="/profile"
+              onClick={() => setOpen(false)}
+              aria-current={isActive("/profile") ? "page" : undefined}
+              className={cn(
+                "rounded-xl px-3 py-2.5 text-sm transition-colors",
+                isActive("/profile")
+                  ? "bg-neutral-900 font-semibold text-neutral-50"
+                  : "text-neutral-700 hover:bg-neutral-100"
+              )}
+            >
+              Profile
+            </Link>
             <div className="mt-2 flex items-center justify-between border-t border-neutral-200/40 px-3 pt-3">
               <span className="font-mono text-[11px] uppercase tracking-wide text-neutral-500">
                 {name} · {roleLabel}

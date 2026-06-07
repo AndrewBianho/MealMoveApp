@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
+import { parseStoredHours } from "./hours";
 import type { Listing, ListingStatus } from "./types";
 
 // Pull the relations the UI needs in one query.
@@ -20,6 +21,24 @@ function minutesUntil(expiresAt: Date): number {
   return Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / 60_000));
 }
 
+// Demo/dev only: keep one designated listing perpetually in the urgent (<10 min)
+// band so the urgency UI (tomato chip + pulse + 2-col feature) is always visible
+// to test, regardless of how far the seeded expiry has drifted. Never applies in
+// production. Keyed by title since seeded rows get fresh ids. See lib/mock.ts.
+const ALWAYS_URGENT_TITLE = "Mediterranean wraps & salads";
+const ALWAYS_URGENT_MINUTES = 6;
+
+function displayMinutesLeft(l: DbListing): number {
+  if (
+    process.env.NODE_ENV !== "production" &&
+    l.title === ALWAYS_URGENT_TITLE &&
+    !["delivered", "expired", "failed"].includes(l.status)
+  ) {
+    return ALWAYS_URGENT_MINUTES;
+  }
+  return minutesUntil(l.expiresAt);
+}
+
 /** DB row → the plain shape the client components already consume. */
 export function serializeListing(l: DbListing, viewerId?: string): Listing {
   return {
@@ -30,13 +49,14 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
       hour: "numeric",
       minute: "2-digit",
     }),
-    minutesLeft: minutesUntil(l.expiresAt),
+    minutesLeft: displayMinutesLeft(l),
     servings: l.servings,
     weightLbs: l.weightLbs ?? undefined,
     distance: "—", // TODO: derive from volunteer location once geo is wired
     status: fromEnum(l.status),
     claimedBy: l.pickup?.volunteer.name,
     dropOff: l.dropOff?.name ?? undefined,
+    dropOffHours: parseStoredHours(l.dropOff?.retrievalHours) ?? undefined,
     lat: l.restaurant.lat,
     lng: l.restaurant.lng,
     category: l.category,

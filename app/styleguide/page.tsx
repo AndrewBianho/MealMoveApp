@@ -1,4 +1,5 @@
 import { Button } from "@/components/Button";
+import { cn } from "@/components/cn";
 import { ListingCard } from "@/components/ListingCard";
 import { MetricCard } from "@/components/MetricCard";
 import { ReliabilityMeter } from "@/components/ReliabilityMeter";
@@ -14,6 +15,14 @@ const STATUSES: ListingStatus[] = [
   "expired",
   "failed",
 ];
+
+// Mirror the feed's split: claimable (open) vs everything that can't be claimed.
+const CLAIMABLE = LISTINGS.filter((l) => l.status === "open");
+const UNCLAIMABLE = LISTINGS.filter((l) => l.status !== "open");
+
+// A claimed listing (has source, drop-off, and a claimant) to show how the card
+// reframes itself per audience.
+const AUDIENCE_DEMO = LISTINGS.find((l) => l.status === "claimed") ?? LISTINGS[0];
 
 function Section({
   title,
@@ -49,7 +58,7 @@ export default function StyleGuidePage() {
 
       <Section
         title="Status badges"
-        hint="Mono, uppercase, leading dot, 3px radius. Fill + text drawn from one ramp."
+        hint="Mono, uppercase, leading dot, fully round. Fill + text drawn from one ramp."
       >
         <div className="flex flex-wrap gap-2 rounded-xl border border-neutral-200/40 bg-white p-5">
           {STATUSES.map((s) => (
@@ -72,12 +81,70 @@ export default function StyleGuidePage() {
 
       <Section
         title="Listing cards"
-        hint="Volunteer view. 3px urgency strip: red under 10 min, amber under 35, green otherwise."
+        hint="Volunteer view. Claimable food (open) sits up top; everything that can't be claimed — claimed, in transit, or closed — drops into its own subsection. Urgency chip pairs icon + minutes (never hue alone): tomato under 10 min with a pulse, honey under 35, sage otherwise; neutral 'closed' when spent. The closing-soon open card is featured across two columns."
       >
-        <div className="grid gap-4 md:grid-cols-3">
-          {LISTINGS.slice(0, 3).map((l) => (
-            <ListingCard key={l.id} listing={l} />
-          ))}
+        <div className="space-y-8">
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <h3 className="text-base font-semibold text-neutral-800">
+                Available to claim
+              </h3>
+              <span className="font-mono text-xs text-neutral-400">
+                {CLAIMABLE.length}
+              </span>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              {CLAIMABLE.map((l) => (
+                <div
+                  key={l.id}
+                  className={cn(l.minutesLeft < 10 && "md:col-span-2")}
+                >
+                  <ListingCard listing={l} />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <h3 className="text-base font-semibold text-neutral-800">
+                Claimed &amp; closed
+              </h3>
+              <span className="font-mono text-xs text-neutral-400">
+                {UNCLAIMABLE.length}
+              </span>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              {UNCLAIMABLE.map((l) => (
+                <ListingCard key={l.id} listing={l} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      <Section
+        title="Listing cards by audience"
+        hint="One claimed listing seen by each account type. Volunteers get servings · distance and the claim affordance. Restaurants drop the meaningless distance and their own (redundant) source line, keeping the → drop-off destination. Drop-off admins drop the distance and the self-referential → drop-off line, and surface 'from {restaurant}' instead."
+      >
+        <div className="grid gap-6 md:grid-cols-3">
+          <div>
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+              volunteer
+            </p>
+            <ListingCard listing={AUDIENCE_DEMO} audience="volunteer" />
+          </div>
+          <div>
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+              restaurant
+            </p>
+            <ListingCard listing={AUDIENCE_DEMO} audience="restaurant" />
+          </div>
+          <div>
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+              drop-off
+            </p>
+            <ListingCard listing={AUDIENCE_DEMO} audience="dropoff" />
+          </div>
         </div>
       </Section>
 
@@ -104,7 +171,7 @@ export default function StyleGuidePage() {
       </div>
 
       <p className="mt-12 font-mono text-[11px] text-neutral-400">
-        next.js 14 · app router · tailwind v3 · ibm plex sans / mono
+        next.js 14 · app router · tailwind v3 · fraunces · nunito sans · jetbrains mono
       </p>
     </main>
   );
