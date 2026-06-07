@@ -58,11 +58,15 @@ export const DROP_OFFS: {
 
 export const LISTINGS: Listing[] = [
   {
+    // Demo: the one perpetually-urgent listing. lib/listings.ts pins this to
+    // the <10 min band in dev (see ALWAYS_URGENT_TITLE) so the urgency UI —
+    // tomato chip + pulse + 2-col feature — is always on screen to test.
     id: "PU-4821",
     title: "Mediterranean wraps & salads",
+    imageUrl: "/food-wraps.jpg",
     source: "Saxbys — Commons",
     expiresAt: "6:51 PM",
-    minutesLeft: 8,
+    minutesLeft: 6,
     servings: 18,
     weightLbs: 14,
     distance: "0.4 mi",
@@ -73,9 +77,10 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4822",
     title: "Bagels, pastries & coffee cake",
+    imageUrl: "/food-bagels.jpg",
     source: "Bruegger's — Main St",
     expiresAt: "7:15 PM",
-    minutesLeft: 32,
+    minutesLeft: 48,
     servings: 40,
     weightLbs: 30,
     distance: "0.9 mi",
@@ -86,6 +91,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4823",
     title: "Catered sandwich platters",
+    imageUrl: "/food-sandwiches.jpg",
     source: "Conference Center",
     expiresAt: "8:30 PM",
     minutesLeft: 107,
@@ -99,6 +105,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4824",
     title: "Soup, rolls & side salads",
+    imageUrl: "/food-soup.jpg",
     source: "Dining Hall — North",
     expiresAt: "7:40 PM",
     minutesLeft: 57,
@@ -116,7 +123,7 @@ export const LISTINGS: Listing[] = [
     title: "Pizza by the slice",
     source: "Slice Co. — Quad",
     expiresAt: "6:30 PM",
-    minutesLeft: 21,
+    minutesLeft: 50,
     servings: 24,
     weightLbs: 26,
     distance: "0.3 mi",
@@ -174,7 +181,7 @@ export const LISTINGS: Listing[] = [
     title: "Cold brew & iced lattes",
     source: "Saxbys — Commons",
     expiresAt: "7:00 PM",
-    minutesLeft: 24,
+    minutesLeft: 52,
     servings: 30,
     weightLbs: 38,
     distance: "0.4 mi",
