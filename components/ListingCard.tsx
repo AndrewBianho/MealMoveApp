@@ -92,6 +92,7 @@ export function ListingCard({
   const showDistance = audience === "volunteer";
   const showSource = audience !== "restaurant";
   const showRoute = audience !== "dropoff";
+  const sourceLabel = audience === "dropoff" ? `from ${source}` : source;
 
   const chip = (
     <span
@@ -128,8 +129,9 @@ export function ListingCard({
             </Link>
           </h3>
 
-          {/* Tier 2 — the two facts a volunteer decides on, promoted out of the
-              gray row-stack into one emphasized mono line. */}
+          {/* Tier 2 — the decision facts, promoted out of the gray row-stack into
+              one emphasized mono line. Volunteers get servings · distance; other
+              audiences see servings alone (distance isn't meaningful to them). */}
           <div className="mt-3 flex items-baseline gap-3 font-mono">
             <span className="text-neutral-900">
               <span className="text-lg font-semibold">{servings}</span>
@@ -156,7 +158,7 @@ export function ListingCard({
             {showSource && (
               <span className="flex items-center gap-1.5">
                 <MapPin className="text-neutral-400" />
-                {audience === "dropoff" ? `from ${source}` : source}
+                {sourceLabel}
               </span>
             )}
           </div>
