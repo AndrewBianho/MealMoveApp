@@ -107,6 +107,7 @@ model DropOff {
   refrigerated       Boolean        @default(false) // can hold perishable/cold
   capacity           Int            @default(100) // max servings it can hold
   notes              String? // human-readable restrictions (allergens, hours…)
+  retrievalHours     Json? // RetrievalHours: per-weekday food-retrieval windows (see lib/hours.ts)
   listings  FoodListing[]
   createdAt DateTime      @default(now())
 }
