@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
+import { parseStoredHours } from "./hours";
 import type { Listing, ListingStatus } from "./types";
 
 // Pull the relations the UI needs in one query.
@@ -37,6 +38,7 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
     status: fromEnum(l.status),
     claimedBy: l.pickup?.volunteer.name,
     dropOff: l.dropOff?.name ?? undefined,
+    dropOffHours: parseStoredHours(l.dropOff?.retrievalHours) ?? undefined,
     lat: l.restaurant.lat,
     lng: l.restaurant.lng,
     category: l.category,

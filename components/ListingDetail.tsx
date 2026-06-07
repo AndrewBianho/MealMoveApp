@@ -20,6 +20,8 @@ import { ChatPanel } from "./ChatPanel";
 import { Avatar } from "./Avatar";
 import { BuddyInvitePicker } from "./BuddyInvitePicker";
 import { ImageUploadField } from "./ImageUploadField";
+import { OpenNowBadge } from "./RetrievalHoursDisplay";
+import { currentDayKey, formatDay } from "@/lib/hours";
 import type { Listing, ListingStatus } from "@/lib/types";
 
 // The happy-path journey. expired / failed are terminal off-ramps and render
@@ -231,7 +233,17 @@ export function ListingDetail({
               </MetaRow>
               <MetaRow icon={<Users />}>~{listing.servings} servings</MetaRow>
               {listing.dropOff && (
-                <MetaRow icon={<MapPin />}>→ drop at {listing.dropOff}</MetaRow>
+                <MetaRow icon={<MapPin />}>
+                  → drop at {listing.dropOff}
+                  {listing.dropOffHours && (
+                    <span className="ml-2 inline-flex items-center gap-2 align-middle">
+                      <OpenNowBadge hours={listing.dropOffHours} />
+                      <span className="font-mono text-xs text-neutral-500">
+                        today {formatDay(listing.dropOffHours[currentDayKey()])}
+                      </span>
+                    </span>
+                  )}
+                </MetaRow>
               )}
               {listing.claimedBy && listing.status !== "open" && (
                 <MetaRow icon={<Users />}>
