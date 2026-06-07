@@ -118,6 +118,7 @@ async function main() {
     const listing = await prisma.foodListing.create({
       data: {
         title: l.title,
+        imageUrl: l.imageUrl ?? null,
         servings: l.servings,
         weightLbs: l.weightLbs ?? null,
         category: l.category ?? "prepared",

@@ -36,8 +36,10 @@ export const authConfig = {
       const user = auth?.user;
       const path = nextUrl.pathname;
       const isAuthPage = ["/login", "/signup", "/forgot-password", "/reset-password"].includes(path);
+      // Public design reference — viewable without signing in.
+      const isPublic = path === "/styleguide";
 
-      if (!user) return isAuthPage; // signed out: only the auth pages are open
+      if (!user) return isAuthPage || isPublic; // signed out: auth pages + public
 
       if (isAuthPage) {
         return Response.redirect(new URL(ROLE_HOME[user.role], nextUrl));
