@@ -1,5 +1,5 @@
 import { prisma } from "./prisma";
-import type { ImpactStat, Volunteer } from "./types";
+import type { ImpactStat, Volunteer, VolunteerImpact } from "./types";
 
 // Pounds use the restaurant-provided weight when available, falling back to a
 // servings estimate (~0.8 lb/serving) for donations that weren't weighed.
@@ -82,4 +82,59 @@ export async function getVolunteerReliability(): Promise<Volunteer[]> {
       };
     })
     .sort((a, b) => b.reliability - a.reliability);
+}
+
+// A structural slice of the Prisma client — just the delegates this function
+// touches. Lets tests inject a fake db without standing up a database.
+type ImpactDb = Pick<typeof prisma, "listingEvent" | "foodListing">;
+
+// One volunteer's lifetime profile numbers, all live from the DB. Impact comes
+// from the listings they delivered; completion rate reuses the same event types
+// and meaning as getVolunteerReliability (delivered vs released/failed), scoped
+// to this user. Both seats are credited: markDeliveredWithPhotoFor writes a
+// `delivered` event per seat, so a buddy who helped gets equal credit here.
+export async function getVolunteerImpact(
+  userId: string,
+  db: ImpactDb = prisma
+): Promise<VolunteerImpact> {
+  const events = await db.listingEvent.findMany({
+    where: { actorId: userId, type: { in: ["delivered", "released", "failed"] } },
+    select: { type: true, listingId: true },
+  });
+
+  const deliveredListingIds: string[] = [];
+  let flaked = 0;
+  for (const e of events) {
+    if (e.type === "delivered") deliveredListingIds.push(e.listingId);
+    else flaked++;
+  }
+
+  const delivered = deliveredListingIds.length;
+  const attempts = delivered + flaked;
+  const completionRate =
+    attempts > 0 ? Math.round((delivered / attempts) * 100) : 0;
+
+  const listings = deliveredListingIds.length
+    ? await db.foodListing.findMany({
+        where: { id: { in: deliveredListingIds } },
+        select: { servings: true, weightLbs: true, restaurantId: true },
+      })
+    : [];
+
+  const mealsRescued = listings.reduce((sum, l) => sum + l.servings, 0);
+  const lbsSaved = Math.round(
+    listings.reduce(
+      (sum, l) => sum + (l.weightLbs ?? l.servings * LBS_PER_SERVING),
+      0
+    )
+  );
+
+  return {
+    mealsRescued,
+    lbsSaved,
+    pickupsCompleted: delivered,
+    restaurantsHelped: new Set(listings.map((l) => l.restaurantId)).size,
+    completionRate,
+    attempts,
+  };
 }
