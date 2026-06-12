@@ -86,6 +86,12 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M12 2.5v3M12 18.5v3M21.5 12h-3M5.5 12h-3M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1M18.4 18.4l-2.1-2.1M7.7 7.7 5.6 5.6" />
     </>
   ),
+  replay: (
+    <>
+      <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" />
+      <path d="M3.5 4.5v4h4" />
+    </>
+  ),
 };
 
 function TabIcon({ icon }: { icon: string }) {
@@ -295,6 +301,20 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
                 }
               )}
             </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                window.dispatchEvent(new Event("mm:open-intro"));
+              }}
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-neutral-100"
+            >
+              <span className="text-neutral-500">
+                <TabIcon icon="replay" />
+              </span>
+              Replay welcome
+            </button>
 
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}

@@ -120,6 +120,17 @@ const config: Config = {
           from: { opacity: "0", transform: "translateY(-6px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        // Directional carousel transitions for the welcome intro: content
+        // enters from the side it advances toward. Reduced motion falls back to
+        // a plain fade (see usage), so these are decorative entrances only.
+        "slide-in-right": {
+          from: { opacity: "0", transform: "translateX(24px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
+        },
+        "slide-in-left": {
+          from: { opacity: "0", transform: "translateX(-24px)" },
+          to: { opacity: "1", transform: "translateX(0)" },
+        },
         // Celebration leaves: drift down with a gentle sway and fade out.
         // Decorative only (RescueCelebration), gated behind motion-safe.
         "leaf-fall": {
@@ -137,6 +148,8 @@ const config: Config = {
         "scale-in": "scale-in 0.18s cubic-bezier(0.22,1,0.36,1) both",
         "fade-in": "fade-in 0.18s ease-out both",
         "slide-down": "slide-down 0.2s cubic-bezier(0.22,1,0.36,1) both",
+        "slide-in-right": "slide-in-right 0.4s cubic-bezier(0.22,1,0.36,1) both",
+        "slide-in-left": "slide-in-left 0.4s cubic-bezier(0.22,1,0.36,1) both",
         "leaf-fall": "leaf-fall 6s ease-in both",
       },
       // Semantic layering scale — sticky header < dropdown/menu < modal overlay
