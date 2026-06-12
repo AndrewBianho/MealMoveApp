@@ -3,27 +3,29 @@ import type { ListingStatus } from "@/lib/types";
 
 export type { ListingStatus };
 
-// Each fill + text pair is drawn from a single ramp (text uses 800 of the same
-// ramp), per DESIGN.md. expired is intentionally neutral, not red.
+// Color carries through the label text + the leading dot, with no filled pill,
+// so the status reads cleanly without a boxy background. Text uses 800 of each
+// ramp; expired is intentionally neutral, not red. Color is never the sole
+// signal — the uppercase label and dot pair with it (color-blind-safe).
 const STYLES: Record<ListingStatus, string> = {
-  open: "bg-rescued-50 text-rescued-800",
-  claimed: "bg-urgent-50 text-urgent-800",
-  "in transit": "bg-transit-50 text-transit-800",
-  delivered: "bg-rescued-100 text-rescued-800",
-  expired: "bg-neutral-50 text-neutral-800",
-  failed: "bg-failed-50 text-failed-800",
+  open: "text-rescued-800",
+  claimed: "text-urgent-800",
+  "in transit": "text-transit-800",
+  delivered: "text-rescued-800",
+  expired: "text-neutral-800",
+  failed: "text-failed-800",
 };
 
 export function StatusBadge({ status }: { status: ListingStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-3 py-1",
-        "font-mono text-xs font-medium uppercase tracking-wide",
+        "inline-flex items-center gap-1.5",
+        "font-mono text-xs font-semibold uppercase tracking-wide",
         STYLES[status]
       )}
     >
-      <span className="h-[5px] w-[5px] rounded-full bg-current" />
+      <span className="h-[6px] w-[6px] rounded-full bg-current" />
       {status}
     </span>
   );

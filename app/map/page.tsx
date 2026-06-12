@@ -7,7 +7,7 @@ export default async function MapPage() {
   const { restaurants, dropOffs } = await getMapData();
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-[1760px] px-6 py-8">
       <header className="mb-6">
         <h1 className="text-[32px] font-medium leading-tight">Rescue map</h1>
       </header>

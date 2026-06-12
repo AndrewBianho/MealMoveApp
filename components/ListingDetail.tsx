@@ -14,6 +14,7 @@ import {
   startDelivery,
   cancelBuddyInvite,
   respondToBuddyInvite,
+  releaseClaim,
 } from "@/app/actions";
 import { CheckInPrompt } from "./CheckInPrompt";
 import { ChatPanel } from "./ChatPanel";
@@ -21,8 +22,9 @@ import { Avatar } from "./Avatar";
 import { BuddyInvitePicker } from "./BuddyInvitePicker";
 import { ImageUploadField } from "./ImageUploadField";
 import { OpenNowBadge } from "./RetrievalHoursDisplay";
+import { RescueCelebration } from "./RescueCelebration";
 import { currentDayKey, formatDay } from "@/lib/hours";
-import type { Listing, ListingStatus } from "@/lib/types";
+import type { Listing, ListingStatus, VolunteerImpact } from "@/lib/types";
 
 // The happy-path journey. expired / failed are terminal off-ramps and render
 // their own banner rather than a step.
@@ -41,7 +43,7 @@ function ProofPhoto({ label, url }: { label: string; url: string }) {
       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl">
         <Image src={url} alt={`Food ${label}`} fill sizes="200px" className="object-cover" />
       </div>
-      <figcaption className="mt-1 font-mono text-[10px] uppercase tracking-wide text-neutral-400">
+      <figcaption className="mt-1 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
         {label}
       </figcaption>
     </figure>
@@ -81,12 +83,15 @@ export function ListingDetail({
   const { message, show } = useToast();
   const [isPending, startTransition] = useTransition();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  // Set when this volunteer completes the delivery; renders the celebration.
+  const [celebration, setCelebration] = useState<VolunteerImpact | null>(null);
 
   if (!listing) {
     return (
-      <div className="rounded-xl border border-dashed border-neutral-200 bg-white px-6 py-16 text-center">
+      <div className="rounded-xl border border-dashed border-neutral-200 bg-card px-6 py-16 text-center">
         <p className="text-sm text-neutral-600">This listing isn&apos;t available.</p>
-        <p className="mt-1 font-mono text-xs text-neutral-400">
+        <p className="mt-1 font-mono text-xs text-neutral-500">
           It may have been removed.
         </p>
         <Link
@@ -119,8 +124,8 @@ export function ListingDetail({
   function onDeliveryPhoto(url: string | null) {
     if (!url) return;
     startTransition(async () => {
-      await markDelivered(id, url);
-      show("Delivered. Thank you for the rescue. 🌱");
+      const impact = await markDelivered(id, url);
+      setCelebration(impact);
     });
   }
   function onAcceptInvite() {
@@ -152,6 +157,23 @@ export function ListingDetail({
         show("Invite cancelled.");
       } catch {
         show("There's no invite to cancel.");
+      }
+    });
+  }
+  function onCancelPickup() {
+    startTransition(async () => {
+      try {
+        await releaseClaim(id);
+        show(
+          listing!.iAmBuddy
+            ? "Stepped off — your buddy still has it."
+            : listing!.buddyName
+              ? `Handed off to ${listing!.buddyName}.`
+              : "Cancelled — back on the feed for someone else."
+        );
+        setConfirmCancel(false);
+      } catch {
+        show("This pickup is no longer active.");
       }
     });
   }
@@ -201,7 +223,7 @@ export function ListingDetail({
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         {/* Main */}
-        <div className="overflow-hidden rounded-xl border border-neutral-200/40 bg-white">
+        <div className="overflow-hidden rounded-xl border border-neutral-200/40 bg-card">
           <div
             className={cn(
               "h-[3px]",
@@ -300,7 +322,7 @@ export function ListingDetail({
 
         {/* Side: timeline + actions */}
         <aside className="space-y-6">
-          <div className="rounded-xl border border-neutral-200/40 bg-white p-5">
+          <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
             <p className="mb-4 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
               Status
             </p>
@@ -316,7 +338,7 @@ export function ListingDetail({
                           "grid h-5 w-5 place-items-center rounded-full border text-[10px]",
                           done
                             ? "border-rescued-600 bg-rescued-600 text-white"
-                            : "border-neutral-200 bg-white text-neutral-400"
+                            : "border-neutral-200 bg-card text-neutral-400"
                         )}
                       >
                         {done ? "✓" : i + 1}
@@ -345,7 +367,7 @@ export function ListingDetail({
           </div>
 
           {!terminal && (
-            <div className="rounded-xl border border-neutral-200/40 bg-white p-5">
+            <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
               <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
                 Next step
               </p>
@@ -361,13 +383,56 @@ export function ListingDetail({
               )}
               {listing.status === "claimed" &&
                 (listing.mine ? (
-                  <ImageUploadField
-                    label="Pickup photo"
-                    optional={false}
-                    hint="Snap the food as you leave — required to start delivery."
-                    aspect="aspect-[4/3]"
-                    onChange={onPickupPhoto}
-                  />
+                  <>
+                    <ImageUploadField
+                      label="Pickup photo"
+                      optional={false}
+                      hint="Snap the food as you leave — required to start delivery."
+                      aspect="aspect-[4/3]"
+                      onChange={onPickupPhoto}
+                    />
+                    {confirmCancel ? (
+                      <div className="mt-3 animate-fade-in rounded-md bg-failed-50 px-4 py-3">
+                        <p className="text-sm font-medium text-failed-800">
+                          Cancel this pickup?
+                        </p>
+                        <p className="mt-0.5 text-[13px] text-failed-800/80">
+                          {listing.iAmBuddy
+                            ? "You'll step off — your buddy keeps the pickup."
+                            : listing.buddyName
+                              ? `${listing.buddyName} will take over so the rescue still happens.`
+                              : "It goes back on the feed so someone else can grab it."}
+                        </p>
+                        <div className="mt-3 flex gap-2">
+                          <Button
+                            variant="danger"
+                            className="flex-1"
+                            onClick={onCancelPickup}
+                            disabled={isPending}
+                          >
+                            Cancel pickup
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            className="flex-1"
+                            onClick={() => setConfirmCancel(false)}
+                            disabled={isPending}
+                          >
+                            Keep it
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setConfirmCancel(true)}
+                        disabled={isPending}
+                        className="mt-3 w-full text-[13px] text-neutral-500 transition-colors hover:text-failed-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1 disabled:opacity-50"
+                      >
+                        Can&apos;t make it? Cancel pickup
+                      </button>
+                    )}
+                  </>
                 ) : (
                   <p className="text-sm text-neutral-600">
                     Waiting for {listing.claimedBy ?? "the volunteer"} to pick up
@@ -398,7 +463,7 @@ export function ListingDetail({
           )}
 
           {onClaimActive && (listing.buddyName || isPrimary) && (
-            <div className="rounded-xl border border-neutral-200/40 bg-white p-5">
+            <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
               {listing.buddyName ? (
                 <>
                   <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
@@ -492,6 +557,16 @@ export function ListingDetail({
           )}
         </aside>
       </div>
+
+      {celebration && (
+        <RescueCelebration
+          impact={celebration}
+          servings={listing.servings}
+          source={listing.source}
+          dropOff={listing.dropOff}
+          onClose={() => setCelebration(null)}
+        />
+      )}
 
       <Toast message={message} />
     </div>

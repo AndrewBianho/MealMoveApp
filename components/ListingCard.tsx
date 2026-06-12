@@ -14,6 +14,8 @@ interface ListingCardProps {
   onClaim?: (id: string) => void;
   /** Who's viewing — tunes which facts/lines show. Defaults to the volunteer view. */
   audience?: ListingCardAudience;
+  /** Extra classes on the root — used for staggered entrance delays in the feed. */
+  className?: string;
 }
 
 const SPENT: Listing["status"][] = ["delivered", "expired", "failed"];
@@ -30,7 +32,7 @@ function urgency(listing: Listing) {
   if (SPENT.includes(listing.status)) {
     return {
       strip: "bg-neutral-200",
-      chip: "bg-neutral-100 text-neutral-600 ring-neutral-900/5",
+      chip: "text-neutral-600",
       label: "closed",
       soon: false,
     };
@@ -39,7 +41,7 @@ function urgency(listing: Listing) {
   if (m < 10) {
     return {
       strip: "bg-failed-400",
-      chip: "bg-failed-50 text-failed-800 ring-failed-200",
+      chip: "text-failed-600",
       label: `${m}m`,
       soon: true,
     };
@@ -47,14 +49,14 @@ function urgency(listing: Listing) {
   if (m < 35) {
     return {
       strip: "bg-urgent-400",
-      chip: "bg-urgent-50 text-urgent-800 ring-urgent-200",
+      chip: "text-urgent-600",
       label: `${m}m`,
       soon: false,
     };
   }
   return {
     strip: "bg-rescued-400",
-    chip: "bg-rescued-50 text-rescued-800 ring-rescued-200",
+    chip: "text-rescued-600",
     label: `${m}m`,
     soon: false,
   };
@@ -64,6 +66,7 @@ export function ListingCard({
   listing,
   onClaim,
   audience = "volunteer",
+  className,
 }: ListingCardProps) {
   const {
     id,
@@ -98,8 +101,8 @@ export function ListingCard({
     <span
       aria-label={spent ? "closed" : `${minutesLeft} minutes left`}
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 ring-1",
-        "font-mono text-xs font-medium",
+        "inline-flex items-center gap-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]",
+        "font-mono text-xs font-bold",
         u.chip,
         u.soon && "motion-safe:animate-pulse"
       )}
@@ -112,8 +115,9 @@ export function ListingCard({
   return (
     <div
       className={cn(
-        "group animate-fade-up overflow-hidden rounded-2xl border border-neutral-900/5 bg-white shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift",
-        u.soon && "ring-2 ring-failed-200"
+        "group animate-fade-up overflow-hidden rounded-2xl border border-neutral-900/5 bg-card shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-lift",
+        u.soon && "ring-2 ring-failed-200",
+        className
       )}
     >
       <div className={cn("h-1.5", u.strip)} />
@@ -164,7 +168,7 @@ export function ListingCard({
           </div>
 
           {dropOff && showRoute && (
-            <p className="mt-1.5 flex items-center gap-1.5 font-sans text-[13px] text-clay-600">
+            <p className="mt-1.5 flex items-center gap-1.5 font-sans text-[13px] text-clay-800">
               <ArrowRight className="text-clay-400" />
               {dropOff}
             </p>
@@ -184,24 +188,29 @@ export function ListingCard({
           href={`/listings/${id}`}
           className={cn(
             "relative w-28 shrink-0 self-stretch overflow-hidden sm:w-32",
-            isPlaceholder ? "bg-neutral-50" : "bg-neutral-100"
+            isPlaceholder ? "bg-card" : "bg-neutral-100"
           )}
         >
-          <Image
-            src={img}
-            alt={isPlaceholder ? "Meal Move" : title}
-            fill
-            sizes="160px"
-            className={cn(
-              isPlaceholder
-                ? "object-contain p-4 opacity-80"
-                : "object-cover transition-transform duration-300 group-hover:scale-[1.03]",
-              spent && "opacity-75 saturate-[0.7]"
-            )}
-          />
-          <span className="absolute right-2 top-2 shadow-[0_2px_8px_-2px_rgba(40,30,10,0.35)]">
-            {chip}
-          </span>
+          {isPlaceholder ? (
+            // No photo → the brand mark as a faint, themed silhouette (CSS mask
+            // filled with a muted ink) that blends into the card surface.
+            <span
+              aria-hidden
+              className="absolute inset-6 bg-neutral-300 [mask:url(/mealmovelogo.png)_center/contain_no-repeat] [-webkit-mask:url(/mealmovelogo.png)_center/contain_no-repeat]"
+            />
+          ) : (
+            <Image
+              src={img}
+              alt={title}
+              fill
+              sizes="160px"
+              className={cn(
+                "object-cover transition-transform duration-300 group-hover:scale-[1.03]",
+                spent && "opacity-75 saturate-[0.7]"
+              )}
+            />
+          )}
+          <span className="absolute right-2 top-2">{chip}</span>
         </Link>
       </div>
 

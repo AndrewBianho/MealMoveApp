@@ -38,9 +38,16 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${display.variable} ${sans.variable} ${mono.variable}`}
     >
-      <body className="min-h-screen bg-neutral-50 font-sans text-neutral-900 antialiased">
+      <body className="min-h-screen bg-neutral-50 pb-[calc(4.5rem+env(safe-area-inset-bottom))] font-sans text-neutral-900 antialiased md:pb-0">
+        {/* Apply the saved theme before paint to avoid a flash of the wrong one. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('mm.theme')||'light';var d=t==='dark'||(t==='system'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.classList.toggle('dark',d);}catch(e){}})();`,
+          }}
+        />
         <Header />
         {children}
       </body>

@@ -34,7 +34,7 @@ export function OpenNowBadge({ hours }: { hours: RetrievalHours | null }) {
 export function RetrievalHoursDisplay({ hours }: { hours: RetrievalHours | null }) {
   if (!hours) {
     return (
-      <p className="text-xs italic text-neutral-400">Retrieval hours not set yet.</p>
+      <p className="text-xs italic text-neutral-500">Retrieval hours not set yet.</p>
     );
   }
   return (

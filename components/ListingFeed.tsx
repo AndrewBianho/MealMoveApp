@@ -3,9 +3,23 @@
 import { useMemo, useState, useTransition } from "react";
 import { cn } from "./cn";
 import { ListingCard } from "./ListingCard";
+import { EmptyState } from "./EmptyState";
 import { Toast, useToast } from "./Toast";
 import { claimListing } from "@/app/actions";
 import type { Listing, ListingStatus } from "@/lib/types";
+
+// Per-card entrance delay (arbitrary animation-delay utilities), capped so a
+// long list doesn't drift in forever.
+const STAGGER = [
+  "",
+  "[animation-delay:60ms]",
+  "[animation-delay:120ms]",
+  "[animation-delay:180ms]",
+  "[animation-delay:240ms]",
+  "[animation-delay:300ms]",
+  "[animation-delay:360ms]",
+  "[animation-delay:420ms]",
+];
 
 type Filter = "all" | "open" | "claimed" | "in transit" | "delivered";
 
@@ -26,7 +40,7 @@ function SectionHeader({ title, count }: { title: string; count: number }) {
   return (
     <div className="mb-3 flex items-center gap-2">
       <h2 className="text-base font-semibold text-neutral-800">{title}</h2>
-      <span className="font-mono text-xs text-neutral-400">{count}</span>
+      <span className="font-mono text-xs text-neutral-500">{count}</span>
     </div>
   );
 }
@@ -41,15 +55,19 @@ function ListingGrid({
   onClaim?: (id: string) => void;
 }) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {listings.map((l) => (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {listings.map((l, i) => (
         <div
           key={l.id}
           className={cn(
             feature && isClosingSoon(l) && "md:col-span-2 lg:col-span-2"
           )}
         >
-          <ListingCard listing={l} onClaim={onClaim} />
+          <ListingCard
+            listing={l}
+            onClaim={onClaim}
+            className={STAGGER[Math.min(i, STAGGER.length - 1)]}
+          />
         </div>
       ))}
     </div>
@@ -105,14 +123,14 @@ export function ListingFeed({ listings }: { listings: Listing[] }) {
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50",
                 active
                   ? "border-neutral-900 bg-neutral-900 font-medium text-neutral-50"
-                  : "border-neutral-200/60 text-neutral-600 hover:bg-white hover:shadow-card"
+                  : "border-neutral-200/60 text-neutral-600 hover:bg-card hover:shadow-card"
               )}
             >
               {f}
               <span
                 className={cn(
                   "ml-1.5 font-mono text-xs",
-                  active ? "text-neutral-300" : "text-neutral-400"
+                  active ? "text-neutral-300" : "text-neutral-500"
                 )}
               >
                 {counts[f] ?? 0}
@@ -138,14 +156,17 @@ export function ListingFeed({ listings }: { listings: Listing[] }) {
           )}
         </div>
       ) : (
-        <div className="rounded-2xl border border-dashed border-neutral-200 bg-white px-6 py-16 text-center">
-          <p className="text-lg text-neutral-800">
-            No {filter === "all" ? "" : `${filter} `}listings right now
-          </p>
-          <p className="mt-1 font-mono text-xs text-neutral-400">
-            Check back soon — new rescues post throughout the evening.
-          </p>
-        </div>
+        <EmptyState
+          icon={
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7 20c0-4 0-7 5-7" />
+              <path d="M12 13c0-3.5 2.5-6 6-6 0 3.5-2.5 6-6 6Z" />
+              <path d="M12 13c0-3-2-5.5-5-5.5C7 10.5 9 13 12 13Z" />
+            </svg>
+          }
+          title={`No ${filter === "all" ? "" : `${filter} `}listings right now`}
+          hint="Check back soon — new rescues post throughout the evening."
+        />
       )}
 
       <Toast message={message} />

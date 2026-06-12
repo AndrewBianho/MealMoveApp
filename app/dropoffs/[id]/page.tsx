@@ -15,8 +15,8 @@ export default async function DropOffDetailPage({
 
   if (!detail) {
     return (
-      <main className="mx-auto max-w-5xl px-6 py-8">
-        <div className="rounded-xl border border-dashed border-neutral-200 bg-white px-6 py-16 text-center">
+      <main className="mx-auto max-w-[1760px] px-6 py-8">
+        <div className="rounded-xl border border-dashed border-neutral-200 bg-card px-6 py-16 text-center">
           <p className="text-sm text-neutral-600">Drop-off not found.</p>
           <Link
             href="/map"
@@ -36,7 +36,7 @@ export default async function DropOffDetailPage({
   const arrived = listings.filter((l) => l.status === "delivered");
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-[1760px] px-6 py-8">
       <Link
         href="/map"
         className="mb-4 inline-block text-sm text-neutral-600 hover:text-neutral-900"
@@ -49,7 +49,7 @@ export default async function DropOffDetailPage({
         <p className="mt-1 font-mono text-xs text-neutral-600">{dropOff.address}</p>
       </header>
 
-      <section className="mb-8 rounded-xl border border-neutral-200/40 bg-white p-5">
+      <section className="mb-8 rounded-xl border border-neutral-200/40 bg-card p-5">
         <div className="mb-3 flex items-center justify-between gap-2">
           <h2 className="text-lg font-medium">What this location accepts</h2>
           <span
@@ -87,7 +87,7 @@ export default async function DropOffDetailPage({
       <section className="mb-8">
         <h2 className="mb-4 text-lg font-medium">Incoming</h2>
         {incoming.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {incoming.map((l) => (
               <ListingCard key={l.id} listing={l} audience="dropoff" />
             ))}
@@ -100,7 +100,7 @@ export default async function DropOffDetailPage({
       <section>
         <h2 className="mb-4 text-lg font-medium">Arrived</h2>
         {arrived.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {arrived.map((l) => (
               <ListingCard key={l.id} listing={l} audience="dropoff" />
             ))}

@@ -1,13 +1,18 @@
 "use client";
 
 import "mapbox-gl/dist/mapbox-gl.css";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Map as MapboxMap } from "mapbox-gl";
 import type { Listing } from "@/lib/types";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { RAMP } from "@/lib/rampColors";
+import { MAP_STYLES, createModeToggle, createHomeControl, type MapMode } from "@/lib/mapStyles";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+
+// White utensils glyph so each pin reads as "food here" at a glance and stands
+// off the satellite imagery — mirrors the restaurant pin in RescueMap.
+const ICON_LISTING = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7a2 2 0 0 0 2 2 2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1 1 2 2 2h3Zm0 0v7"/></svg>`;
 
 // Same urgency palette as the listing-card strip; hex mirrors the ramp tokens
 // via lib/rampColors (raw-DOM pins can't read Tailwind).
@@ -40,18 +45,22 @@ type Located = Listing & { lat: number; lng: number };
 function popupHtml(l: Located, distanceMi?: number): string {
   const distance =
     distanceMi != null
-      ? `<div style="color:#C06D40;font-family:var(--font-sans),system-ui,sans-serif;font-size:11px;margin-bottom:6px;">${distanceMi.toFixed(1)} mi from you</div>`
+      ? `<div style="color:rgb(var(--clay-800));font-family:var(--font-sans),system-ui,sans-serif;font-size:11px;margin-bottom:6px;">${distanceMi.toFixed(1)} mi from you</div>`
       : "";
   return `<div style="font-family:var(--font-sans),system-ui,sans-serif;">
-      <div style="font-family:var(--font-display),Georgia,serif;font-size:17px;font-weight:600;color:#33342C;">${escapeHtml(l.title)}</div>
-      <div style="color:#6F6F62;font-family:var(--font-sans),system-ui,sans-serif;font-size:11px;margin:2px 0 6px;">${escapeHtml(l.source)} · ~${l.servings} servings</div>
+      <div style="font-family:var(--font-display),Georgia,serif;font-size:17px;font-weight:600;color:rgb(var(--n-900));">${escapeHtml(l.title)}</div>
+      <div style="color:rgb(var(--n-600));font-family:var(--font-sans),system-ui,sans-serif;font-size:11px;margin:2px 0 6px;">${escapeHtml(l.source)} · ~${l.servings} servings</div>
       ${distance}
-      <a href="/listings/${l.id}" style="color:#C06D40;font-size:13px;font-weight:500;text-decoration:none;">View details →</a>
+      <a href="/listings/${l.id}" style="display:inline-block;margin-top:8px;background:${RAMP.rescued600};color:#fff;font-size:14px;font-weight:600;padding:11px 16px;border-radius:9999px;text-decoration:none;">View listing →</a>
     </div>`;
 }
 
 export function ListingsMap({ listings }: { listings: Listing[] }) {
   const ref = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<MapboxMap>();
+  const [mode, setMode] = useState<MapMode>("satellite");
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
 
   useEffect(() => {
     if (!TOKEN || !ref.current) return;
@@ -69,13 +78,43 @@ export function ListingsMap({ listings }: { listings: Listing[] }) {
 
       map = new mapboxgl.Map({
         container: ref.current,
-        style: "mapbox://styles/mapbox/light-v11",
+        style: MAP_STYLES[modeRef.current],
         center: withCoords.length
           ? [withCoords[0].lng, withCoords[0].lat]
           : [-75.34, 40.04],
         zoom: 13,
       });
-      map.addControl(new mapboxgl.NavigationControl(), "top-right");
+      mapRef.current = map;
+
+      // Frame the map to fit all listings (the "good zoom"); used on load and by
+      // the home button.
+      const resetView = () => {
+        if (!map) return;
+        if (withCoords.length > 1) {
+          const bounds = new mapboxgl.LngLatBounds();
+          withCoords.forEach((l) => bounds.extend([l.lng, l.lat]));
+          map.fitBounds(bounds, { padding: 64, maxZoom: 15, bearing: 0, pitch: 0 });
+        } else {
+          map.flyTo({
+            center: withCoords.length ? [withCoords[0].lng, withCoords[0].lat] : [-75.34, 40.04],
+            zoom: 13,
+            bearing: 0,
+            pitch: 0,
+          });
+        }
+      };
+
+      // Compass only — zoom +/- is handled by pinch/scroll; the home button
+      // restores the framed view.
+      map.addControl(
+        new mapboxgl.NavigationControl({ showZoom: false, showCompass: true }),
+        "top-right"
+      );
+      map.addControl(createHomeControl({ onClick: resetView }), "top-right");
+      map.addControl(
+        createModeToggle({ initial: modeRef.current, onChange: setMode }),
+        "top-right"
+      );
 
       // "You are here" — live location with a recenter button.
       const geolocate = new mapboxgl.GeolocateControl({
@@ -87,7 +126,10 @@ export function ListingsMap({ listings }: { listings: Listing[] }) {
 
       const entries = withCoords.map((l) => {
         const el = document.createElement("div");
-        el.style.cssText = `width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.2);background:${urgencyColor(l)};cursor:pointer;`;
+        // A glyph badge with a crisp double-shadow — a dark hairline ring for
+        // edge definition on bright imagery, a soft drop to lift off the map.
+        el.style.cssText = `width:30px;height:30px;border-radius:50%;background:${urgencyColor(l)};border:3px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.18),0 4px 10px rgba(51,52,44,.42);display:grid;place-items:center;cursor:pointer;`;
+        el.innerHTML = ICON_LISTING;
         const popup = new mapboxgl.Popup({ offset: 16, closeButton: false }).setHTML(
           popupHtml(l)
         );
@@ -105,11 +147,7 @@ export function ListingsMap({ listings }: { listings: Listing[] }) {
       });
 
       map.on("load", () => {
-        if (withCoords.length > 1) {
-          const bounds = new mapboxgl.LngLatBounds();
-          withCoords.forEach((l) => bounds.extend([l.lng, l.lat]));
-          map!.fitBounds(bounds, { padding: 64, maxZoom: 15 });
-        }
+        if (withCoords.length > 1) resetView();
         // Auto-locate the volunteer (prompts for permission; harmless if denied).
         geolocate.trigger();
       });
@@ -118,15 +156,28 @@ export function ListingsMap({ listings }: { listings: Listing[] }) {
     return () => {
       cancelled = true;
       map?.remove();
+      mapRef.current = undefined;
     };
   }, [listings]);
 
+  // Swap the base style on mode change. Markers/popups are DOM and persist
+  // across setStyle; the first run is skipped since the map is built with the
+  // initial style already.
+  const styleInit = useRef(false);
+  useEffect(() => {
+    if (!styleInit.current) {
+      styleInit.current = true;
+      return;
+    }
+    mapRef.current?.setStyle(MAP_STYLES[mode]);
+  }, [mode]);
+
   if (!TOKEN) {
     return (
-      <div className="grid h-[60vh] place-items-center rounded-xl border border-dashed border-neutral-200 bg-white text-center">
+      <div className="grid h-[60vh] place-items-center rounded-2xl border border-dashed border-neutral-200 bg-card text-center">
         <div>
           <p className="text-sm text-neutral-600">The map needs a Mapbox token.</p>
-          <p className="mt-1 font-mono text-xs text-neutral-400">
+          <p className="mt-1 font-mono text-xs text-neutral-500">
             Add NEXT_PUBLIC_MAPBOX_TOKEN to Code/.env, then restart the dev server.
           </p>
         </div>
@@ -137,7 +188,7 @@ export function ListingsMap({ listings }: { listings: Listing[] }) {
   return (
     <div
       ref={ref}
-      className="h-[60vh] w-full overflow-hidden rounded-xl border border-neutral-200/40"
+      className="h-[60vh] w-full overflow-hidden rounded-2xl border border-neutral-900/10 shadow-card"
     />
   );
 }

@@ -13,6 +13,7 @@ export async function getMapData(): Promise<{
         listings: {
           where: { status: { in: ["open", "claimed", "in_transit"] } },
           select: {
+            id: true,
             servings: true,
             category: true,
             perishable: true,
@@ -30,13 +31,17 @@ export async function getMapData(): Promise<{
     .filter((r) => r.listings.length > 0)
     .map((r) => {
       // Urgency is about food still up for grabs — only open listings count.
-      const openExpiries = r.listings
-        .filter((l) => l.status === "open")
-        .map((l) => l.expiresAt.getTime());
-      const minutesLeft =
-        openExpiries.length > 0
-          ? Math.round((Math.min(...openExpiries) - now) / 60_000)
-          : undefined;
+      const openListings = r.listings.filter((l) => l.status === "open");
+      const soonestOpen = openListings.reduce<(typeof openListings)[number] | null>(
+        (best, l) => (!best || l.expiresAt < best.expiresAt ? l : best),
+        null
+      );
+      const minutesLeft = soonestOpen
+        ? Math.round((soonestOpen.expiresAt.getTime() - now) / 60_000)
+        : undefined;
+      // Prefer the most-urgent open listing for the popup deep-link; otherwise
+      // any active one so the button always has a target.
+      const listingId = soonestOpen?.id ?? r.listings[0]?.id;
       return {
         id: r.id,
         name: r.name,
@@ -48,6 +53,7 @@ export async function getMapData(): Promise<{
         ) as FoodCategory[],
         perishable: r.listings.some((l) => l.perishable),
         count: r.listings.length,
+        listingId,
         minutesLeft,
       };
     });

@@ -81,7 +81,7 @@ export function RetrievalHoursEditor({
             </span>
             <div className="flex flex-1 flex-wrap items-center gap-2">
               {hours[day].length === 0 && (
-                <span className="py-1.5 font-mono text-xs italic text-neutral-400">
+                <span className="py-1.5 font-mono text-xs italic text-neutral-500">
                   closed
                 </span>
               )}
@@ -91,14 +91,14 @@ export function RetrievalHoursEditor({
                     type="time"
                     value={w.open}
                     onChange={(e) => setTime(day, i, "open", e.target.value)}
-                    className="rounded-md border border-neutral-200/60 bg-white px-2 py-1 font-mono text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-transit-400"
+                    className="rounded-md border border-neutral-200/60 bg-card px-2 py-1 font-mono text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-transit-400"
                   />
                   <span className="text-neutral-400">–</span>
                   <input
                     type="time"
                     value={w.close}
                     onChange={(e) => setTime(day, i, "close", e.target.value)}
-                    className="rounded-md border border-neutral-200/60 bg-white px-2 py-1 font-mono text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-transit-400"
+                    className="rounded-md border border-neutral-200/60 bg-card px-2 py-1 font-mono text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-transit-400"
                   />
                   <button
                     type="button"

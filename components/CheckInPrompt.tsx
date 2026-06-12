@@ -53,7 +53,7 @@ export function CheckInPrompt({
   }
 
   return (
-    <div className="rounded-xl border border-neutral-200/40 bg-white p-5">
+    <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
       <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
         Check-up
       </p>

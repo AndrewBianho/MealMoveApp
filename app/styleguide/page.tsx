@@ -44,7 +44,7 @@ function Section({
 
 export default function StyleGuidePage() {
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-[1760px] px-6 py-8">
       <header>
         <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-600">
           design system · live components
@@ -60,7 +60,7 @@ export default function StyleGuidePage() {
         title="Status badges"
         hint="Mono, uppercase, leading dot, fully round. Fill + text drawn from one ramp."
       >
-        <div className="flex flex-wrap gap-2 rounded-xl border border-neutral-200/40 bg-white p-5">
+        <div className="flex flex-wrap gap-2 rounded-xl border border-neutral-200/40 bg-card p-5">
           {STATUSES.map((s) => (
             <StatusBadge key={s} status={s} />
           ))}
@@ -71,7 +71,7 @@ export default function StyleGuidePage() {
         title="Buttons"
         hint="Primary, secondary, danger, ghost. Focus ring only — no shadows."
       >
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-neutral-200/40 bg-white p-5">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-neutral-200/40 bg-card p-5">
           <Button variant="primary">Claim pickup</Button>
           <Button variant="secondary">View route</Button>
           <Button variant="danger">Report flake</Button>
@@ -162,7 +162,7 @@ export default function StyleGuidePage() {
           title="Reliability meter"
           hint="Non-punitive — a bar and a percentage, never a grade."
         >
-          <div className="space-y-4 rounded-xl border border-neutral-200/40 bg-white p-5">
+          <div className="space-y-4 rounded-xl border border-neutral-200/40 bg-card p-5">
             <ReliabilityMeter name="Marcus L." pct={94} />
             <ReliabilityMeter name="Dana K." pct={68} />
             <ReliabilityMeter name="Sam O." pct={41} />

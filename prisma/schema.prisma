@@ -221,3 +221,19 @@ model Message {
 
   @@index([listingId, createdAt])
 }
+
+// Pending invitation for a new account to join an existing organization.
+// Restaurant invites carry the target restaurantId; drop-off invites leave it
+// null (drop-off admins are chapter-wide). Consumed at sign-up by registerUser.
+model TeamInvite {
+  id           String    @id @default(cuid())
+  email        String // lowercased invitee email
+  role         Role // restaurant | drop_off_admin
+  restaurantId String? // set for restaurant invites; null = chapter-wide drop-off
+  invitedById  String? // inviter user id (scalar — no FK, keeps the migration small)
+  status       String    @default("pending") // pending | accepted | cancelled
+  createdAt    DateTime  @default(now())
+  respondedAt  DateTime?
+
+  @@index([email, status])
+}

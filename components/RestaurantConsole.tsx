@@ -95,8 +95,8 @@ export function RestaurantConsole({
   const labelCls =
     "mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-600";
   const fieldCls =
-    "w-full rounded-md border border-neutral-200/60 bg-white px-3 py-2 text-sm " +
-    "placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 " +
+    "w-full rounded-md border border-neutral-200/60 bg-card px-3 py-2 text-sm " +
+    "placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 " +
     "focus-visible:ring-transit-400 focus-visible:ring-offset-1";
 
   return (
@@ -104,7 +104,7 @@ export function RestaurantConsole({
       {/* Post form */}
       <div className="space-y-4 lg:sticky lg:top-20 lg:self-start">
         {/* Restaurant default photo */}
-        <div className="rounded-xl border border-neutral-200/40 bg-white p-5">
+        <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
           <h2 className="text-lg font-medium">Restaurant photo</h2>
           <p className="mb-4 text-sm text-neutral-600">
             Shown on a card when a listing has no food photo of its own.
@@ -117,7 +117,7 @@ export function RestaurantConsole({
           />
         </div>
 
-        <div className="rounded-xl border border-neutral-200/40 bg-white p-5">
+        <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
           <h2 className="text-lg font-medium">Post surplus</h2>
           <p className="mb-4 text-sm text-neutral-600">Posting from {restaurant}.</p>
 
@@ -233,7 +233,7 @@ export function RestaurantConsole({
               ))}
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-neutral-200 bg-white px-6 py-12 text-center text-sm text-neutral-600">
+            <div className="rounded-xl border border-dashed border-neutral-200 bg-card px-6 py-12 text-center text-sm text-neutral-600">
               Nothing posted yet. Add surplus from the form to the left.
             </div>
           )}

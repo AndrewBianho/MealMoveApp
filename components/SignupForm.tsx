@@ -6,9 +6,15 @@ import { Button } from "./Button";
 import { PasswordField } from "./PasswordField";
 import { cn } from "./cn";
 import { passwordValid } from "@/lib/password";
-import { registerUser } from "@/app/actions";
+import { registerUser, findPendingInvite } from "@/app/actions";
 
-type Role = "volunteer" | "restaurant";
+type Role = "volunteer" | "restaurant" | "drop_off_admin";
+
+const ROLE_LABELS: Record<Role, string> = {
+  volunteer: "Volunteer",
+  restaurant: "Restaurant",
+  drop_off_admin: "Drop-off",
+};
 
 export function SignupForm() {
   const [role, setRole] = useState<Role>("volunteer");
@@ -18,17 +24,40 @@ export function SignupForm() {
   const [password, setPassword] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
   const [restaurantAddress, setRestaurantAddress] = useState("");
+  const [dropOffName, setDropOffName] = useState("");
+  const [dropOffAddress, setDropOffAddress] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // A pending invite for the typed email, if any — joining an existing org takes
+  // over the form (no role picker, no new-org fields).
+  const [invite, setInvite] = useState<{
+    orgName: string;
+    role: Role;
+  } | null>(null);
+
+  async function onEmailBlur() {
+    const e = email.trim();
+    if (!e) {
+      setInvite(null);
+      return;
+    }
+    setInvite(await findPendingInvite(e));
+  }
 
   // Every field must be filled and valid before we try to register. Rather than
   // disable the button, we let the user click and tell them what's missing.
+  // When joining via invite, the role picker and new-org fields don't apply.
   const incomplete =
     !name.trim() ||
     !email.trim() ||
     phone.replace(/\D/g, "").length !== 10 ||
     !passwordValid(password) ||
-    (role === "restaurant" && (!restaurantName.trim() || !restaurantAddress.trim()));
+    (!invite &&
+      role === "restaurant" &&
+      (!restaurantName.trim() || !restaurantAddress.trim())) ||
+    (!invite &&
+      role === "drop_off_admin" &&
+      (!dropOffName.trim() || !dropOffAddress.trim()));
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,6 +78,8 @@ export function SignupForm() {
       role,
       restaurantName: role === "restaurant" ? restaurantName : undefined,
       restaurantAddress: role === "restaurant" ? restaurantAddress : undefined,
+      dropOffName: role === "drop_off_admin" ? dropOffName : undefined,
+      dropOffAddress: role === "drop_off_admin" ? dropOffAddress : undefined,
     });
 
     if (!res.ok) {
@@ -72,34 +103,45 @@ export function SignupForm() {
   }
 
   const fieldCls =
-    "w-full rounded-md border border-neutral-200/60 bg-white px-3 py-2 text-sm " +
-    "placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 " +
+    "w-full rounded-md border border-neutral-200/60 bg-card px-3 py-2 text-sm " +
+    "placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 " +
     "focus-visible:ring-transit-400 focus-visible:ring-offset-1";
   const labelCls =
     "mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-600";
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div>
-        <span className={labelCls}>I am a</span>
-        <div className="flex rounded-md border border-neutral-200/60 p-1">
-          {(["volunteer", "restaurant"] as Role[]).map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => setRole(r)}
-              className={cn(
-                "flex-1 rounded px-3 py-1.5 text-sm capitalize transition-colors",
-                role === r
-                  ? "bg-neutral-900 font-medium text-neutral-50"
-                  : "text-neutral-600 hover:text-neutral-900"
-              )}
-            >
-              {r}
-            </button>
-          ))}
+      {invite ? (
+        <div className="rounded-md bg-rescued-50 px-4 py-3 text-sm text-rescued-800">
+          You&apos;ve been invited to join{" "}
+          <span className="font-medium">{invite.orgName}</span>{" "}
+          {invite.role === "restaurant"
+            ? "as a restaurant teammate"
+            : "as a drop-off admin"}
+          . Creating your account adds you to the team.
         </div>
-      </div>
+      ) : (
+        <div>
+          <span className={labelCls}>I am a</span>
+          <div className="flex rounded-md border border-neutral-200/60 p-1">
+            {(["volunteer", "restaurant", "drop_off_admin"] as Role[]).map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setRole(r)}
+                className={cn(
+                  "flex-1 rounded px-3 py-1.5 text-sm transition-colors",
+                  role === r
+                    ? "bg-neutral-900 font-medium text-neutral-50"
+                    : "text-neutral-600 hover:text-neutral-900"
+                )}
+              >
+                {ROLE_LABELS[r]}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div>
         <label className={labelCls} htmlFor="name">
@@ -134,7 +176,7 @@ export function SignupForm() {
         </p>
       </div>
 
-      {role === "restaurant" && (
+      {!invite && role === "restaurant" && (
         <>
           <div>
             <label className={labelCls} htmlFor="rname">
@@ -163,6 +205,39 @@ export function SignupForm() {
         </>
       )}
 
+      {!invite && role === "drop_off_admin" && (
+        <>
+          <div>
+            <label className={labelCls} htmlFor="dname">
+              Drop-off location name
+            </label>
+            <input
+              id="dname"
+              className={fieldCls}
+              placeholder="Campus Center pantry"
+              value={dropOffName}
+              onChange={(e) => setDropOffName(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="daddr">
+              Address
+            </label>
+            <input
+              id="daddr"
+              className={fieldCls}
+              placeholder="123 Main St"
+              value={dropOffAddress}
+              onChange={(e) => setDropOffAddress(e.target.value)}
+            />
+            <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-neutral-500">
+              Your location starts open to all food types — you can refine what it
+              accepts later.
+            </p>
+          </div>
+        </>
+      )}
+
       <div>
         <label className={labelCls} htmlFor="email">
           Email
@@ -175,6 +250,7 @@ export function SignupForm() {
           placeholder="you@campus.edu"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          onBlur={onEmailBlur}
         />
       </div>
 

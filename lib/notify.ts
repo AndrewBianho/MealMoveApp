@@ -1,4 +1,23 @@
 import { CHECK_IN_MARKS } from "./checkin-marks";
+import type { PrismaClient } from "@prisma/client";
+
+/**
+ * Every account that shares a restaurant org. Multiple users can belong to one
+ * restaurant (`User.restaurantId`), so any restaurant-facing push must fan out
+ * to all of them — the seam below should target this whole list, not one user,
+ * so notifications stay synced across teammates. (Drop-off admins are
+ * chapter-wide, so `sendDropOffPickupNotice` already reaches every admin.)
+ */
+export async function restaurantMemberIds(
+  db: Pick<PrismaClient, "user">,
+  restaurantId: string
+): Promise<string[]> {
+  const members = await db.user.findMany({
+    where: { restaurantId },
+    select: { id: true },
+  });
+  return members.map((m) => m.id);
+}
 
 export interface CheckInPush {
   pickupId: string;

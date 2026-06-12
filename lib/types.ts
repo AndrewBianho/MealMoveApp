@@ -49,6 +49,9 @@ export interface MapRestaurant {
   perishable: boolean;
   /** Number of active listings. */
   count: number;
+  /** Soonest-expiring open listing (else any active one) — lets a map popup
+   * deep-link straight to a listing detail page. */
+  listingId?: string;
   /** Minutes until the soonest-expiring OPEN listing; undefined when none are
    * open (all claimed/in transit). Drives the pin's urgency color on the map. */
   minutesLeft?: number;

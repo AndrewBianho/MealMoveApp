@@ -5,6 +5,7 @@ import type { Config } from "tailwindcss";
 // components re-skin from these tokens; the values are an earthy, soft set
 // (sage / honey / tomato / plum on a cream paper surface).
 const config: Config = {
+  darkMode: "class",
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -16,62 +17,74 @@ const config: Config = {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"], // Nunito Sans
         mono: ["var(--font-mono)", "monospace"], // JetBrains Mono
       },
+      // All color tokens resolve to CSS variables (RGB channels) defined in
+      // globals.css, so the whole palette re-skins per theme: :root = Arctic
+      // Blue (light), .dark = Deep Forest. Channel form keeps `/opacity`
+      // utilities working. Status hues stay meaningful in both themes.
       colors: {
-        // sage green — rescued / success / open
         rescued: {
-          50: "#EEF3E9",
-          100: "#D5E2C8",
-          200: "#B3C9A0",
-          400: "#7F9C6F",
-          600: "#5F7E50",
-          800: "#34452A",
+          50: "rgb(var(--rescued-50) / <alpha-value>)",
+          100: "rgb(var(--rescued-100) / <alpha-value>)",
+          200: "rgb(var(--rescued-200) / <alpha-value>)",
+          400: "rgb(var(--rescued-400) / <alpha-value>)",
+          600: "rgb(var(--rescued-600) / <alpha-value>)",
+          800: "rgb(var(--rescued-800) / <alpha-value>)",
         },
-        // honey amber — claimed / in-flight / urgent
         urgent: {
-          50: "#FBF1DC",
-          100: "#F6DFA9",
-          200: "#EFC877",
-          400: "#E7B454",
-          600: "#B5862C",
-          800: "#6E4F12",
+          50: "rgb(var(--urgent-50) / <alpha-value>)",
+          100: "rgb(var(--urgent-100) / <alpha-value>)",
+          200: "rgb(var(--urgent-200) / <alpha-value>)",
+          400: "rgb(var(--urgent-400) / <alpha-value>)",
+          600: "rgb(var(--urgent-600) / <alpha-value>)",
+          800: "rgb(var(--urgent-800) / <alpha-value>)",
         },
-        // tomato — failed / flake / expired
         failed: {
-          50: "#FBE8E2",
-          100: "#F3C3B6",
-          200: "#E89C89",
-          400: "#D4654F",
-          600: "#A8412E",
-          800: "#642318",
+          50: "rgb(var(--failed-50) / <alpha-value>)",
+          100: "rgb(var(--failed-100) / <alpha-value>)",
+          200: "rgb(var(--failed-200) / <alpha-value>)",
+          400: "rgb(var(--failed-400) / <alpha-value>)",
+          600: "rgb(var(--failed-600) / <alpha-value>)",
+          800: "rgb(var(--failed-800) / <alpha-value>)",
         },
-        // plum — in-transit
         transit: {
-          50: "#F2ECF5",
-          100: "#DCCBE6",
-          200: "#C0A6D0",
-          400: "#9A7FB0",
-          600: "#6E5684",
-          800: "#3E2B4E",
+          50: "rgb(var(--transit-50) / <alpha-value>)",
+          100: "rgb(var(--transit-100) / <alpha-value>)",
+          200: "rgb(var(--transit-200) / <alpha-value>)",
+          400: "rgb(var(--transit-400) / <alpha-value>)",
+          600: "rgb(var(--transit-600) / <alpha-value>)",
+          800: "rgb(var(--transit-800) / <alpha-value>)",
         },
-        // warm cream paper & soft ink — neutral / surfaces / text
+        // Surfaces / text / borders. The scale flips direction in .dark (50 is
+        // the app background, 900 the primary text, in both themes).
         neutral: {
-          50: "#F7F3EA",
-          100: "#EFE8DA",
-          200: "#DED4C0",
-          400: "#A89E8B",
-          600: "#6F6F62",
-          800: "#44423A",
-          900: "#33342C",
+          50: "rgb(var(--n-50) / <alpha-value>)",
+          100: "rgb(var(--n-100) / <alpha-value>)",
+          200: "rgb(var(--n-200) / <alpha-value>)",
+          300: "rgb(var(--n-300) / <alpha-value>)",
+          400: "rgb(var(--n-400) / <alpha-value>)",
+          500: "rgb(var(--n-500) / <alpha-value>)",
+          600: "rgb(var(--n-600) / <alpha-value>)",
+          700: "rgb(var(--n-700) / <alpha-value>)",
+          800: "rgb(var(--n-800) / <alpha-value>)",
+          900: "rgb(var(--n-900) / <alpha-value>)",
         },
-        // clay — a warm secondary accent (links, route arrows)
         clay: {
-          50: "#FAEDE3",
-          100: "#F0CDB3",
-          200: "#E3A87F",
-          400: "#D98A5F",
-          600: "#C06D40",
-          800: "#7A3F20",
+          50: "rgb(var(--clay-50) / <alpha-value>)",
+          100: "rgb(var(--clay-100) / <alpha-value>)",
+          200: "rgb(var(--clay-200) / <alpha-value>)",
+          400: "rgb(var(--clay-400) / <alpha-value>)",
+          600: "rgb(var(--clay-600) / <alpha-value>)",
+          800: "rgb(var(--clay-800) / <alpha-value>)",
         },
+        // Wayfinding only — the active map route (maps blue) and its muted
+        // alternatives. Not a status color; used solely by RescueMap's route
+        // lines and the route-picker panel. Raw-DOM hex lives in rampColors.
+        route: {
+          DEFAULT: "rgb(var(--route) / <alpha-value>)",
+          alt: "rgb(var(--route-alt) / <alpha-value>)",
+        },
+        // Raised card surface — white in light, lifted charcoal in dark.
+        card: "rgb(var(--card) / <alpha-value>)",
       },
       borderRadius: {
         md: "14px",
@@ -81,19 +94,58 @@ const config: Config = {
         "3xl": "34px",
       },
       boxShadow: {
-        // soft, warm, diffuse elevation — gentle on the cream surface
-        card: "0 14px 34px -20px rgba(80,70,40,0.45)",
-        lift: "0 22px 48px -22px rgba(80,70,40,0.55)",
-        glow: "0 10px 22px -12px rgba(95,126,80,0.9)",
+        // Layered, cool-neutral elevation: a tight contact shadow + a soft
+        // diffuse one for a premium, tactile depth on the themed surfaces.
+        card: "0 1px 2px -1px rgba(18,26,44,0.12), 0 16px 36px -22px rgba(18,26,44,0.32)",
+        lift: "0 2px 6px -2px rgba(18,26,44,0.16), 0 26px 52px -22px rgba(18,26,44,0.42)",
+        glow: "0 10px 24px -12px rgba(95,126,80,0.85)",
       },
       keyframes: {
         "fade-up": {
           from: { opacity: "0", transform: "translateY(12px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        // Toast keeps the -50% horizontal centering throughout so it doesn't
+        // jump when the animation's transform takes over from the utility class.
+        "toast-in": {
+          from: { opacity: "0", transform: "translate(-50%, 10px)" },
+          to: { opacity: "1", transform: "translate(-50%, 0)" },
+        },
+        "scale-in": {
+          from: { opacity: "0", transform: "scale(0.96)" },
+          to: { opacity: "1", transform: "scale(1)" },
+        },
+        "fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },
+        "slide-down": {
+          from: { opacity: "0", transform: "translateY(-6px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        // Celebration leaves: drift down with a gentle sway and fade out.
+        // Decorative only (RescueCelebration), gated behind motion-safe.
+        "leaf-fall": {
+          "0%": { opacity: "0", transform: "translate(0, -10vh) rotate(0deg)" },
+          "8%": { opacity: "1" },
+          "50%": { transform: "translate(2.5rem, 45vh) rotate(150deg)" },
+          "85%": { opacity: "1" },
+          "100%": { opacity: "0", transform: "translate(-1rem, 105vh) rotate(300deg)" },
+        },
       },
       animation: {
+        // ease-out-quint / ease-out for confident, calm deceleration.
         "fade-up": "fade-up 0.55s cubic-bezier(0.2,0.8,0.2,1) both",
+        "toast-in": "toast-in 0.22s cubic-bezier(0.22,1,0.36,1) both",
+        "scale-in": "scale-in 0.18s cubic-bezier(0.22,1,0.36,1) both",
+        "fade-in": "fade-in 0.18s ease-out both",
+        "slide-down": "slide-down 0.2s cubic-bezier(0.22,1,0.36,1) both",
+        "leaf-fall": "leaf-fall 6s ease-in both",
+      },
+      // Semantic layering scale — sticky header < dropdown/menu < modal overlay
+      // < toast (toasts must surface above an open modal).
+      zIndex: {
+        sticky: "10",
+        dropdown: "20",
+        modal: "50",
+        toast: "60",
       },
     },
   },

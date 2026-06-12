@@ -16,8 +16,8 @@ export default async function RestaurantDetailPage({
 
   if (!detail) {
     return (
-      <main className="mx-auto max-w-5xl px-6 py-8">
-        <div className="rounded-xl border border-dashed border-neutral-200 bg-white px-6 py-16 text-center">
+      <main className="mx-auto max-w-[1760px] px-6 py-8">
+        <div className="rounded-xl border border-dashed border-neutral-200 bg-card px-6 py-16 text-center">
           <p className="text-sm text-neutral-600">Restaurant not found.</p>
           <Link
             href="/map"
@@ -56,7 +56,7 @@ export default async function RestaurantDetailPage({
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-[1760px] px-6 py-8">
       <Link
         href="/map"
         className="mb-4 inline-block text-sm text-neutral-600 hover:text-neutral-900"
@@ -89,7 +89,7 @@ export default async function RestaurantDetailPage({
       <section className="mb-8">
         <h2 className="mb-4 text-lg font-medium">On offer now</h2>
         {active.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {active.map((l) => (
               <ListingCard key={l.id} listing={l} />
             ))}
@@ -102,7 +102,7 @@ export default async function RestaurantDetailPage({
       <section>
         <h2 className="mb-4 text-lg font-medium">History</h2>
         {past.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {past.map((l) => (
               <ListingCard key={l.id} listing={l} />
             ))}

@@ -11,7 +11,7 @@ export default async function ImpactPage() {
   ]);
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-[1760px] px-6 py-8">
       <header className="mb-6">
         <h1 className="text-[32px] font-medium leading-tight">Chapter impact</h1>
       </header>
@@ -29,11 +29,11 @@ export default async function ImpactPage() {
           not who to shame.
         </p>
         {volunteers.length > 0 ? (
-          <div className="max-w-xl space-y-4 rounded-xl border border-neutral-200/40 bg-white p-5">
+          <div className="max-w-xl space-y-4 rounded-xl border border-neutral-200/40 bg-card p-5">
             {volunteers.map((v) => (
               <div key={v.id}>
                 <ReliabilityMeter name={v.name} pct={v.reliability} />
-                <p className="mt-1 font-mono text-[10px] uppercase tracking-wide text-neutral-400">
+                <p className="mt-1 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
                   {v.pickups} {v.pickups === 1 ? "pickup" : "pickups"}
                 </p>
               </div>

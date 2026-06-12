@@ -23,6 +23,7 @@ import {
   cancelInviteFor,
 } from "@/lib/buddies";
 import { validateRetrievalHours } from "@/lib/hours";
+import { getVolunteerImpact } from "@/lib/stats";
 
 const HOLD_MINUTES = 15;
 
@@ -37,9 +38,11 @@ export async function registerUser(input: {
   email: string;
   phone: string;
   password: string;
-  role: "volunteer" | "restaurant";
+  role: "volunteer" | "restaurant" | "drop_off_admin";
   restaurantName?: string;
   restaurantAddress?: string;
+  dropOffName?: string;
+  dropOffAddress?: string;
 }): Promise<SignUpResult> {
   // Throttle sign-ups per IP — registration runs bcrypt, so it's a cheap DoS
   // and spam vector if left open. Fails open if the limiter is unavailable.
@@ -64,8 +67,57 @@ export async function registerUser(input: {
   if (!passwordValid(password)) {
     return { ok: false, error: "Password must be at least 8 characters." };
   }
+
+  // If this email was invited to an existing organization, the invite governs
+  // the account: join the existing org instead of creating a new one, and ignore
+  // any client-sent role / new-org fields (defense in depth).
+  const invite = await prisma.teamInvite.findFirst({
+    where: { email, status: "pending" },
+    orderBy: { createdAt: "desc" },
+  });
+  if (invite) {
+    if (invite.role === "restaurant") {
+      const restaurant = invite.restaurantId
+        ? await prisma.restaurant.findUnique({ where: { id: invite.restaurantId } })
+        : null;
+      if (!restaurant) {
+        return { ok: false, error: "That invitation is no longer valid." };
+      }
+    }
+    const passwordHash = await bcrypt.hash(password, 10);
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.user.create({
+          data: {
+            name,
+            email,
+            phone,
+            passwordHash,
+            role: invite.role,
+            restaurantId: invite.role === "restaurant" ? invite.restaurantId : null,
+          },
+        });
+        await tx.teamInvite.update({
+          where: { id: invite.id },
+          data: { status: "accepted", respondedAt: new Date() },
+        });
+      });
+      await resetLimit(`register:${ip}`);
+      return { ok: true };
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+        return { ok: false, error: "An account with that email already exists." };
+      }
+      return { ok: false, error: "Something went wrong. Please try again." };
+    }
+  }
+
   // Guard the role server-side — never trust the client to send a safe value.
-  if (input.role !== "volunteer" && input.role !== "restaurant") {
+  if (
+    input.role !== "volunteer" &&
+    input.role !== "restaurant" &&
+    input.role !== "drop_off_admin"
+  ) {
     return { ok: false, error: "Invalid account type." };
   }
   if (input.role === "restaurant" && !input.restaurantName?.trim()) {
@@ -73,6 +125,12 @@ export async function registerUser(input: {
   }
   if (input.role === "restaurant" && !input.restaurantAddress?.trim()) {
     return { ok: false, error: "Please enter your restaurant's address." };
+  }
+  if (input.role === "drop_off_admin" && !input.dropOffName?.trim()) {
+    return { ok: false, error: "Please enter the drop-off location's name." };
+  }
+  if (input.role === "drop_off_admin" && !input.dropOffAddress?.trim()) {
+    return { ok: false, error: "Please enter the drop-off location's address." };
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
@@ -96,6 +154,35 @@ export async function registerUser(input: {
           data: { name, email, phone, passwordHash, role: "restaurant", restaurantId: restaurant.id },
         });
       });
+    } else if (input.role === "drop_off_admin") {
+      const address = input.dropOffAddress!.trim();
+      // Geocode so the new drop-off lands a real pin; fall back to campus center.
+      const geo = await geocodeAddress(address);
+      // drop_off_admins manage every location (no per-user link, unlike
+      // restaurants), so we create the location and a role account; the new
+      // location is immediately visible on the drop-off console and the map.
+      await prisma.$transaction(async (tx) => {
+        await tx.dropOff.create({
+          data: {
+            name: input.dropOffName!.trim(),
+            address,
+            lat: geo?.lat ?? 40.04,
+            lng: geo?.lng ?? -75.34,
+            // Accept everything by default; an admin can narrow it later.
+            acceptedCategories: [
+              "prepared",
+              "produce",
+              "bakery",
+              "packaged",
+              "dairy",
+              "beverages",
+            ],
+          },
+        });
+        await tx.user.create({
+          data: { name, email, phone, passwordHash, role: "drop_off_admin" },
+        });
+      });
     } else {
       await prisma.user.create({
         data: { name, email, phone, passwordHash, role: "volunteer" },
@@ -109,6 +196,131 @@ export async function registerUser(input: {
     }
     return { ok: false, error: "Something went wrong. Please try again." };
   }
+}
+
+// ---- Team invites: multiple accounts per organization --------------------
+
+/**
+ * Invite a teammate (by email) to the caller's organization. Restaurant members
+ * invite into their own restaurant; drop-off admins invite chapter-wide (they
+ * aren't tied to a specific DropOff). The invite is consumed when the invitee
+ * signs up with that email (see registerUser).
+ */
+export async function inviteTeammate(emailInput: string): Promise<SignUpResult> {
+  const session = await auth();
+  const role = session?.user?.role;
+  const userId = session?.user?.id;
+  if (!userId) return { ok: false, error: "Not authenticated." };
+  if (role !== "restaurant" && role !== "drop_off_admin" && role !== "org_admin") {
+    return {
+      ok: false,
+      error: "Only restaurant and drop-off accounts can invite teammates.",
+    };
+  }
+
+  const email = (emailInput ?? "").trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return { ok: false, error: "Please enter a valid email address." };
+  }
+
+  // Resolve the org + invite role from the caller, never from the client.
+  let inviteRole: "restaurant" | "drop_off_admin";
+  let restaurantId: string | null;
+  if (role === "drop_off_admin") {
+    inviteRole = "drop_off_admin";
+    restaurantId = null;
+  } else {
+    const me = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { restaurantId: true },
+    });
+    if (!me?.restaurantId) {
+      return { ok: false, error: "Your account isn't linked to a restaurant." };
+    }
+    inviteRole = "restaurant";
+    restaurantId = me.restaurantId;
+  }
+
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+  if (existing) {
+    return { ok: false, error: "That email already has an account." };
+  }
+  const dupe = await prisma.teamInvite.findFirst({
+    where: { email, status: "pending", role: inviteRole, restaurantId },
+    select: { id: true },
+  });
+  if (dupe) return { ok: false, error: "That email already has a pending invite." };
+
+  await prisma.teamInvite.create({
+    data: { email, role: inviteRole, restaurantId, invitedById: userId },
+  });
+  revalidatePath(role === "drop_off_admin" ? "/dropoff" : "/restaurant");
+  return { ok: true };
+}
+
+/** Cancel a pending invite — only a member of the same org may cancel it. */
+export async function cancelTeammateInvite(
+  inviteId: string
+): Promise<SignUpResult> {
+  const session = await auth();
+  const role = session?.user?.role;
+  const userId = session?.user?.id;
+  if (!userId) return { ok: false, error: "Not authenticated." };
+
+  const invite = await prisma.teamInvite.findUnique({ where: { id: inviteId } });
+  if (!invite || invite.status !== "pending") {
+    return { ok: false, error: "That invite is no longer pending." };
+  }
+
+  let authorized = role === "org_admin";
+  if (!authorized && role === "drop_off_admin" && invite.role === "drop_off_admin") {
+    authorized = true;
+  }
+  if (!authorized && role === "restaurant" && invite.role === "restaurant") {
+    const me = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { restaurantId: true },
+    });
+    authorized = !!me?.restaurantId && me.restaurantId === invite.restaurantId;
+  }
+  if (!authorized) return { ok: false, error: "You can't cancel that invite." };
+
+  await prisma.teamInvite.update({
+    where: { id: inviteId },
+    data: { status: "cancelled", respondedAt: new Date() },
+  });
+  revalidatePath(invite.role === "drop_off_admin" ? "/dropoff" : "/restaurant");
+  return { ok: true };
+}
+
+/**
+ * Look up a pending invite for an email — used by the sign-up form to show a
+ * "you've been invited" banner and skip the new-org fields. Minimal info only.
+ */
+export async function findPendingInvite(
+  emailInput: string
+): Promise<{ orgName: string; role: "restaurant" | "drop_off_admin" } | null> {
+  const email = (emailInput ?? "").trim().toLowerCase();
+  if (!email) return null;
+  const invite = await prisma.teamInvite.findFirst({
+    where: { email, status: "pending" },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!invite) return null;
+  if (invite.role === "restaurant") {
+    const r = invite.restaurantId
+      ? await prisma.restaurant.findUnique({
+          where: { id: invite.restaurantId },
+          select: { name: true },
+        })
+      : null;
+    if (!r) return null;
+    return { orgName: r.name, role: "restaurant" };
+  }
+  return { orgName: "the drop-off team", role: "drop_off_admin" };
 }
 
 // Password reset is single-use and time-boxed. We store only the sha256 of the
@@ -287,11 +499,16 @@ export async function startDelivery(listingId: string, photoUrl: string) {
   refreshViews(listingId);
 }
 
-/** Capture the delivery photo and complete in_transit → delivered. */
+/**
+ * Capture the delivery photo and complete in_transit → delivered. Returns the
+ * volunteer's fresh lifetime impact so the client can celebrate the rescue
+ * with up-to-date totals (positive reinforcement against flaking).
+ */
 export async function markDelivered(listingId: string, photoUrl: string) {
   const userId = await currentUserId();
   await markDeliveredWithPhotoFor(prisma, userId, listingId, photoUrl);
   refreshViews(listingId);
+  return getVolunteerImpact(userId);
 }
 
 /** Volunteers the caller can invite to buddy this pickup. */

@@ -35,7 +35,7 @@ export function DropOffNotesEditor({
       <div className="mt-1">
         <p className="text-xs text-neutral-600">
           {notes || (
-            <span className="italic text-neutral-400">No special requests set.</span>
+            <span className="italic text-neutral-500">No special requests set.</span>
           )}
         </p>
         <button
@@ -55,7 +55,7 @@ export function DropOffNotesEditor({
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         placeholder="e.g. no nuts · drop at side entrance · before 7pm"
-        className="w-full rounded-md border border-neutral-200/60 bg-white px-3 py-2 text-sm placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-transit-400"
+        className="w-full rounded-md border border-neutral-200/60 bg-card px-3 py-2 text-sm placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-transit-400"
       />
       <div className="mt-2 flex gap-2">
         <Button variant="primary" onClick={save} disabled={isPending}>

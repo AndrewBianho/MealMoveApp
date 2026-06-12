@@ -46,7 +46,7 @@ export function RoleSelect({
         value={value}
         onChange={onChange}
         disabled={isPending}
-        className="rounded-md border border-neutral-200/60 bg-white px-2.5 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-transit-400"
+        className="rounded-md border border-neutral-200/60 bg-card px-2.5 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-transit-400"
       >
         {OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>

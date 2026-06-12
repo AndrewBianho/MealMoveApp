@@ -56,7 +56,7 @@ export default async function ListingDetailPage({
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-[1760px] px-6 py-8">
       <ListingDetail
         listing={listing}
         viewerId={viewerId}

@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Avatar } from "@/components/Avatar";
 import { MetricCard } from "@/components/MetricCard";
-import { ReliabilityMeter } from "@/components/ReliabilityMeter";
+import { ReliabilityRing } from "@/components/ReliabilityRing";
 import { getVolunteerImpact } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +28,7 @@ export default async function ProfilePage() {
   }).format(user.createdAt);
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-[1760px] px-6 py-8">
       <header className="mb-8 flex items-center gap-4">
         <Avatar name={user.name} size="lg" className="shadow-card" />
         <div>
@@ -65,11 +65,11 @@ export default async function ProfilePage() {
         </div>
       </section>
 
-      <section className="mb-8 max-w-sm rounded-2xl bg-white p-5 shadow-card">
-        <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+      <section className="mb-8 grid max-w-sm place-items-center rounded-2xl bg-card p-6 shadow-card">
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
           your completion rate · lifetime
         </p>
-        <ReliabilityMeter name="On-time completion" pct={impact.completionRate} />
+        <ReliabilityRing pct={impact.completionRate} label="on time" />
       </section>
 
       {!hasActivity && (
@@ -77,7 +77,7 @@ export default async function ProfilePage() {
           Your first rescue is waiting —{" "}
           <Link
             href="/"
-            className="font-semibold text-clay-600 underline-offset-2 hover:underline"
+            className="font-semibold text-clay-800 underline-offset-2 hover:underline"
           >
             claim a pickup
           </Link>{" "}

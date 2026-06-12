@@ -13,4 +13,6 @@ export const RAMP = {
   clay800: "#7A3F20", // clay (deep) — final destination
   neutral400: "#A89E8B", // warm grey — spent / all claimed
   ink: "#33342C", // soft ink — "my location"
+  route: "#2563B0", // maps blue — the active/selected route line
+  routeAlt: "#9A9385", // warm grey — alternative (unselected) routes
 } as const;

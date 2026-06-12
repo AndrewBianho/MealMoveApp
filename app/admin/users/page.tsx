@@ -23,7 +23,7 @@ export default async function AdminUsersPage() {
   });
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-[1760px] px-6 py-8">
       <header className="mb-6">
         <h1 className="text-[32px] font-medium leading-tight">Members</h1>
         <p className="mt-1 text-sm text-neutral-600">
@@ -32,7 +32,7 @@ export default async function AdminUsersPage() {
         </p>
       </header>
 
-      <div className="overflow-hidden rounded-xl border border-neutral-200/40 bg-white">
+      <div className="overflow-hidden rounded-xl border border-neutral-200/40 bg-card">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-neutral-200/40 text-left">
@@ -56,7 +56,7 @@ export default async function AdminUsersPage() {
                   <td className="px-4 py-3">
                     {u.name}
                     {isSelf && (
-                      <span className="ml-1.5 font-mono text-[10px] uppercase tracking-wide text-neutral-400">
+                      <span className="ml-1.5 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
                         you
                       </span>
                     )}
