@@ -167,6 +167,13 @@ body {
   font-size: 18px;
   padding-right: 6px;
 }
+/* The popup's "Claim pickup" button is raw DOM (inline styles can't carry a
+   :focus state), so brand its keyboard focus ring here — sage, not the UA blue,
+   to match the rest of the system. */
+.mapboxgl-popup-content button[data-claim]:focus-visible {
+  outline: 2px solid rgb(var(--rescued-600));
+  outline-offset: 2px;
+}
 /* Floating-card look: drop the little tip triangle so the glass reads clean. */
 .mapboxgl-popup-tip {
   display: none;

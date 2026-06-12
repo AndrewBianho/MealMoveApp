@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { ListingCard } from "@/components/ListingCard";
+import { DetailHero } from "@/components/DetailHero";
+import { SectionHeading } from "@/components/SectionHeading";
+import { DetailEmpty, DetailNotFound } from "@/components/DetailEmpty";
 import { getRestaurantDetail } from "@/lib/listings";
 import { getDropOffs } from "@/lib/map";
 import { recommendDropOff } from "@/lib/recommend";
@@ -15,19 +18,7 @@ export default async function RestaurantDetailPage({
   const detail = await getRestaurantDetail(params.id);
 
   if (!detail) {
-    return (
-      <main className="mx-auto max-w-[1760px] px-6 py-8">
-        <div className="rounded-xl border border-dashed border-neutral-200 bg-card px-6 py-16 text-center">
-          <p className="text-sm text-neutral-600">Restaurant not found.</p>
-          <Link
-            href="/map"
-            className="mt-4 inline-block text-sm font-medium text-rescued-600 hover:underline"
-          >
-            ← Back to the map
-          </Link>
-        </div>
-      </main>
-    );
+    return <DetailNotFound label="Restaurant not found." />;
   }
 
   const { restaurant, listings } = detail;
@@ -37,6 +28,7 @@ export default async function RestaurantDetailPage({
   const past = listings.filter((l) =>
     ["delivered", "expired", "failed"].includes(l.status)
   );
+  const servingsOnOffer = active.reduce((s, l) => s + l.servings, 0);
 
   let recommendation = null;
   if (active.length > 0) {
@@ -45,7 +37,7 @@ export default async function RestaurantDetailPage({
       name: restaurant.name,
       lat: restaurant.lat,
       lng: restaurant.lng,
-      servings: active.reduce((s, l) => s + l.servings, 0),
+      servings: servingsOnOffer,
       categories: Array.from(
         new Set(active.map((l) => l.category).filter((c): c is FoodCategory => !!c))
       ),
@@ -57,37 +49,40 @@ export default async function RestaurantDetailPage({
 
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">
-      <Link
-        href="/map"
-        className="mb-4 inline-block text-sm text-neutral-600 hover:text-neutral-900"
-      >
-        ← Map
-      </Link>
-
-      <header className="mb-6">
-        <h1 className="text-[32px] font-medium leading-tight">{restaurant.name}</h1>
-        <p className="mt-1 font-mono text-xs text-neutral-600">{restaurant.address}</p>
-      </header>
+      <DetailHero
+        backHref="/map"
+        backLabel="Map"
+        eyebrow="restaurant"
+        title={restaurant.name}
+        address={restaurant.address}
+        stats={[
+          { label: "on offer now", value: active.length },
+          { label: "servings", value: servingsOnOffer > 0 ? `~${servingsOnOffer}` : "0" },
+          { label: "past rescues", value: past.length },
+        ]}
+      />
 
       {recommendation && (
-        <div className="mb-8 rounded-xl border border-rescued-200 bg-rescued-50 p-4">
+        <div className="mt-6 rounded-2xl border border-rescued-200 bg-rescued-50 p-5">
           <p className="font-mono text-[10px] uppercase tracking-wide text-rescued-800">
             recommended drop-off
           </p>
-          <p className="mt-1 text-sm text-neutral-900">
+          <p className="mt-1.5 text-sm text-rescued-800">
             <Link
               href={`/dropoffs/${recommendation.dropOff.id}`}
-              className="font-medium hover:underline"
+              className="font-semibold text-clay-600 hover:underline"
             >
               {recommendation.dropOff.name}
             </Link>{" "}
-            — {recommendation.miles.toFixed(1)} mi away.
+            is{" "}
+            <span className="font-mono">{recommendation.miles.toFixed(1)} mi</span>{" "}
+            away.
           </p>
         </div>
       )}
 
-      <section className="mb-8">
-        <h2 className="mb-4 text-lg font-medium">On offer now</h2>
+      <section className="mt-10">
+        <SectionHeading title="On offer now" count={active.length} />
         {active.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {active.map((l) => (
@@ -95,12 +90,12 @@ export default async function RestaurantDetailPage({
             ))}
           </div>
         ) : (
-          <p className="text-sm text-neutral-600">Nothing on offer right now.</p>
+          <DetailEmpty>Nothing on offer right now.</DetailEmpty>
         )}
       </section>
 
-      <section>
-        <h2 className="mb-4 text-lg font-medium">History</h2>
+      <section className="mt-10">
+        <SectionHeading title="History" count={past.length} />
         {past.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {past.map((l) => (
@@ -108,7 +103,7 @@ export default async function RestaurantDetailPage({
             ))}
           </div>
         ) : (
-          <p className="text-sm text-neutral-600">No past rescues yet.</p>
+          <DetailEmpty>No past rescues yet.</DetailEmpty>
         )}
       </section>
     </main>

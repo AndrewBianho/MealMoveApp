@@ -1,7 +1,7 @@
 "use client";
 
 import "mapbox-gl/dist/mapbox-gl.css";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type {
   Map as MapboxMap,
   Marker as MapboxMarker,
@@ -34,12 +34,80 @@ const DEST = RAMP.clay800; // final destination flag
 const ROUTE = RAMP.route; // the chosen/active route line (maps blue)
 const ROUTE_ALT = RAMP.routeAlt; // the muted alternative routes
 
-// Pill button inside a pin popup — sage (primary action), white label. Inline
-// because popups are raw DOM and can't read Tailwind. Mirrors the primary
-// button look (white on rescued-600).
+// Full-width pill button inside a pin popup — sage (primary action), white
+// label. Inline because popups are raw DOM and can't read Tailwind. Mirrors the
+// primary button look (white on rescued-600).
 const POPUP_BTN =
-  `display:inline-block;margin-top:8px;background:${RAMP.rescued600};color:#fff;` +
-  `font-size:14px;font-weight:600;padding:11px 16px;border-radius:9999px;text-decoration:none;`;
+  `display:block;box-sizing:border-box;width:100%;text-align:center;margin-top:11px;` +
+  `background:${RAMP.rescued600};color:#fff;font-family:var(--font-sans),system-ui,sans-serif;` +
+  `font-size:13px;font-weight:700;padding:10px 16px;border-radius:9999px;text-decoration:none;`;
+
+// A mono status chip for a popup (color-blind-safe: dot + tinted fill + label,
+// never hue alone). `hex` is a ramp-600 value; the fill is the same hue at ~12%.
+function popupChip(label: string, hex: string): string {
+  return (
+    `<span style="display:inline-flex;align-items:center;gap:5px;background:${hex}1f;` +
+    `color:${hex};font-family:var(--font-mono),monospace;font-size:10px;font-weight:500;` +
+    `letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:9999px;">` +
+    `<span style="width:5px;height:5px;border-radius:50%;background:${hex};"></span>${label}</span>`
+  );
+}
+
+// Claim button inside a restaurant popup — same sage pill as POPUP_BTN, but a
+// real <button> (border:0, pointer) wired to claimListing when the popup opens.
+// Only rendered for restaurants with an open listing.
+const POPUP_CLAIM_BTN =
+  `display:block;box-sizing:border-box;width:100%;text-align:center;margin-top:11px;border:0;cursor:pointer;` +
+  `background:${RAMP.rescued600};color:#fff;font-family:var(--font-sans),system-ui,sans-serif;` +
+  `font-size:13px;font-weight:700;padding:10px 16px;border-radius:9999px;`;
+
+// Secondary text link under the claim button (clay accent, mono, centered).
+const POPUP_LINK =
+  `display:block;text-align:center;margin-top:8px;color:${RAMP.clay600};` +
+  `font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:.03em;text-decoration:none;`;
+
+// Quiet mono hint at the foot of a popup.
+const POPUP_HINT =
+  `font-family:var(--font-mono),monospace;font-size:10px;text-transform:uppercase;` +
+  `letter-spacing:.05em;color:rgb(var(--n-500));margin-top:9px;text-align:center;`;
+
+// --- Shared status-chip tokens for the in-panel "More information" tiles. ----
+// Color-blind-safe: every chip pairs its ramp tint with a dot and a mono label,
+// mirroring the raw-DOM popupChip so the two surfaces read identically.
+type ChipTone = "rescued" | "urgent" | "failed" | "transit" | "neutral";
+const CHIP_FILL: Record<ChipTone, string> = {
+  rescued: "bg-rescued-50 text-rescued-800",
+  urgent: "bg-urgent-50 text-urgent-800",
+  failed: "bg-failed-50 text-failed-800",
+  transit: "bg-transit-50 text-transit-800",
+  neutral: "bg-neutral-100 text-neutral-600",
+};
+const CHIP_DOT: Record<ChipTone, string> = {
+  rescued: "bg-rescued-600",
+  urgent: "bg-urgent-600",
+  failed: "bg-failed-600",
+  transit: "bg-transit-600",
+  neutral: "bg-neutral-400",
+};
+function urgencyTone(minutesLeft?: number): ChipTone {
+  if (minutesLeft == null) return "neutral";
+  if (minutesLeft < 30) return "failed";
+  if (minutesLeft < 60) return "urgent";
+  return "rescued";
+}
+function InfoChip({ tone, children }: { tone: ChipTone; children: ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wide",
+        CHIP_FILL[tone]
+      )}
+    >
+      <span className={cn("h-1.5 w-1.5 rounded-full", CHIP_DOT[tone])} aria-hidden="true" />
+      {children}
+    </span>
+  );
+}
 
 // Default "sensed" location — Malvern Prep — overridable by address.
 const MY_DEFAULT: [number, number] = [-75.51239, 40.02724];
@@ -336,17 +404,27 @@ export function RescueMap({
   // Claim the restaurant's soonest-expiring open listing (the pickup). The map's
   // data is a per-load snapshot, so on success we surface a link into My pickups
   // rather than mutate the markers in place.
-  async function onClaim(listingId: string) {
+  // Returns whether the claim succeeded, so the raw-DOM popup button (which can't
+  // read React state) can give its own inline feedback on the error path. On
+  // success the server action refreshes the route, which usually rebuilds the
+  // map and closes the popup — but the panel keeps the durable "claimed" state.
+  async function onClaim(listingId: string): Promise<boolean> {
     setClaimState("claiming");
     setClaimMsg(null);
     try {
       await claimListing(listingId);
       setClaimState("done");
+      return true;
     } catch (e) {
       setClaimState("error");
       setClaimMsg(e instanceof Error ? e.message : "Couldn't claim this pickup.");
+      return false;
     }
   }
+  // Refs so the build-once marker effect's popup handlers call the latest claim
+  // logic without being rebuilt on every render.
+  const onClaimRef = useRef(onClaim);
+  onClaimRef.current = onClaim;
 
   async function fetchRouteMulti(points: [number, number][]): Promise<RouteInfo | null> {
     const key = points.map((p) => `${p[0]},${p[1]}`).join(";");
@@ -491,7 +569,7 @@ export function RescueMap({
         .setLngLat(myLocRef.current)
         .setPopup(
           new mapboxgl.Popup({ offset: 16, closeButton: false }).setHTML(
-            `<div style="font-family:var(--font-sans),system-ui,sans-serif;font-size:12px;color:rgb(var(--n-900));">You are here</div>`
+            `<div style="font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:.03em;color:rgb(var(--n-700));">you are here</div>`
           )
         )
         .addTo(map);
@@ -521,15 +599,72 @@ export function RescueMap({
         });
         const listingHref = r.listingId ? `/listings/${r.listingId}` : `/restaurants/${r.id}`;
         const listingLabel = r.listingId ? "View listing →" : "View restaurant →";
-        const popup = new mapboxgl.Popup({ offset: 14, closeButton: false }).setHTML(
-          `<div style="font-family:var(--font-sans),system-ui,sans-serif;">
-             <div style="font-family:var(--font-display),Georgia,serif;font-size:17px;font-weight:600;color:rgb(var(--n-900));">${escapeHtml(r.name)}</div>
-             <div style="color:rgb(var(--n-600));font-family:var(--font-sans),system-ui,sans-serif;font-size:11px;margin:2px 0;">${r.count} listing${r.count > 1 ? "s" : ""} · ${r.servings} servings</div>
-             <div style="color:rgb(var(--n-600));font-size:12px;">${escapeHtml(r.categories.join(", "))}${r.perishable ? " · perishable" : ""}</div>
-             <a href="${listingHref}" style="${POPUP_BTN}">${listingLabel}</a>
-             <div style="color:rgb(var(--n-600));font-size:11px;margin-top:6px;">Click pin for drop-off routes</div>
+        const rChip = popupChip(
+          r.minutesLeft == null ? "all claimed" : `${r.minutesLeft} min left`,
+          restColor(r.minutesLeft)
+        );
+        // Claimable straight from the popup when an OPEN listing exists. The
+        // claim button is primary (sage), the detail link drops to a secondary
+        // mono link; otherwise the detail link stays the primary action and the
+        // route hint shows.
+        const claimableRest = !!(r.listingId && r.minutesLeft != null);
+        const actionHTML = claimableRest
+          ? `<button type="button" data-claim style="${POPUP_CLAIM_BTN}">Claim pickup</button>
+             <a href="${listingHref}" style="${POPUP_LINK}">${listingLabel}</a>`
+          : `<a href="${listingHref}" style="${POPUP_BTN}">${listingLabel}</a>
+             <div style="${POPUP_HINT}">tap the pin to plan a route</div>`;
+        // closeOnClick:false so the card stays put (a route-planning map click or
+        // the fitBounds pan won't dismiss it); its open/close is driven by the
+        // selection effect below, not Mapbox's default marker toggle.
+        const popup = new mapboxgl.Popup({
+          offset: 14,
+          closeButton: false,
+          closeOnClick: false,
+        }).setHTML(
+          `<div style="font-family:var(--font-sans),system-ui,sans-serif;min-width:206px;max-width:244px;">
+             ${rChip}
+             <div style="font-family:var(--font-display),Georgia,serif;font-size:18px;font-weight:600;line-height:1.2;color:rgb(var(--n-900));margin-top:9px;">${escapeHtml(r.name)}</div>
+             <div style="font-family:var(--font-mono),monospace;font-size:11px;color:rgb(var(--n-600));margin-top:6px;">~${r.servings} servings · ${r.count} listing${r.count > 1 ? "s" : ""}</div>
+             <div style="font-size:12px;color:rgb(var(--n-600));margin-top:3px;">${escapeHtml(r.categories.join(", "))}${r.perishable ? " · perishable" : ""}</div>
+             ${actionHTML}
            </div>`
         );
+        // Wire the popup's claim button to the same server action the panel uses.
+        // Self-contained DOM feedback (claiming → claimed) since popups are raw
+        // DOM and can't read React state; the map's data is a per-load snapshot.
+        if (claimableRest && r.listingId) {
+          const lid = r.listingId;
+          popup.on("open", () => {
+            const btn = popup
+              .getElement()
+              ?.querySelector<HTMLButtonElement>("button[data-claim]");
+            if (!btn || btn.dataset.wired) return;
+            btn.dataset.wired = "1";
+            btn.addEventListener("click", async (ev) => {
+              ev.preventDefault();
+              ev.stopPropagation();
+              if (btn.dataset.state) return; // claiming or done — ignore repeats
+              btn.dataset.state = "claiming";
+              btn.textContent = "Claiming…";
+              btn.style.opacity = "0.7";
+              btn.style.cursor = "default";
+              // Drive the same React claim the panel uses, so the panel shows the
+              // durable "claimed" + "view in my pickups" state. On success the
+              // route usually refreshes and closes this popup; on error it stays,
+              // so reset the button to let them retry.
+              const ok = await onClaimRef.current(lid);
+              if (ok) {
+                btn.dataset.state = "done";
+                btn.textContent = "Claimed ✓";
+              } else {
+                delete btn.dataset.state;
+                btn.style.opacity = "1";
+                btn.style.cursor = "pointer";
+                btn.textContent = "Couldn't claim — try again";
+              }
+            });
+          });
+        }
         restMarkers.current.set(
           r.id,
           new mapboxgl.Marker(el).setLngLat([r.lng, r.lat]).setPopup(popup).addTo(map)
@@ -554,11 +689,17 @@ export function RescueMap({
             cur?.kind === "drop" && cur.id === d.id ? null : { kind: "drop", id: d.id }
           );
         });
-        const baseHTML = `<div style="font-family:var(--font-sans),system-ui,sans-serif;">
-             <div style="font-family:var(--font-display),Georgia,serif;font-size:17px;font-weight:600;color:rgb(var(--n-900));">${escapeHtml(d.name)}</div>
-             <div style="color:rgb(var(--n-600));font-family:var(--font-sans),system-ui,sans-serif;font-size:11px;margin:2px 0;">accepts: ${escapeHtml(d.acceptedCategories.join(", "))}</div>
-             <div style="color:rgb(var(--n-600));font-size:12px;">${d.refrigerated ? "❄ refrigerated" : "not refrigerated"} · holds ${d.capacity}</div>
-             ${d.notes ? `<div style="color:rgb(var(--n-600));font-size:12px;margin-top:4px;">${escapeHtml(d.notes)}</div>` : ""}
+        const dChip = d.refrigerated
+          ? popupChip("❄ refrigerated", RAMP.transit600)
+          : popupChip("ambient", RAMP.neutral400);
+        // NOTE: baseHTML is an OPEN div on purpose — eligibility info and the
+        // closing </div> are appended later (resetDropMarker / the apply loop).
+        const baseHTML = `<div style="font-family:var(--font-sans),system-ui,sans-serif;min-width:206px;max-width:244px;">
+             ${dChip}
+             <div style="font-family:var(--font-display),Georgia,serif;font-size:18px;font-weight:600;line-height:1.2;color:rgb(var(--n-900));margin-top:9px;">${escapeHtml(d.name)}</div>
+             <div style="font-family:var(--font-mono),monospace;font-size:11px;color:rgb(var(--n-600));margin-top:6px;">holds ${d.capacity} servings</div>
+             <div style="font-size:12px;color:rgb(var(--n-600));margin-top:3px;">accepts ${escapeHtml(d.acceptedCategories.join(", "))}</div>
+             ${d.notes ? `<div style="font-size:12px;color:rgb(var(--n-600));margin-top:4px;">${escapeHtml(d.notes)}</div>` : ""}
              <a href="/dropoffs/${d.id}" style="${POPUP_BTN}">View drop-off →</a>`;
         dropBaseHTML.current.set(d.id, baseHTML);
         const popup = new mapboxgl.Popup({ offset: 14, closeButton: false }).setHTML(
@@ -629,7 +770,7 @@ export function RescueMap({
     if (!m) return;
     m.setLngLat(myLoc);
     m.getPopup()?.setHTML(
-      `<div style="font-family:var(--font-sans),system-ui,sans-serif;font-size:12px;color:rgb(var(--n-900));">You are here · ${escapeHtml(myLabel)}</div>`
+      `<div style="font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:.03em;color:rgb(var(--n-700));">you are here · ${escapeHtml(myLabel)}</div>`
     );
   }, [myLoc, myLabel]);
 
@@ -656,7 +797,7 @@ export function RescueMap({
           .setLngLat(dest)
           .setPopup(
             new mapboxgl.Popup({ offset: 16, closeButton: false }).setHTML(
-              `<div style="font-family:var(--font-sans),system-ui,sans-serif;font-size:12px;color:rgb(var(--n-900));">Destination</div>`
+              `<div style="font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:.03em;color:rgb(var(--n-700));">destination</div>`
             )
           )
           .addTo(map);
@@ -666,7 +807,7 @@ export function RescueMap({
       destMarkerRef.current
         .getPopup()
         ?.setHTML(
-          `<div style="font-family:var(--font-sans),system-ui,sans-serif;font-size:12px;color:rgb(var(--n-900));">Destination · ${escapeHtml(destLabel)}</div>`
+          `<div style="font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:.03em;color:rgb(var(--n-700));">destination · ${escapeHtml(destLabel)}</div>`
         );
     })();
     return () => {
@@ -969,6 +1110,20 @@ export function RescueMap({
   useEffect(() => {
     paintRoutes();
   }, [activeRoute, paintRoutes]);
+
+  // Keep the selected restaurant's popup (the claim card) open and every other
+  // restaurant popup closed. Mapbox's default marker-click toggle is suppressed
+  // by our own click handler, so selection is the single source of truth for
+  // which card is showing — that's what makes "claim from the card" reachable.
+  useEffect(() => {
+    restMarkers.current.forEach((m, id) => {
+      const pop = m.getPopup();
+      if (!pop) return;
+      const shouldOpen = selected?.kind === "rest" && selected.id === id;
+      if (shouldOpen && !pop.isOpen()) m.togglePopup();
+      else if (!shouldOpen && pop.isOpen()) m.togglePopup();
+    });
+  }, [selected]);
 
   // When a selection first opens the panel (which renders below the map), nudge
   // the page so the panel is in view without scrolling the map out — a minimal
@@ -1406,62 +1561,85 @@ export function RescueMap({
                 </button>
 
                 {infoOpen && (
-                  <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                  <div className="mt-3 grid gap-x-4 gap-y-4 sm:grid-cols-2">
+                    {/* Pickup — header dot mirrors the restaurant pin's urgency color */}
                     <div>
-                      <div className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
-                        Pickup
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-white"
+                          style={{ background: restColor(activeRest?.minutesLeft) }}
+                        >
+                          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M3 2v7a2 2 0 0 0 2 2 2 2 0 0 0 2-2V2" />
+                            <path d="M7 2v20" />
+                            <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1 1 2 2 2h3Zm0 0v7" />
+                          </svg>
+                        </span>
+                        <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+                          Pickup
+                        </span>
                       </div>
-                      <div className="mt-0.5 truncate text-sm font-medium text-neutral-900">
+                      <div className="mt-1.5 truncate font-display text-sm font-semibold text-neutral-900">
                         {activeRest?.name ?? "—"}
                       </div>
                       {activeRest && (
-                        <ul className="mt-1 space-y-0.5 font-mono text-[11px] text-neutral-600">
-                          <li>
-                            ~{activeRest.servings} servings · {activeRest.count} listing
-                            {activeRest.count === 1 ? "" : "s"}
-                          </li>
+                        <>
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <InfoChip tone={urgencyTone(activeRest.minutesLeft)}>
+                              {activeRest.minutesLeft != null
+                                ? `${activeRest.minutesLeft} min left`
+                                : "all claimed"}
+                            </InfoChip>
+                            <span className="font-mono text-[11px] text-neutral-600">
+                              ~{activeRest.servings} servings · {activeRest.count} listing
+                              {activeRest.count === 1 ? "" : "s"}
+                            </span>
+                          </div>
                           {activeRest.categories.length > 0 && (
-                            <li className="truncate">
+                            <div className="mt-1 truncate font-mono text-[11px] text-neutral-500">
                               {activeRest.categories.join(", ")}
                               {activeRest.perishable ? " · perishable" : ""}
-                            </li>
+                            </div>
                           )}
-                          <li
-                            className={cn(
-                              activeRest.minutesLeft == null
-                                ? "text-neutral-500"
-                                : activeRest.minutesLeft < 30
-                                  ? "text-failed-600"
-                                  : activeRest.minutesLeft < 60
-                                    ? "text-urgent-600"
-                                    : "text-rescued-600"
-                            )}
-                          >
-                            {activeRest.minutesLeft != null
-                              ? `${activeRest.minutesLeft} min left to claim`
-                              : "all claimed"}
-                          </li>
-                        </ul>
+                        </>
                       )}
                     </div>
-                    <div className="sm:border-l sm:border-neutral-900/10 sm:pl-3">
-                      <div className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
-                        Drop-off
+                    {/* Drop-off — header square + plum dot mirrors the drop-off pin */}
+                    <div className="sm:border-l sm:border-neutral-900/10 sm:pl-4">
+                      <div className="flex items-center gap-2">
+                        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-[6px] bg-transit-600 text-white">
+                          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                            <path d="M3.3 7 12 12l8.7-5" />
+                            <path d="M12 22V12" />
+                          </svg>
+                        </span>
+                        <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+                          Drop-off
+                        </span>
                       </div>
-                      <div className="mt-0.5 truncate text-sm font-medium text-neutral-900">
+                      <div className="mt-1.5 truncate font-display text-sm font-semibold text-neutral-900">
                         {activeDrop?.name ?? "—"}
                       </div>
                       {activeDrop && (
-                        <ul className="mt-1 space-y-0.5 font-mono text-[11px] text-neutral-600">
-                          <li className="truncate">
+                        <>
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <InfoChip tone={activeDrop.refrigerated ? "transit" : "neutral"}>
+                              {activeDrop.refrigerated ? "❄ refrigerated" : "ambient"}
+                            </InfoChip>
+                            <span className="font-mono text-[11px] text-neutral-600">
+                              holds {activeDrop.capacity}
+                            </span>
+                          </div>
+                          <div className="mt-1 truncate font-mono text-[11px] text-neutral-500">
                             accepts {activeDrop.acceptedCategories.join(", ")}
-                          </li>
-                          <li>
-                            {activeDrop.refrigerated ? "❄ refrigerated" : "not refrigerated"} · holds{" "}
-                            {activeDrop.capacity}
-                          </li>
-                          {activeDrop.notes && <li className="truncate">{activeDrop.notes}</li>}
-                        </ul>
+                          </div>
+                          {activeDrop.notes && (
+                            <div className="mt-1 truncate font-mono text-[11px] text-neutral-500">
+                              {activeDrop.notes}
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>

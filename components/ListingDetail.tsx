@@ -223,7 +223,7 @@ export function ListingDetail({
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         {/* Main */}
-        <div className="overflow-hidden rounded-xl border border-neutral-200/40 bg-card">
+        <div className="overflow-hidden rounded-2xl border border-neutral-200/40 bg-card">
           <div
             className={cn(
               "h-[3px]",
@@ -238,10 +238,25 @@ export function ListingDetail({
           />
           <div className="p-6">
             <div className="mb-4 flex items-start justify-between gap-3">
-              <div>
-                <h1 className="text-[22px] font-medium leading-tight">
+              <div className="min-w-0">
+                <h1 className="font-display text-[26px] font-semibold leading-tight text-neutral-900 text-balance">
                   {listing.title}
                 </h1>
+                {!terminal && (
+                  <span
+                    className={cn(
+                      "mt-2.5 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[11px] font-medium tabular-nums",
+                      listing.minutesLeft < 10
+                        ? "bg-failed-50 text-failed-800"
+                        : listing.minutesLeft < 35
+                          ? "bg-urgent-50 text-urgent-800"
+                          : "bg-rescued-50 text-rescued-800"
+                    )}
+                  >
+                    <Clock className="h-3.5 w-3.5" />
+                    {listing.minutesLeft} min left
+                  </span>
+                )}
               </div>
               <StatusBadge status={listing.status} />
             </div>
@@ -322,7 +337,7 @@ export function ListingDetail({
 
         {/* Side: timeline + actions */}
         <aside className="space-y-6">
-          <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
+          <div className="rounded-2xl border border-neutral-200/40 bg-card p-5">
             <p className="mb-4 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
               Status
             </p>
@@ -367,7 +382,7 @@ export function ListingDetail({
           </div>
 
           {!terminal && (
-            <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
+            <div className="rounded-2xl border border-neutral-200/40 bg-card p-5">
               <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
                 Next step
               </p>
@@ -463,7 +478,7 @@ export function ListingDetail({
           )}
 
           {onClaimActive && (listing.buddyName || isPrimary) && (
-            <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
+            <div className="rounded-2xl border border-neutral-200/40 bg-card p-5">
               {listing.buddyName ? (
                 <>
                   <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
