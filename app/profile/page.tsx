@@ -32,17 +32,17 @@ export default async function ProfilePage() {
       <header className="mb-8 flex items-center gap-4">
         <Avatar name={user.name} size="lg" className="shadow-card" />
         <div>
-          <h1 className="font-display text-[32px] font-medium leading-tight">
+          <h1 className="font-display text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">
             {user.name}
           </h1>
-          <p className="mt-0.5 font-mono text-[11px] uppercase tracking-wide text-neutral-600">
+          <p className="mt-0.5 font-mono text-[11px] uppercase tracking-wide text-neutral-700">
             {user.role.replace(/_/g, " ")} · joined {joined}
           </p>
         </div>
       </header>
 
       <section className="mb-8">
-        <h2 className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+        <h2 className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
           lifetime impact
         </h2>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -66,14 +66,14 @@ export default async function ProfilePage() {
       </section>
 
       <section className="mb-8 grid max-w-sm place-items-center rounded-2xl bg-card p-6 shadow-card">
-        <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+        <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
           your completion rate · lifetime
         </p>
         <ReliabilityRing pct={impact.completionRate} label="on time" />
       </section>
 
       {!hasActivity && (
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-neutral-700">
           Your first rescue is waiting —{" "}
           <Link
             href="/"

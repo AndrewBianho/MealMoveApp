@@ -76,12 +76,12 @@ export function RetrievalHoursEditor({
       <div className="space-y-2">
         {DAY_KEYS.map((day) => (
           <div key={day} className="flex items-start gap-2">
-            <span className="w-10 pt-1.5 font-mono text-xs uppercase text-neutral-500">
+            <span className="w-10 pt-1.5 font-mono text-xs uppercase text-neutral-700">
               {DAY_LABELS[day]}
             </span>
             <div className="flex flex-1 flex-wrap items-center gap-2">
               {hours[day].length === 0 && (
-                <span className="py-1.5 font-mono text-xs italic text-neutral-500">
+                <span className="py-1.5 font-mono text-xs italic text-neutral-700">
                   closed
                 </span>
               )}
@@ -93,7 +93,7 @@ export function RetrievalHoursEditor({
                     onChange={(e) => setTime(day, i, "open", e.target.value)}
                     className="rounded-md border border-neutral-200/60 bg-card px-2 py-1 font-mono text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-transit-400"
                   />
-                  <span className="text-neutral-400">–</span>
+                  <span className="text-neutral-600">–</span>
                   <input
                     type="time"
                     value={w.close}
@@ -104,7 +104,7 @@ export function RetrievalHoursEditor({
                     type="button"
                     aria-label={`Remove ${day} window`}
                     onClick={() => removeWindow(day, i)}
-                    className="px-1 text-neutral-400 hover:text-failed-600"
+                    className="px-1 text-neutral-600 hover:text-failed-600"
                   >
                     ×
                   </button>

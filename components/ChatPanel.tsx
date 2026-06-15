@@ -126,13 +126,13 @@ export function ChatPanel({
 
   return (
     <div className="rounded-2xl border border-neutral-200/40 bg-card p-5 shadow-card">
-      <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+      <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
         Coordination chat
       </p>
 
       <div className="mb-3 max-h-72 space-y-3 overflow-y-auto">
         {messages.length === 0 ? (
-          <p className="text-[13px] text-neutral-600">
+          <p className="text-[13px] text-neutral-700">
             No messages yet. Say hello — the restaurant and drop-off can see this
             too.
           </p>
@@ -148,7 +148,7 @@ export function ChatPanel({
                   <span className="text-[13px] font-semibold text-neutral-900">
                     {mine ? "You" : m.senderName}
                   </span>
-                  <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+                  <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
                     {ROLE_LABEL[m.senderRole]} · {clock(m.createdAt)}
                   </span>
                 </div>
@@ -189,7 +189,7 @@ export function ChatPanel({
           </button>
         </form>
       ) : (
-        <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+        <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
           Conversation closed
         </p>
       )}

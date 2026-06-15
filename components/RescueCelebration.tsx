@@ -34,7 +34,7 @@ function HarvestStat({ value, label }: { value: string; label: string }) {
         value={value}
         className="font-display text-2xl font-semibold text-neutral-900"
       />
-      <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+      <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
         {label}
       </p>
     </div>
@@ -119,7 +119,7 @@ export function RescueCelebration({
           </span>
         </h2>
 
-        <p className="mt-3 flex items-center justify-center gap-1.5 font-mono text-xs text-neutral-600">
+        <p className="mt-3 flex items-center justify-center gap-1.5 font-sans text-[13px] text-neutral-700">
           <span className="truncate">{source}</span>
           <span className="shrink-0 text-clay-600">
             <ArrowRight />
@@ -127,14 +127,14 @@ export function RescueCelebration({
           <span className="truncate">{dropOff ?? "drop-off"}</span>
         </p>
 
-        <p className="mt-5 text-sm leading-relaxed text-neutral-600">
+        <p className="mt-5 text-sm leading-relaxed text-neutral-700">
           {firstRescue
             ? "That was your first rescue — welcome to the crew. Food that was headed for the bin is on its way to plates instead."
             : "Food that was headed for the bin is on its way to plates instead. Thank you for showing up."}
         </p>
 
         <div className="mt-6 border-t border-neutral-200/60 pt-5">
-          <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+          <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
             your harvest so far
           </p>
           <div className="grid grid-cols-3 gap-2">

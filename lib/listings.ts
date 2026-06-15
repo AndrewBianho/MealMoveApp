@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import { parseStoredHours } from "./hours";
+import { isDemo } from "./mode";
 import type { Listing, ListingStatus } from "./types";
 
 // Pull the relations the UI needs in one query.
@@ -21,26 +22,22 @@ function minutesUntil(expiresAt: Date): number {
   return Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / 60_000));
 }
 
-// Demo/dev only: keep one designated listing perpetually in the urgent (<10 min)
-// band so the urgency UI (tomato chip + pulse + 2-col feature) is always visible
-// to test, regardless of how far the seeded expiry has drifted. Never applies in
-// production. Keyed by title since seeded rows get fresh ids. See lib/mock.ts.
-const ALWAYS_URGENT_TITLE = "Mediterranean wraps & salads";
-const ALWAYS_URGENT_MINUTES = 6;
-
 function displayMinutesLeft(l: DbListing): number {
-  if (
-    process.env.NODE_ENV !== "production" &&
-    l.title === ALWAYS_URGENT_TITLE &&
-    !["delivered", "expired", "failed"].includes(l.status)
-  ) {
-    return ALWAYS_URGENT_MINUTES;
+  // Demo time is frozen: a demo listing's "minutes left" is the fixed offset it
+  // was seeded with (expiresAt − postedAt), not a live countdown — so the
+  // urgency bands (open / soon / closing soon) stay put for the whole showcase
+  // and the curated set always looks the same. Real listings tick normally.
+  if (l.demo) {
+    return Math.max(0, Math.round((l.expiresAt.getTime() - l.postedAt.getTime()) / 60_000));
   }
   return minutesUntil(l.expiresAt);
 }
 
 /** DB row → the plain shape the client components already consume. */
 export function serializeListing(l: DbListing, viewerId?: string): Listing {
+  // A future listing (materialized from a recurring schedule) is "scheduled":
+  // visible but not yet claimable until availableAt passes.
+  const scheduled = !!l.availableAt && l.availableAt.getTime() > Date.now();
   return {
     id: l.id,
     title: l.title,
@@ -50,6 +47,15 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
       minute: "2-digit",
     }),
     minutesLeft: displayMinutesLeft(l),
+    scheduled,
+    availableAt: l.availableAt?.getTime(),
+    availableLabel: l.availableAt
+      ? l.availableAt.toLocaleString([], {
+          weekday: "short",
+          hour: "numeric",
+          minute: "2-digit",
+        })
+      : undefined,
     servings: l.servings,
     weightLbs: l.weightLbs ?? undefined,
     distance: "—", // TODO: derive from volunteer location once geo is wired
@@ -79,7 +85,9 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
 }
 
 export async function getListings(viewerId?: string): Promise<Listing[]> {
+  // Scope the feed to the viewer's world — demo and real never mix.
   const rows = await prisma.foodListing.findMany({
+    where: { demo: await isDemo() },
     include: listingInclude,
     orderBy: { expiresAt: "asc" },
   });

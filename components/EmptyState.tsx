@@ -21,13 +21,13 @@ export function EmptyState({
       )}
     >
       {icon && (
-        <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-neutral-100 text-neutral-500">
+        <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-neutral-100 text-neutral-700">
           {icon}
         </div>
       )}
       <p className="text-base font-medium text-neutral-800">{title}</p>
       {hint && (
-        <p className="mx-auto mt-1.5 max-w-xs font-mono text-xs leading-relaxed text-neutral-500">
+        <p className="mx-auto mt-1.5 max-w-xs font-mono text-xs leading-relaxed text-neutral-700">
           {hint}
         </p>
       )}

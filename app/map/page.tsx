@@ -7,11 +7,10 @@ export default async function MapPage() {
   const { restaurants, dropOffs } = await getMapData();
 
   return (
-    <main className="mx-auto max-w-[1760px] px-6 py-8">
-      <header className="mb-6">
-        <h1 className="text-[32px] font-medium leading-tight">Rescue map</h1>
-      </header>
-
+    // Full-bleed: fill the viewport below the sticky header (and above the mobile
+    // bottom nav). The map itself is the page background; RescueMap floats the
+    // title, controls, legend, and selection panel over it.
+    <main className="relative h-[calc(100dvh_-_4rem_-_4.5rem)] w-full overflow-hidden md:h-[calc(100dvh_-_4rem)]">
       <RescueMap restaurants={restaurants} dropOffs={dropOffs} />
     </main>
   );

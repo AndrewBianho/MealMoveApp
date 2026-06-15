@@ -56,16 +56,16 @@ export function TeamPanel({
 
   const fieldCls =
     "w-full rounded-md border border-neutral-200/60 bg-card px-3 py-2 text-sm " +
-    "placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 " +
+    "placeholder:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 " +
     "focus-visible:ring-transit-400 focus-visible:ring-offset-1";
 
   return (
     <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
-      <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+      <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
         {title} · {members.length}
       </p>
       {description && (
-        <p className="mt-1 text-[13px] text-neutral-600">{description}</p>
+        <p className="mt-1 text-[13px] text-neutral-700">{description}</p>
       )}
 
       <ul className="mb-4 mt-3 space-y-2">
@@ -76,7 +76,7 @@ export function TeamPanel({
               <span className="block truncate text-sm text-neutral-900">
                 {m.name}
               </span>
-              <span className="block truncate font-mono text-[11px] text-neutral-500">
+              <span className="block truncate font-mono text-[11px] text-neutral-700">
                 {m.email}
               </span>
             </span>
@@ -105,7 +105,7 @@ export function TeamPanel({
 
       {invites.length > 0 && (
         <div className="mt-3">
-          <p className="mb-1.5 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+          <p className="mb-1.5 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
             Pending
           </p>
           <ul className="space-y-1">

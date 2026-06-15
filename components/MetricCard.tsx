@@ -14,7 +14,7 @@ export function MetricCard({
       <div className="font-display text-4xl font-semibold leading-none text-rescued-600">
         <CountUp value={value} />
       </div>
-      <div className="mt-2 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+      <div className="mt-2 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
         {label}
       </div>
     </div>

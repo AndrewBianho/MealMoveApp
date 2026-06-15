@@ -9,8 +9,8 @@ export default function ResetPasswordPage({
 
   return (
     <main className="mx-auto max-w-sm px-6 py-16">
-      <h1 className="text-[32px] font-medium leading-tight">New password</h1>
-      <p className="mb-6 mt-1 text-sm text-neutral-600">
+      <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">New password</h1>
+      <p className="mb-6 mt-1 text-sm text-neutral-700">
         Choose a new password for your Meal Move account.
       </p>
 

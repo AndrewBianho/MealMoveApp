@@ -36,7 +36,7 @@ function Section({
   return (
     <section className="mt-10">
       <h2 className="text-lg font-medium">{title}</h2>
-      <p className="mb-4 text-sm text-neutral-600">{hint}</p>
+      <p className="mb-4 text-sm text-neutral-700">{hint}</p>
       {children}
     </section>
   );
@@ -46,11 +46,11 @@ export default function StyleGuidePage() {
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">
       <header>
-        <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+        <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
           design system · live components
         </p>
-        <h1 className="mt-2 text-[32px] font-medium leading-tight">Style guide</h1>
-        <p className="mt-2 max-w-xl text-sm text-neutral-600">
+        <h1 className="mt-2 text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">Style guide</h1>
+        <p className="mt-2 max-w-xl text-sm text-neutral-700">
           Every element below is a real React component built against the tokens
           in tailwind.config.ts.
         </p>
@@ -89,7 +89,7 @@ export default function StyleGuidePage() {
               <h3 className="text-base font-semibold text-neutral-800">
                 Available to claim
               </h3>
-              <span className="font-mono text-xs text-neutral-400">
+              <span className="font-mono text-xs text-neutral-600">
                 {CLAIMABLE.length}
               </span>
             </div>
@@ -109,7 +109,7 @@ export default function StyleGuidePage() {
               <h3 className="text-base font-semibold text-neutral-800">
                 Claimed &amp; closed
               </h3>
-              <span className="font-mono text-xs text-neutral-400">
+              <span className="font-mono text-xs text-neutral-600">
                 {UNCLAIMABLE.length}
               </span>
             </div>
@@ -128,19 +128,19 @@ export default function StyleGuidePage() {
       >
         <div className="grid gap-6 md:grid-cols-3">
           <div>
-            <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
               volunteer
             </p>
             <ListingCard listing={AUDIENCE_DEMO} audience="volunteer" />
           </div>
           <div>
-            <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
               restaurant
             </p>
             <ListingCard listing={AUDIENCE_DEMO} audience="restaurant" />
           </div>
           <div>
-            <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
               drop-off
             </p>
             <ListingCard listing={AUDIENCE_DEMO} audience="dropoff" />
@@ -170,7 +170,7 @@ export default function StyleGuidePage() {
         </Section>
       </div>
 
-      <p className="mt-12 font-mono text-[11px] text-neutral-400">
+      <p className="mt-12 font-mono text-[11px] text-neutral-600">
         next.js 14 · app router · tailwind v3 · fraunces · nunito sans · jetbrains mono
       </p>
     </main>

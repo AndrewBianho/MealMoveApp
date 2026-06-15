@@ -12,75 +12,35 @@ import Link from "next/link";
 import { rankDropOffs, rankRestaurantsForDropOff } from "@/lib/recommend";
 import { claimListing } from "@/app/actions";
 import { geocodeClient } from "@/lib/geocode-client";
-import { escapeHtml } from "@/lib/escapeHtml";
 import { RAMP } from "@/lib/rampColors";
 import { MAP_STYLES, createModeToggle, createHomeControl, type MapMode } from "@/lib/mapStyles";
 import { cn } from "./cn";
-import type { DropOffLocation, FoodCategory, MapRestaurant } from "@/lib/types";
+import type { DropOffLocation, MapRestaurant } from "@/lib/types";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 // Pin/line hex MUST mirror the ramp tokens — sourced from lib/rampColors so the
-// values live in one place (DESIGN.md). Restaurant pins are colored by urgency;
-// drop-offs are plum squares; clay is the route/accent.
-const DROP = RAMP.transit600; // drop-offs
-const REC = RAMP.clay600; // routes + recommended highlight
-const URG_SOON = RAMP.failed600; // <30 min
-const URG_MID = RAMP.urgent600; // <60 min
-const URG_OPEN = RAMP.rescued600; // open, plenty of time
-const URG_SPENT = RAMP.neutral400; // all claimed (nothing open)
-const ME = RAMP.ink; // "my location"
+// values live in one place (DESIGN.md). The map carries two pin hues only:
+// sage = pickup, plum = drop-off. Urgency is NEVER encoded in pin color (it
+// would shout across the whole map); it lives in the card/panel where it's
+// paired with a label. Clay is the route/accent.
+const PICKUP = RAMP.transit600; // restaurant pickup pins — plum, so they stand off the green satellite imagery (sage blended in); no urgency hue
+const DROP = RAMP.clay600; // drop-offs — terracotta (the destination hue), warm contrast vs the plum pickups
+const SEL = RAMP.ink; // selection / recommended halo — neutral ink, so it stays visible on BOTH the plum pickup and terracotta drop-off pins
+const ME = RAMP.route; // "my location" — the universally recognized blue location dot
 const DEST = RAMP.clay800; // final destination flag
 const ROUTE = RAMP.route; // the chosen/active route line (maps blue)
 const ROUTE_ALT = RAMP.routeAlt; // the muted alternative routes
 
-// Full-width pill button inside a pin popup — sage (primary action), white
-// label. Inline because popups are raw DOM and can't read Tailwind. Mirrors the
-// primary button look (white on rescued-600).
-const POPUP_BTN =
-  `display:block;box-sizing:border-box;width:100%;text-align:center;margin-top:11px;` +
-  `background:${RAMP.rescued600};color:#fff;font-family:var(--font-sans),system-ui,sans-serif;` +
-  `font-size:13px;font-weight:700;padding:10px 16px;border-radius:9999px;text-decoration:none;`;
-
-// A mono status chip for a popup (color-blind-safe: dot + tinted fill + label,
-// never hue alone). `hex` is a ramp-600 value; the fill is the same hue at ~12%.
-function popupChip(label: string, hex: string): string {
-  return (
-    `<span style="display:inline-flex;align-items:center;gap:5px;background:${hex}1f;` +
-    `color:${hex};font-family:var(--font-mono),monospace;font-size:10px;font-weight:500;` +
-    `letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:9999px;">` +
-    `<span style="width:5px;height:5px;border-radius:50%;background:${hex};"></span>${label}</span>`
-  );
-}
-
-// Claim button inside a restaurant popup — same sage pill as POPUP_BTN, but a
-// real <button> (border:0, pointer) wired to claimListing when the popup opens.
-// Only rendered for restaurants with an open listing.
-const POPUP_CLAIM_BTN =
-  `display:block;box-sizing:border-box;width:100%;text-align:center;margin-top:11px;border:0;cursor:pointer;` +
-  `background:${RAMP.rescued600};color:#fff;font-family:var(--font-sans),system-ui,sans-serif;` +
-  `font-size:13px;font-weight:700;padding:10px 16px;border-radius:9999px;`;
-
-// Secondary text link under the claim button (clay accent, mono, centered).
-const POPUP_LINK =
-  `display:block;text-align:center;margin-top:8px;color:${RAMP.clay600};` +
-  `font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:.03em;text-decoration:none;`;
-
-// Quiet mono hint at the foot of a popup.
-const POPUP_HINT =
-  `font-family:var(--font-mono),monospace;font-size:10px;text-transform:uppercase;` +
-  `letter-spacing:.05em;color:rgb(var(--n-500));margin-top:9px;text-align:center;`;
-
 // --- Shared status-chip tokens for the in-panel "More information" tiles. ----
-// Color-blind-safe: every chip pairs its ramp tint with a dot and a mono label,
-// mirroring the raw-DOM popupChip so the two surfaces read identically.
+// Color-blind-safe: every chip pairs its ramp tint with a dot and a mono label.
 type ChipTone = "rescued" | "urgent" | "failed" | "transit" | "neutral";
 const CHIP_FILL: Record<ChipTone, string> = {
   rescued: "bg-rescued-50 text-rescued-800",
   urgent: "bg-urgent-50 text-urgent-800",
   failed: "bg-failed-50 text-failed-800",
   transit: "bg-transit-50 text-transit-800",
-  neutral: "bg-neutral-100 text-neutral-600",
+  neutral: "bg-neutral-100 text-neutral-700",
 };
 const CHIP_DOT: Record<ChipTone, string> = {
   rescued: "bg-rescued-600",
@@ -112,10 +72,51 @@ function InfoChip({ tone, children }: { tone: ChipTone; children: ReactNode }) {
 // Default "sensed" location — Malvern Prep — overridable by address.
 const MY_DEFAULT: [number, number] = [-75.51239, 40.02724];
 
-// White glyphs that make each selectable pin instantly readable: utensils for a
-// restaurant (food source), a package for a drop-off (delivery point).
-const ICON_REST = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7a2 2 0 0 0 2 2 2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1 1 2 2 2h3Zm0 0v7"/></svg>`;
-const ICON_DROP = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg>`;
+// Google-style teardrop pin drawn as a SINGLE svg path, so its white outline is
+// one continuous stroke of even thickness around the whole silhouette (head +
+// point) — no seam where a tail meets a round head. A glyph (white) and an
+// optional selection halo (the inherited --sel custom property) layer on top of
+// that same shape.
+const PIN_PATH =
+  "M14 1.5C7.1 1.5 1.5 7.1 1.5 14c0 8.7 11 22.7 11.5 23.3a1.3 1.3 0 0 0 2 0C15.5 36.7 26.5 22.7 26.5 14 26.5 7.1 20.9 1.5 14 1.5Z";
+// Glyphs are path-only (no wrapper <svg>) so they drop into a nested, auto-scaling
+// <svg> centred on the head. Crossed fork & knife = restaurant pickup; flag =
+// drop-off destination — instantly distinguishable from each other.
+const GLYPH_REST = `<path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/><path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/><path d="m2.1 21.8 6.4-6.3"/><path d="m19 5-7 7"/>`;
+const GLYPH_DROP = `<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>`;
+
+// A full pin: the selection halo (transparent until --sel is set), the coloured
+// body with its single continuous white outline, then the centred white glyph.
+function pinSVG(fill: string, glyph: string): string {
+  return (
+    `<svg width="28" height="38" viewBox="0 0 28 39" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;">` +
+    `<path class="mm-halo" d="${PIN_PATH}" fill="none" stroke-width="6" stroke-linejoin="round"/>` +
+    `<path d="${PIN_PATH}" fill="${fill}" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/>` +
+    `<svg x="7" y="6.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${glyph}</svg>` +
+    `</svg>`
+  );
+}
+
+// Miniature of the real map pin for the legend, so the key matches what's on
+// the map (same teardrop, same glyph, same hue) instead of a stand-in swatch.
+// The glyph is the static path string used by the markers, scaled to match
+// pinSVG's nested 24→14 glyph transform (translate 7,6.5 · scale 14/24).
+function LegendPin({ fill, glyph }: { fill: string; glyph: string }) {
+  return (
+    <svg width="15" height="20" viewBox="0 0 28 39" aria-hidden="true" className="shrink-0">
+      <path d={PIN_PATH} fill={fill} stroke="#fff" strokeWidth={2.4} strokeLinejoin="round" />
+      <g
+        transform="translate(7 6.5) scale(0.5833)"
+        fill="none"
+        stroke="#fff"
+        strokeWidth={2.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        dangerouslySetInnerHTML={{ __html: glyph }}
+      />
+    </svg>
+  );
+}
 
 // Hover-lift + smooth highlight for the clickable pins, injected once. The
 // outline (selection) and transform (hover) are separate properties, so they
@@ -135,34 +136,33 @@ function ensurePinStyles() {
   // imagery, plus a soft drop so the pin lifts off the map.
   s.textContent = `
     .mm-pin{cursor:pointer;}
-    .mm-pin-head{transition:box-shadow .14s ease, outline-color .12s ease, opacity .12s ease;
-      box-shadow:0 0 0 1.5px rgba(0,0,0,.18), 0 4px 10px rgba(51,52,44,.42);}
-    .mm-pin:hover .mm-pin-head{box-shadow:0 0 0 1.5px rgba(0,0,0,.22), 0 9px 20px rgba(51,52,44,.55);}
+    /* Google-style teardrop pin: the whole shape is one svg path, so the white
+       outline is a single continuous, even stroke. We do NOT drop-shadow the
+       silhouette — on a pin that tapers to a point that renders as a hard black
+       triangle below the tip. Instead a soft elliptical "ground shadow" sits at
+       the point (the ::before below), grounding the pin without the spike.
+       transform:translateZ(0) makes the head its own stacking context so the
+       z-index:-1 ground shadow tucks behind the pin body but above the map. */
+    .mm-pin-head{position:relative;transform:translateZ(0);transition:opacity .12s ease;}
+    .mm-pin-head svg{display:block;position:relative;}
+    .mm-pin-head::before{content:"";position:absolute;left:50%;bottom:-1px;z-index:-1;
+      width:14px;height:5px;transform:translateX(-50%);border-radius:50%;
+      background:rgba(51,52,44,.32);filter:blur(1.5px);
+      transition:width .14s ease, height .14s ease, background .14s ease;}
+    .mm-pin:hover .mm-pin-head::before{width:19px;height:6px;background:rgba(51,52,44,.24);}
+    /* Selection halo: the --sel custom property (set on the marker head in JS)
+       inherits into the svg; CSS resolves the var here, since var() can't be used
+       in a raw SVG presentation attribute. Transparent = not selected. */
+    .mm-halo{stroke:var(--sel,transparent);}
     /* "You are here": a live, expanding accuracy ring behind the dot — the
        universally recognized current-location cue. The pulse transforms only
        this child, never the Mapbox-positioned root, so the pin stays put. */
     .mm-me-pulse{position:absolute;width:40px;height:40px;border-radius:50%;background:${ME};
       opacity:.22;animation:mm-me-ping 2.6s cubic-bezier(0,0,.2,1) infinite;}
     @keyframes mm-me-ping{0%{transform:scale(.32);opacity:.4;}70%{opacity:0;}100%{transform:scale(1);opacity:0;}}
-    @media (prefers-reduced-motion: reduce){.mm-pin-head{transition:none;}.mm-me-pulse{animation:none;opacity:.15;}}
+    @media (prefers-reduced-motion: reduce){.mm-pin-head,.mm-pin-head::before{transition:none;}.mm-me-pulse{animation:none;opacity:.15;}}
   `;
   document.head.appendChild(s);
-}
-
-const ALL_CATEGORIES: FoodCategory[] = [
-  "prepared",
-  "produce",
-  "bakery",
-  "packaged",
-  "dairy",
-  "beverages",
-];
-
-function restColor(minutesLeft?: number): string {
-  if (minutesLeft === undefined) return URG_SPENT;
-  if (minutesLeft < 30) return URG_SOON; // under 30 min
-  if (minutesLeft < 60) return URG_MID; // under 1 hour
-  return URG_OPEN; // open (up to ~3 hours)
 }
 
 function boundsOf(pts: [number, number][]): [[number, number], [number, number]] {
@@ -251,9 +251,9 @@ export function RescueMap({
 }) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap>();
+  const roRef = useRef<ResizeObserver>();
   const restMarkers = useRef(new Map<string, MapboxMarker>());
   const dropMarkers = useRef(new Map<string, MapboxMarker>());
-  const dropBaseHTML = useRef(new Map<string, string>());
   const meMarkerRef = useRef<MapboxMarker>();
   const destMarkerRef = useRef<MapboxMarker>();
   const routeCache = useRef(new Map<string, RouteInfo | null>());
@@ -267,11 +267,17 @@ export function RescueMap({
   // Which journey is the chosen (blue) route. Keyed by the varying waypoint's id
   // (drop-off in rest mode, restaurant in drop mode). null = nothing drawn.
   const [activeRoute, setActiveRoute] = useState<string | null>(null);
-  const [cats, setCats] = useState<Set<FoodCategory>>(new Set());
-  const [fridgeOnly, setFridgeOnly] = useState(false);
+  // Layer visibility — let people declutter the map by hiding either marker type.
+  const [showRest, setShowRest] = useState(true);
+  // Drop-offs start hidden so the first view is calm and pickup-focused; selecting
+  // a pickup still reveals its candidate drop-offs (the selection flow ignores this).
+  const [showDrop, setShowDrop] = useState(false);
   const [mode, setMode] = useState<MapMode>("satellite");
-  const [legendOpen, setLegendOpen] = useState(true);
   const [infoOpen, setInfoOpen] = useState(false);
+  // The search/controls card hides on its own when a pin is selected (the panel
+  // below needs the room) and returns when the selection is cleared; the X / the
+  // collapsed "search" pill let the user override either way.
+  const [searchOpen, setSearchOpen] = useState(true);
   const [claimState, setClaimState] = useState<"idle" | "claiming" | "done" | "error">("idle");
   const [claimMsg, setClaimMsg] = useState<string | null>(null);
   // Bumped after a base-style swap finishes, so the line-drawing effect re-runs
@@ -332,8 +338,7 @@ export function RescueMap({
       ep.ids.forEach((id) => {
         const head = markers.get(id)?.getElement().firstElementChild as HTMLElement | null;
         if (!head) return;
-        head.style.outline = `3px solid ${id === activeId ? ROUTE : REC}`;
-        head.style.outlineOffset = "2px";
+        head.style.setProperty("--sel", id === activeId ? ROUTE : SEL);
       });
     }
   }, []);
@@ -392,13 +397,16 @@ export function RescueMap({
     }
   }, [dest, destLabel]);
 
-  function toggleCat(c: FoodCategory) {
-    setCats((prev) => {
-      const next = new Set(prev);
-      if (next.has(c)) next.delete(c);
-      else next.add(c);
-      return next;
-    });
+  // Hiding a layer also drops a selection of that kind, so the panel/route never
+  // points at markers that are no longer on the map.
+  function toggleLayer(kind: "rest" | "drop") {
+    if (kind === "rest") {
+      setShowRest((v) => !v);
+      if (showRest) setSelected((s) => (s?.kind === "rest" ? null : s));
+    } else {
+      setShowDrop((v) => !v);
+      if (showDrop) setSelected((s) => (s?.kind === "drop" ? null : s));
+    }
   }
 
   // Claim the restaurant's soonest-expiring open listing (the pickup). The map's
@@ -421,10 +429,6 @@ export function RescueMap({
       return false;
     }
   }
-  // Refs so the build-once marker effect's popup handlers call the latest claim
-  // logic without being rebuilt on every render.
-  const onClaimRef = useRef(onClaim);
-  onClaimRef.current = onClaim;
 
   async function fetchRouteMulti(points: [number, number][]): Promise<RouteInfo | null> {
     const key = points.map((p) => `${p[0]},${p[1]}`).join(";");
@@ -530,6 +534,14 @@ export function RescueMap({
       });
       mapRef.current = map;
 
+      // Keep the canvas matched to its container. With the full-bleed layout the
+      // map can initialize before the box has its final size (→ a grey gutter),
+      // and the box also changes on rotate/resize. A ResizeObserver calls
+      // resize() on every change; we also nudge once on load below.
+      const ro = new ResizeObserver(() => mapRef.current?.resize());
+      ro.observe(container.current);
+      roRef.current = ro;
+
       // Frame the map to fit everyone (the "good zoom"); used on load and by the
       // home button.
       const resetView = () => {
@@ -567,15 +579,10 @@ export function RescueMap({
       meEl.appendChild(meDot);
       meMarkerRef.current = new mapboxgl.Marker(meEl)
         .setLngLat(myLocRef.current)
-        .setPopup(
-          new mapboxgl.Popup({ offset: 16, closeButton: false }).setHTML(
-            `<div style="font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:.03em;color:rgb(var(--n-700));">you are here</div>`
-          )
-        )
         .addTo(map);
 
-      // Restaurant markers — round pin with a utensils glyph, colored by
-      // urgency; clicking isolates. Root is Mapbox-positioned; the inner head
+      // Restaurant markers — plum pickup pin with a utensils glyph (one flat
+      // color, never urgency); clicking isolates. Root is Mapbox-positioned; the inner head
       // carries hover/scale/outline so the pin never lags the map.
       // The root MUST NOT set `position`: Mapbox's `.mapboxgl-marker` sets
       // `position:absolute` and places each pin via a transform from the
@@ -585,11 +592,11 @@ export function RescueMap({
       for (const r of restaurants) {
         const el = document.createElement("div");
         el.className = "mm-pin";
-        el.style.cssText = `width:36px;height:36px;display:grid;place-items:center;`;
+        el.style.cssText = `width:28px;height:38px;display:grid;place-items:center;`;
         const head = document.createElement("div");
         head.className = "mm-pin-head";
-        head.style.cssText = `width:32px;height:32px;border-radius:50%;background:${restColor(r.minutesLeft)};border:3px solid #fff;outline:0 solid ${REC};display:grid;place-items:center;`;
-        head.innerHTML = ICON_REST;
+        head.style.cssText = `line-height:0;`;
+        head.innerHTML = pinSVG(PICKUP, GLYPH_REST);
         el.appendChild(head);
         el.addEventListener("click", (ev) => {
           ev.stopPropagation();
@@ -597,91 +604,23 @@ export function RescueMap({
             cur?.kind === "rest" && cur.id === r.id ? null : { kind: "rest", id: r.id }
           );
         });
-        const listingHref = r.listingId ? `/listings/${r.listingId}` : `/restaurants/${r.id}`;
-        const listingLabel = r.listingId ? "View listing →" : "View restaurant →";
-        const rChip = popupChip(
-          r.minutesLeft == null ? "all claimed" : `${r.minutesLeft} min left`,
-          restColor(r.minutesLeft)
-        );
-        // Claimable straight from the popup when an OPEN listing exists. The
-        // claim button is primary (sage), the detail link drops to a secondary
-        // mono link; otherwise the detail link stays the primary action and the
-        // route hint shows.
-        const claimableRest = !!(r.listingId && r.minutesLeft != null);
-        const actionHTML = claimableRest
-          ? `<button type="button" data-claim style="${POPUP_CLAIM_BTN}">Claim pickup</button>
-             <a href="${listingHref}" style="${POPUP_LINK}">${listingLabel}</a>`
-          : `<a href="${listingHref}" style="${POPUP_BTN}">${listingLabel}</a>
-             <div style="${POPUP_HINT}">tap the pin to plan a route</div>`;
-        // closeOnClick:false so the card stays put (a route-planning map click or
-        // the fitBounds pan won't dismiss it); its open/close is driven by the
-        // selection effect below, not Mapbox's default marker toggle.
-        const popup = new mapboxgl.Popup({
-          offset: 14,
-          closeButton: false,
-          closeOnClick: false,
-        }).setHTML(
-          `<div style="font-family:var(--font-sans),system-ui,sans-serif;min-width:206px;max-width:244px;">
-             ${rChip}
-             <div style="font-family:var(--font-display),Georgia,serif;font-size:18px;font-weight:600;line-height:1.2;color:rgb(var(--n-900));margin-top:9px;">${escapeHtml(r.name)}</div>
-             <div style="font-family:var(--font-mono),monospace;font-size:11px;color:rgb(var(--n-600));margin-top:6px;">~${r.servings} servings · ${r.count} listing${r.count > 1 ? "s" : ""}</div>
-             <div style="font-size:12px;color:rgb(var(--n-600));margin-top:3px;">${escapeHtml(r.categories.join(", "))}${r.perishable ? " · perishable" : ""}</div>
-             ${actionHTML}
-           </div>`
-        );
-        // Wire the popup's claim button to the same server action the panel uses.
-        // Self-contained DOM feedback (claiming → claimed) since popups are raw
-        // DOM and can't read React state; the map's data is a per-load snapshot.
-        if (claimableRest && r.listingId) {
-          const lid = r.listingId;
-          popup.on("open", () => {
-            const btn = popup
-              .getElement()
-              ?.querySelector<HTMLButtonElement>("button[data-claim]");
-            if (!btn || btn.dataset.wired) return;
-            btn.dataset.wired = "1";
-            btn.addEventListener("click", async (ev) => {
-              ev.preventDefault();
-              ev.stopPropagation();
-              if (btn.dataset.state) return; // claiming or done — ignore repeats
-              btn.dataset.state = "claiming";
-              btn.textContent = "Claiming…";
-              btn.style.opacity = "0.7";
-              btn.style.cursor = "default";
-              // Drive the same React claim the panel uses, so the panel shows the
-              // durable "claimed" + "view in my pickups" state. On success the
-              // route usually refreshes and closes this popup; on error it stays,
-              // so reset the button to let them retry.
-              const ok = await onClaimRef.current(lid);
-              if (ok) {
-                btn.dataset.state = "done";
-                btn.textContent = "Claimed ✓";
-              } else {
-                delete btn.dataset.state;
-                btn.style.opacity = "1";
-                btn.style.cursor = "pointer";
-                btn.textContent = "Couldn't claim — try again";
-              }
-            });
-          });
-        }
         restMarkers.current.set(
           r.id,
-          new mapboxgl.Marker(el).setLngLat([r.lng, r.lat]).setPopup(popup).addTo(map)
+          new mapboxgl.Marker({ element: el, anchor: "bottom" }).setLngLat([r.lng, r.lat]).addTo(map)
         );
       }
 
-      // Drop-off markers — rounded-square pin with a package glyph (a clearly
-      // different silhouette from the round restaurant pins); clicking isolates
-      // and finds the closest restaurants.
+      // Drop-off markers — terracotta teardrop pin with a flag glyph (the flag +
+      // warm hue read clearly apart from the sage fork-&-knife pickup pins);
+      // clicking isolates and finds the closest restaurants.
       for (const d of dropOffs) {
         const el = document.createElement("div");
         el.className = "mm-pin";
-        el.style.cssText = `width:36px;height:36px;display:grid;place-items:center;`;
+        el.style.cssText = `width:28px;height:38px;display:grid;place-items:center;`;
         const dot = document.createElement("div");
         dot.className = "mm-pin-head";
-        dot.style.cssText = `width:30px;height:30px;border-radius:7px;background:${DROP};border:3px solid #fff;outline:0 solid ${REC};display:grid;place-items:center;`;
-        dot.innerHTML = ICON_DROP;
+        dot.style.cssText = `line-height:0;`;
+        dot.innerHTML = pinSVG(DROP, GLYPH_DROP);
         el.appendChild(dot);
         el.addEventListener("click", (ev) => {
           ev.stopPropagation();
@@ -689,25 +628,9 @@ export function RescueMap({
             cur?.kind === "drop" && cur.id === d.id ? null : { kind: "drop", id: d.id }
           );
         });
-        const dChip = d.refrigerated
-          ? popupChip("❄ refrigerated", RAMP.transit600)
-          : popupChip("ambient", RAMP.neutral400);
-        // NOTE: baseHTML is an OPEN div on purpose — eligibility info and the
-        // closing </div> are appended later (resetDropMarker / the apply loop).
-        const baseHTML = `<div style="font-family:var(--font-sans),system-ui,sans-serif;min-width:206px;max-width:244px;">
-             ${dChip}
-             <div style="font-family:var(--font-display),Georgia,serif;font-size:18px;font-weight:600;line-height:1.2;color:rgb(var(--n-900));margin-top:9px;">${escapeHtml(d.name)}</div>
-             <div style="font-family:var(--font-mono),monospace;font-size:11px;color:rgb(var(--n-600));margin-top:6px;">holds ${d.capacity} servings</div>
-             <div style="font-size:12px;color:rgb(var(--n-600));margin-top:3px;">accepts ${escapeHtml(d.acceptedCategories.join(", "))}</div>
-             ${d.notes ? `<div style="font-size:12px;color:rgb(var(--n-600));margin-top:4px;">${escapeHtml(d.notes)}</div>` : ""}
-             <a href="/dropoffs/${d.id}" style="${POPUP_BTN}">View drop-off →</a>`;
-        dropBaseHTML.current.set(d.id, baseHTML);
-        const popup = new mapboxgl.Popup({ offset: 14, closeButton: false }).setHTML(
-          baseHTML + "</div>"
-        );
         dropMarkers.current.set(
           d.id,
-          new mapboxgl.Marker(el).setLngLat([d.lng, d.lat]).setPopup(popup).addTo(map)
+          new mapboxgl.Marker({ element: el, anchor: "bottom" }).setLngLat([d.lng, d.lat]).addTo(map)
         );
       }
 
@@ -729,12 +652,15 @@ export function RescueMap({
 
       map.on("load", () => {
         addRouteLayers(map);
+        map.resize();
         resetView();
       });
     })();
 
     return () => {
       cancelled = true;
+      roRef.current?.disconnect();
+      roRef.current = undefined;
       mapRef.current?.remove();
       mapRef.current = undefined;
       toggleRef.current = undefined;
@@ -764,15 +690,12 @@ export function RescueMap({
     };
   }, [mode]);
 
-  // Reposition the "you" marker + popup when myLoc / label changes.
+  // Reposition the "you" marker when myLoc changes.
   useEffect(() => {
     const m = meMarkerRef.current;
     if (!m) return;
     m.setLngLat(myLoc);
-    m.getPopup()?.setHTML(
-      `<div style="font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:.03em;color:rgb(var(--n-700));">you are here · ${escapeHtml(myLabel)}</div>`
-    );
-  }, [myLoc, myLabel]);
+  }, [myLoc]);
 
   // Create / move / remove the destination flag marker.
   useEffect(() => {
@@ -795,25 +718,15 @@ export function RescueMap({
         el.appendChild(dot);
         destMarkerRef.current = new mapboxgl.Marker(el)
           .setLngLat(dest)
-          .setPopup(
-            new mapboxgl.Popup({ offset: 16, closeButton: false }).setHTML(
-              `<div style="font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:.03em;color:rgb(var(--n-700));">destination</div>`
-            )
-          )
           .addTo(map);
       } else {
         destMarkerRef.current.setLngLat(dest);
       }
-      destMarkerRef.current
-        .getPopup()
-        ?.setHTML(
-          `<div style="font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:.03em;color:rgb(var(--n-700));">destination · ${escapeHtml(destLabel)}</div>`
-        );
     })();
     return () => {
       cancelled = true;
     };
-  }, [dest, destLabel]);
+  }, [dest]);
 
   // The core: marker visibility/highlight + route drawing, on any input change.
   useEffect(() => {
@@ -833,10 +746,6 @@ export function RescueMap({
       ...(destRef.current ? [destRef.current] : []),
     ];
 
-    const passesCat = (r: MapRestaurant) =>
-      cats.size === 0 || r.categories.some((c) => cats.has(c));
-    const passesFridge = (d: DropOffLocation) => !fridgeOnly || d.refrigerated;
-
     const resetRestMarker = (m: MapboxMarker) => {
       const el = m.getElement();
       const head = el.firstElementChild as HTMLElement | null;
@@ -844,8 +753,7 @@ export function RescueMap({
       // drop the inline display:grid and let the head fall off-centre.
       el.style.display = "grid";
       if (head) {
-        head.style.outline = `0 solid ${REC}`;
-        head.style.outlineOffset = "";
+        head.style.removeProperty("--sel");
         head.style.opacity = "";
       }
     };
@@ -854,12 +762,9 @@ export function RescueMap({
       const dot = el.firstElementChild as HTMLElement | null;
       el.style.display = "grid";
       if (dot) {
-        dot.style.outline = "";
-        dot.style.outlineOffset = "";
-        dot.style.transform = "";
+        dot.style.removeProperty("--sel");
         dot.style.opacity = "";
       }
-      m.getPopup()?.setHTML((dropBaseHTML.current.get(id) ?? "") + "</div>");
     };
 
     const clearRoutes = () => {
@@ -879,17 +784,15 @@ export function RescueMap({
     const apply = async () => {
       const sel = selected;
 
-      // --- nothing selected: show everything (respecting filters), no lines ---
+      // --- nothing selected: show each layer that's toggled on, no lines ---
       if (!sel) {
-        restMarkers.current.forEach((m, id) => {
+        restMarkers.current.forEach((m) => {
           resetRestMarker(m);
-          const r = restaurants.find((x) => x.id === id);
-          if (r && !passesCat(r)) m.getElement().style.display = "none";
+          if (!showRest) m.getElement().style.display = "none";
         });
         dropMarkers.current.forEach((m, id) => {
           resetDropMarker(m, id);
-          const d = dropOffs.find((x) => x.id === id);
-          if (d && !passesFridge(d)) m.getElement().style.display = "none";
+          if (!showDrop) m.getElement().style.display = "none";
         });
         clearRoutes();
         activeRouteRef.current = null;
@@ -904,42 +807,26 @@ export function RescueMap({
         if (!rest) return;
         const ranked = rankDropOffs(rest, dropOffs);
         const top3 = ranked.filter((x) => x.eligible).slice(0, 3);
-        const reasons = new Map(ranked.map((x) => [x.dropOff.id, x.reason]));
 
-        // Isolate restaurants to the selected one (and ring it clay as the anchor).
+        // Isolate restaurants to the selected one (and ring it as the anchor).
         restMarkers.current.forEach((m, id) => {
           resetRestMarker(m);
           const el = m.getElement();
           el.style.display = id === sel.id ? "grid" : "none";
           if (id === sel.id) {
             const head = el.firstElementChild as HTMLElement | null;
-            if (head) {
-              head.style.outline = `3px solid ${REC}`;
-              head.style.outlineOffset = "2px";
-            }
+            if (head) head.style.setProperty("--sel", SEL);
           }
         });
-        // Drop-offs: eligible shown (candidate rings applied by paintRoutes),
-        // ineligible dimmed with a reason in the popup.
+        // Drop-offs: always revealed for the selected pickup (the whole point is
+        // showing where it can go) — independent of the "show drop-offs" toggle.
+        // Eligible shown full (candidate rings via paintRoutes), ineligible dimmed.
         dropMarkers.current.forEach((m, id) => {
           resetDropMarker(m, id);
-          const d = dropOffs.find((x) => x.id === id);
           const el = m.getElement();
           const dot = el.firstElementChild as HTMLElement | null;
-          if (d && !passesFridge(d)) {
-            el.style.display = "none";
-            return;
-          }
           const isEligible = ranked.find((x) => x.dropOff.id === id)?.eligible;
-          if (!isEligible) {
-            if (dot) dot.style.opacity = "0.35";
-            const why = reasons.get(id);
-            if (why)
-              m.getPopup()?.setHTML(
-                (dropBaseHTML.current.get(id) ?? "") +
-                  `<div style="color:rgb(var(--failed-800));font-size:12px;margin-top:6px;">Can't take this load: ${escapeHtml(why)}</div></div>`
-              );
-          }
+          if (!isEligible && dot) dot.style.opacity = "0.35";
         });
 
         if (top3.length === 0) {
@@ -1008,6 +895,9 @@ export function RescueMap({
           ...top3.map((x) => [x.dropOff.lng, x.dropOff.lat] as [number, number]),
           ...(destRef.current ? [destRef.current] : []),
         ];
+        // Sync the canvas to the (now panel-shrunk) map area before framing, so
+        // the route fits the visible map rather than the old full-height box.
+        map.resize();
         if (pts.length > 1) map.fitBounds(boundsOf(pts), { padding: 80, maxZoom: 14 });
         return;
       }
@@ -1019,21 +909,19 @@ export function RescueMap({
       const top3 = rankedR.filter((x) => x.eligible).slice(0, 3);
       const top3Ids = new Set(top3.map((x) => x.restaurant.id));
 
-      // Isolate drop-offs to the selected one (ring it clay as the anchor).
+      // Isolate drop-offs to the selected one (ring it as the anchor). The
+      // selected drop-off always shows, regardless of the "show drop-offs" toggle.
       dropMarkers.current.forEach((m, id) => {
         resetDropMarker(m, id);
         const el = m.getElement();
         el.style.display = id === sel.id ? "grid" : "none";
         if (id === sel.id) {
           const dot = el.firstElementChild as HTMLElement | null;
-          if (dot) {
-            dot.style.outline = `3px solid ${REC}`;
-            dot.style.outlineOffset = "2px";
-          }
+          if (dot) dot.style.setProperty("--sel", SEL);
         }
       });
       // Restaurants: show the 3 closest eligible (candidate rings via paintRoutes),
-      // hide the rest.
+      // hide the rest — always revealed so the drop-off's sources are visible.
       restMarkers.current.forEach((m, id) => {
         resetRestMarker(m);
         if (!top3Ids.has(id)) m.getElement().style.display = "none";
@@ -1095,6 +983,8 @@ export function RescueMap({
         ...top3.map((x) => [x.restaurant.lng, x.restaurant.lat] as [number, number]),
         ...(destRef.current ? [destRef.current] : []),
       ];
+      // Sync the canvas to the (now panel-shrunk) map area before framing.
+      map.resize();
       if (pts.length > 1) map.fitBounds(boundsOf(pts), { padding: 80, maxZoom: 14 });
     };
 
@@ -1103,27 +993,13 @@ export function RescueMap({
     return () => {
       cancelled = true;
     };
-  }, [selected, cats, fridgeOnly, myLoc, dest, restaurants, dropOffs, styleVersion, paintRoutes]);
+  }, [selected, showRest, showDrop, myLoc, dest, restaurants, dropOffs, styleVersion, paintRoutes]);
 
   // Picking a different route (map click or panel row) only repaints — the
   // resolved geometries are already cached, so no refetch and no refit.
   useEffect(() => {
     paintRoutes();
   }, [activeRoute, paintRoutes]);
-
-  // Keep the selected restaurant's popup (the claim card) open and every other
-  // restaurant popup closed. Mapbox's default marker-click toggle is suppressed
-  // by our own click handler, so selection is the single source of truth for
-  // which card is showing — that's what makes "claim from the card" reachable.
-  useEffect(() => {
-    restMarkers.current.forEach((m, id) => {
-      const pop = m.getPopup();
-      if (!pop) return;
-      const shouldOpen = selected?.kind === "rest" && selected.id === id;
-      if (shouldOpen && !pop.isOpen()) m.togglePopup();
-      else if (!shouldOpen && pop.isOpen()) m.togglePopup();
-    });
-  }, [selected]);
 
   // When a selection first opens the panel (which renders below the map), nudge
   // the page so the panel is in view without scrolling the map out — a minimal
@@ -1143,6 +1019,12 @@ export function RescueMap({
     panelRef.current.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "nearest" });
   }, [selected, panel]);
 
+  // Auto-hide the search/controls card while a pin is selected (the docked panel
+  // needs the space); restore it when the selection clears.
+  useEffect(() => {
+    setSearchOpen(!selected);
+  }, [selected]);
+
   // Reset the claim button whenever the chosen pickup changes.
   useEffect(() => {
     setClaimState("idle");
@@ -1153,8 +1035,8 @@ export function RescueMap({
     return (
       <div className="grid h-[60vh] place-items-center rounded-2xl border border-dashed border-neutral-200 bg-card text-center">
         <div>
-          <p className="text-sm text-neutral-600">The map needs a Mapbox token.</p>
-          <p className="mt-1 font-mono text-xs text-neutral-500">
+          <p className="text-sm text-neutral-700">The map needs a Mapbox token.</p>
+          <p className="mt-1 font-mono text-xs text-neutral-700">
             Add NEXT_PUBLIC_MAPBOX_TOKEN to Code/.env, then restart the dev server.
           </p>
         </div>
@@ -1164,7 +1046,7 @@ export function RescueMap({
 
   const fieldCls =
     "w-full rounded-xl border border-neutral-900/10 bg-card px-3 py-1.5 text-sm " +
-    "placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 " +
+    "placeholder:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 " +
     "focus-visible:ring-transit-400 focus-visible:ring-offset-1";
 
   const setBtnCls =
@@ -1212,11 +1094,41 @@ export function RescueMap({
   })();
 
   return (
-    <div className="space-y-3">
-      {/* Address inputs */}
-      <div className="grid gap-2 sm:grid-cols-2">
+    <div className="flex h-full w-full flex-col">
+      {/* MAP AREA — grows to fill; shrinks (flex-1) when the selection panel docks
+          below it, so the map and its routes stay fully on screen instead of
+          hiding under an overlay. */}
+      <div className="relative min-h-0 flex-1">
+        {/* Sized with h/w-full (not inset-0): mapbox-gl.css forces the map element
+            to position:relative, on which inset offsets wouldn't size it. */}
+        <div ref={container} className="h-full w-full" />
+
+        {/* Overlay is click-through (pointer-events-none) so map drag/zoom works in
+            the gaps; the controls card re-enables events with pointer-events-auto. */}
+        <div className="pointer-events-none absolute inset-0 z-[1]">
+          {searchOpen ? (
+            // Controls (top-left): title + hide, address inputs, layer toggles,
+            // map key. Scrolls internally if it outgrows a short viewport.
+            <div className="pointer-events-auto absolute left-3 top-3 flex max-h-[45%] w-[min(92vw,340px)] flex-col gap-3 overflow-y-auto rounded-2xl border border-neutral-900/10 bg-neutral-50/95 p-3.5 shadow-card backdrop-blur-sm md:max-h-[calc(100%_-_1.5rem)]">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="font-display text-lg font-semibold leading-none tracking-tight text-neutral-900">
+              Rescue map
+            </h1>
+            <button
+              type="button"
+              onClick={() => setSearchOpen(false)}
+              aria-label="Hide search"
+              className="-mr-1 shrink-0 rounded-full p-1 text-neutral-700 transition-colors hover:bg-neutral-900/5 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          {/* Address inputs */}
+          <div className="grid gap-2">
         <div>
-          <label className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+          <label className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-neutral-700">
             Your location
           </label>
           <div className="flex gap-2">
@@ -1253,8 +1165,8 @@ export function RescueMap({
           </button>
         </div>
         <div>
-          <label className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-neutral-600">
-            Final destination <span className="text-neutral-400">(optional)</span>
+          <label className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+            Final destination <span className="text-neutral-600">(optional)</span>
           </label>
           <div className="flex gap-2">
             <input
@@ -1289,161 +1201,106 @@ export function RescueMap({
       </div>
       {geoError && <p className="font-mono text-[11px] text-failed-600">{geoError}</p>}
 
-      {/* Filter bar */}
+      {/* Map layers — show / hide the two pin kinds. Pickups are on by default;
+          drop-offs start hidden so the first view stays calm and pickup-focused
+          (selecting a pickup still reveals its candidate drop-offs). Each control
+          carries a miniature of its real map pin, so it's self-explanatory: full
+          color on a raised chip = shown; greyed pin + dashed outline + struck
+          label = hidden. */}
       <div className="flex flex-wrap items-center gap-2">
-        {ALL_CATEGORIES.map((c) => {
-          const on = cats.has(c);
-          return (
+        <span className="font-mono text-[10px] text-neutral-700">show on map</span>
+        {(
+          [
+            { kind: "rest", label: "Pickups", on: showRest, color: PICKUP, glyph: GLYPH_REST },
+            { kind: "drop", label: "Drop-offs", on: showDrop, color: DROP, glyph: GLYPH_DROP },
+          ] as const
+        ).map((L) => (
+          <button
+            key={L.kind}
+            type="button"
+            onClick={() => toggleLayer(L.kind)}
+            aria-pressed={L.on}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-[12px] transition-all",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1",
+              L.on
+                ? "border-neutral-900/10 bg-card text-neutral-900 shadow-card"
+                : "border-dashed border-neutral-900/25 text-neutral-700 line-through decoration-1 hover:border-neutral-900/40 hover:text-neutral-900"
+            )}
+          >
+            <LegendPin fill={L.on ? L.color : RAMP.neutral400} glyph={L.glyph} />
+            {L.label}
+          </button>
+        ))}
+      </div>
+            </div>
+          ) : (
+            // Collapsed: a small pill (top-left) brings the search card back.
             <button
-              key={c}
               type="button"
-              onClick={() => toggleCat(c)}
-              className={cn(
-                "rounded-full px-3 py-1 font-mono text-[11px] capitalize transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1",
-                on
-                  ? "bg-neutral-900 text-neutral-50"
-                  : "border border-neutral-900/10 text-neutral-600 hover:border-neutral-900/25 hover:text-neutral-900"
-              )}
+              onClick={() => setSearchOpen(true)}
+              className="pointer-events-auto absolute left-3 top-3 flex items-center gap-1.5 rounded-full border border-neutral-900/10 bg-neutral-50/95 px-3 py-1.5 font-mono text-[11px] text-neutral-700 shadow-card backdrop-blur-sm transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1"
             >
-              {c}
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+              search
             </button>
-          );
-        })}
-        <span className="mx-1 h-4 w-px bg-neutral-200/60" />
-        <button
-          type="button"
-          onClick={() => setFridgeOnly((v) => !v)}
-          className={cn(
-            "rounded-full px-3 py-1 font-mono text-[11px] transition-colors",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1",
-            fridgeOnly
-              ? "bg-transit-600 text-neutral-50"
-              : "border border-neutral-900/10 text-neutral-600 hover:border-neutral-900/25 hover:text-neutral-900"
           )}
-        >
-          ❄ refrigerated only
-        </button>
-        {(cats.size > 0 || fridgeOnly) && (
-          <button
-            type="button"
-            onClick={() => {
-              setCats(new Set());
-              setFridgeOnly(false);
-            }}
-            className="font-mono text-[11px] text-clay-800 hover:underline -my-1.5 py-1.5"
-          >
-            clear
-          </button>
-        )}
+        </div>
       </div>
 
-      <div className="relative">
-        <div
-          ref={container}
-          className="h-[60vh] w-full overflow-hidden rounded-2xl border border-neutral-900/10 shadow-card"
-        />
-
-        {/* Legend — collapsible to free up the map on small screens */}
-        {legendOpen ? (
-          <div className="absolute left-3 top-3 space-y-1 rounded-2xl border border-neutral-900/10 bg-neutral-50/95 px-3.5 py-2.5 text-xs text-neutral-700 shadow-card">
-            <div className="flex items-center justify-between gap-4">
-              <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
-                Restaurant urgency
-              </span>
-              <button
-                type="button"
-                onClick={() => setLegendOpen(false)}
-                aria-label="Hide legend"
-                className="-mr-1 shrink-0 rounded-full p-1.5 text-neutral-500 transition-colors hover:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
-              >
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <path d="M18 6 6 18M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-3 w-3 rounded-full" style={{ background: URG_SOON }} />
-              Under 30 min
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-3 w-3 rounded-full" style={{ background: URG_MID }} />
-              Under 1 hour
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-3 w-3 rounded-full" style={{ background: URG_OPEN }} />
-              Under 3 hours
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-3 w-3 rounded-full" style={{ background: URG_SPENT }} />
-              All claimed
-            </div>
-            <div className="my-1 h-px bg-neutral-200/60" />
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-3 w-3 rounded-[3px]" style={{ background: DROP }} />
-              Drop-off
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-3 w-3 rounded-full" style={{ background: ME }} />
-              You
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-3 w-3 rounded-[3px]" style={{ background: DEST }} />
-              Destination
-            </div>
-            <div className="my-1 h-px bg-neutral-200/60" />
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-1 w-4 rounded-full" style={{ background: ROUTE }} />
-              Chosen route
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="inline-block h-1 w-4 rounded-full" style={{ background: ROUTE_ALT }} />
-              Alternative
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setLegendOpen(true)}
-            aria-label="Show legend"
-            className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full border border-neutral-900/10 bg-neutral-50/95 px-3 py-1.5 font-mono text-[11px] text-neutral-600 shadow-card transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1"
-          >
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M12 11v5M12 7.5h.01" />
-            </svg>
-            legend
-          </button>
-        )}
-      </div>
-
-      {/* Selection panel — rendered below the map (not overlaid) so it never
-          covers the pins or routes; persists until "Show all" or re-clicking. */}
+      {/* Selection panel — docks BELOW the map (a flex sibling, not an overlay):
+          the map area above shrinks (flex-1) so the routes stay fully visible, and
+          the panel scrolls internally. Persists until "Show all" / re-clicking. */}
       {panel && (
         <div
           ref={panelRef}
-          className="animate-fade-in rounded-2xl border border-neutral-900/10 bg-card px-4 py-3 shadow-card"
+          className="max-h-[45vh] shrink-0 overflow-y-auto border-t border-neutral-900/10 bg-card px-4 py-3 shadow-[0_-6px_20px_rgba(51,52,44,0.12)] animate-fade-in"
         >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-[11px] font-medium text-neutral-500">
+                <div className="text-[11px] font-medium text-neutral-700">
                   {panel.kind === "rest" ? "Selected restaurant" : "Selected drop-off"}
                 </div>
                 <div className="truncate font-display text-base font-semibold text-neutral-900">
                   {panel.name}
                 </div>
+                {/* The detail link lives here on the card now (moved off the map
+                    popup): a quiet clay text link to the full listing / location. */}
+                {panel.kind === "rest" && activeRest && (
+                  <Link
+                    href={
+                      activeRest.listingId
+                        ? `/listings/${activeRest.listingId}`
+                        : `/restaurants/${activeRest.id}`
+                    }
+                    className="mt-1 inline-block rounded-sm text-[13px] font-medium text-clay-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+                  >
+                    {activeRest.listingId ? "View listing" : "View restaurant"} →
+                  </Link>
+                )}
+                {panel.kind === "drop" && activeDrop && (
+                  <Link
+                    href={`/dropoffs/${activeDrop.id}`}
+                    className="mt-1 inline-block rounded-sm text-[13px] font-medium text-clay-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+                  >
+                    View drop-off →
+                  </Link>
+                )}
               </div>
               <button
                 type="button"
                 onClick={() => setSelected(null)}
-                className="-mr-1 -mt-1 shrink-0 rounded-full px-3 py-1 text-xs font-medium text-neutral-600 transition-colors hover:bg-neutral-900/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+                className="-mr-1 -mt-1 shrink-0 rounded-full px-3 py-1 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-900/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
               >
                 Show all
               </button>
             </div>
 
             {panel.options.length > 1 && (
-              <p className="mt-2 text-xs text-neutral-600">
+              <p className="mt-2 text-xs text-neutral-700">
                 {panel.kind === "rest"
                   ? "Tap a route to choose which drop-off to deliver to."
                   : "Tap a route to choose which restaurant to pick up from."}
@@ -1451,7 +1308,7 @@ export function RescueMap({
             )}
 
             {panel.options.length === 0 ? (
-              <p className="mt-3 rounded-xl border border-dashed border-neutral-900/15 px-3 py-3 text-center text-xs text-neutral-600">
+              <p className="mt-3 rounded-xl border border-dashed border-neutral-900/15 px-3 py-3 text-center text-xs text-neutral-700">
                 {panel.kind === "rest"
                   ? "No drop-off can take this load right now."
                   : "No restaurant nearby has food for this drop-off."}
@@ -1503,7 +1360,7 @@ export function RescueMap({
                               <span className={cn("block font-mono text-sm font-bold tabular-nums", isActive ? "text-route" : "text-neutral-900")}>
                                 {o.minutes} min
                               </span>
-                              <span className="block font-mono text-[11px] tabular-nums text-neutral-500">
+                              <span className="block font-mono text-[11px] tabular-nums text-neutral-700">
                                 {o.miles.toFixed(1)} mi
                               </span>
                             </>
@@ -1522,7 +1379,7 @@ export function RescueMap({
 
             {activeOpt && (
               <div className="mt-3 flex items-center gap-2 border-t border-neutral-900/10 pt-3">
-                <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-neutral-600">
+                <span className="min-w-0 flex-1 truncate font-sans text-[13px] text-neutral-700">
                   you → {panel.kind === "rest" ? panel.name : activeOpt.name} →{" "}
                   {panel.kind === "rest" ? activeOpt.name : panel.name}
                   {dest ? " → destination" : ""}
@@ -1541,9 +1398,28 @@ export function RescueMap({
                   type="button"
                   onClick={() => setInfoOpen((v) => !v)}
                   aria-expanded={infoOpen}
-                  className="mt-3 flex w-full items-center justify-between gap-2 border-t border-neutral-900/10 pt-3 text-left text-xs font-medium text-neutral-700 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1"
+                  className="mt-3 flex w-full items-center justify-between gap-2 rounded-xl border border-neutral-900/10 bg-neutral-900/[0.03] px-3 py-2 text-left text-sm font-semibold text-neutral-800 transition-colors hover:bg-neutral-900/[0.06] hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1"
                 >
-                  <span>More information</span>
+                  <span className="flex items-center gap-2">
+                    {/* info glyph (clay) so the disclosure reads as tappable */}
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="16"
+                      height="16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      className="text-clay-600"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 16v-4" />
+                      <path d="M12 8h.01" />
+                    </svg>
+                    {infoOpen ? "Hide details" : "Pickup & drop-off details"}
+                  </span>
                   <svg
                     viewBox="0 0 24 24"
                     width="16"
@@ -1554,7 +1430,7 @@ export function RescueMap({
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     aria-hidden="true"
-                    className={cn("transition-transform", infoOpen && "rotate-180")}
+                    className={cn("shrink-0 text-neutral-700 transition-transform", infoOpen && "rotate-180")}
                   >
                     <path d="m6 9 6 6 6-6" />
                   </svg>
@@ -1562,12 +1438,12 @@ export function RescueMap({
 
                 {infoOpen && (
                   <div className="mt-3 grid gap-x-4 gap-y-4 sm:grid-cols-2">
-                    {/* Pickup — header dot mirrors the restaurant pin's urgency color */}
+                    {/* Pickup — header dot mirrors the sage pickup pin */}
                     <div>
                       <div className="flex items-center gap-2">
                         <span
                           className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-white"
-                          style={{ background: restColor(activeRest?.minutesLeft) }}
+                          style={{ background: PICKUP }}
                         >
                           <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                             <path d="M3 2v7a2 2 0 0 0 2 2 2 2 0 0 0 2-2V2" />
@@ -1575,7 +1451,7 @@ export function RescueMap({
                             <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1 1 2 2 2h3Zm0 0v7" />
                           </svg>
                         </span>
-                        <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+                        <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
                           Pickup
                         </span>
                       </div>
@@ -1590,13 +1466,13 @@ export function RescueMap({
                                 ? `${activeRest.minutesLeft} min left`
                                 : "all claimed"}
                             </InfoChip>
-                            <span className="font-mono text-[11px] text-neutral-600">
+                            <span className="font-mono text-[11px] text-neutral-700">
                               ~{activeRest.servings} servings · {activeRest.count} listing
                               {activeRest.count === 1 ? "" : "s"}
                             </span>
                           </div>
                           {activeRest.categories.length > 0 && (
-                            <div className="mt-1 truncate font-mono text-[11px] text-neutral-500">
+                            <div className="mt-1 truncate font-mono text-[11px] text-neutral-700">
                               {activeRest.categories.join(", ")}
                               {activeRest.perishable ? " · perishable" : ""}
                             </div>
@@ -1604,17 +1480,17 @@ export function RescueMap({
                         </>
                       )}
                     </div>
-                    {/* Drop-off — header square + plum dot mirrors the drop-off pin */}
+                    {/* Drop-off — header square mirrors the terracotta drop-off pin */}
                     <div className="sm:border-l sm:border-neutral-900/10 sm:pl-4">
                       <div className="flex items-center gap-2">
-                        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-[6px] bg-transit-600 text-white">
+                        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-[6px] bg-clay-600 text-white">
                           <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                             <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
                             <path d="M3.3 7 12 12l8.7-5" />
                             <path d="M12 22V12" />
                           </svg>
                         </span>
-                        <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+                        <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
                           Drop-off
                         </span>
                       </div>
@@ -1627,15 +1503,15 @@ export function RescueMap({
                             <InfoChip tone={activeDrop.refrigerated ? "transit" : "neutral"}>
                               {activeDrop.refrigerated ? "❄ refrigerated" : "ambient"}
                             </InfoChip>
-                            <span className="font-mono text-[11px] text-neutral-600">
+                            <span className="font-mono text-[11px] text-neutral-700">
                               holds {activeDrop.capacity}
                             </span>
                           </div>
-                          <div className="mt-1 truncate font-mono text-[11px] text-neutral-500">
+                          <div className="mt-1 truncate font-mono text-[11px] text-neutral-700">
                             accepts {activeDrop.acceptedCategories.join(", ")}
                           </div>
                           {activeDrop.notes && (
-                            <div className="mt-1 truncate font-mono text-[11px] text-neutral-500">
+                            <div className="mt-1 truncate font-mono text-[11px] text-neutral-700">
                               {activeDrop.notes}
                             </div>
                           )}
@@ -1654,7 +1530,7 @@ export function RescueMap({
                     type="button"
                     onClick={() => activeRest?.listingId && onClaim(activeRest.listingId)}
                     disabled={claimState === "claiming" || claimState === "done"}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-full bg-gradient-to-b from-rescued-400 to-rescued-600 px-4 py-2.5 text-sm font-bold text-white shadow-glow transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 disabled:opacity-60 disabled:hover:translate-y-0"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-2.5 text-sm font-bold text-neutral-50 shadow-card transition hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 disabled:opacity-60 disabled:hover:translate-y-0"
                   >
                     {claimState === "claiming"
                       ? "Claiming…"
@@ -1668,7 +1544,7 @@ export function RescueMap({
                     href={gmapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex flex-1 items-center justify-center gap-2 rounded-full border-2 border-route/70 bg-card px-4 py-2 text-sm font-bold text-route transition-colors hover:bg-route/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-route focus-visible:ring-offset-1"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-route/70 bg-card px-4 py-2 text-sm font-bold text-route transition-colors hover:bg-route/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-route focus-visible:ring-offset-1"
                   >
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <polygon points="3 11 22 2 13 21 11 13 3 11" />

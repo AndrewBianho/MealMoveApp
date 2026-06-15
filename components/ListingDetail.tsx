@@ -43,7 +43,7 @@ function ProofPhoto({ label, url }: { label: string; url: string }) {
       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl">
         <Image src={url} alt={`Food ${label}`} fill sizes="200px" className="object-cover" />
       </div>
-      <figcaption className="mt-1 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+      <figcaption className="mt-1 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
         {label}
       </figcaption>
     </figure>
@@ -58,8 +58,8 @@ function MetaRow({
   children: React.ReactNode;
 }) {
   return (
-    <p className="flex items-center gap-2 font-sans text-[13px] text-neutral-600">
-      <span className="text-neutral-400">{icon}</span>
+    <p className="flex items-center gap-2 font-sans text-[13px] text-neutral-700">
+      <span className="text-neutral-600">{icon}</span>
       {children}
     </p>
   );
@@ -90,8 +90,8 @@ export function ListingDetail({
   if (!listing) {
     return (
       <div className="rounded-xl border border-dashed border-neutral-200 bg-card px-6 py-16 text-center">
-        <p className="text-sm text-neutral-600">This listing isn&apos;t available.</p>
-        <p className="mt-1 font-mono text-xs text-neutral-500">
+        <p className="text-sm text-neutral-700">This listing isn&apos;t available.</p>
+        <p className="mt-1 font-mono text-xs text-neutral-700">
           It may have been removed.
         </p>
         <Link
@@ -187,7 +187,7 @@ export function ListingDetail({
     <div className={cn(isPending && "opacity-70 transition-opacity")}>
       <Link
         href="/"
-        className="mb-4 inline-block text-sm text-neutral-600 hover:text-neutral-900"
+        className="mb-4 inline-block text-sm text-neutral-700 hover:text-neutral-900"
       >
         ← Feed
       </Link>
@@ -275,7 +275,7 @@ export function ListingDetail({
                   {listing.dropOffHours && (
                     <span className="ml-2 inline-flex items-center gap-2 align-middle">
                       <OpenNowBadge hours={listing.dropOffHours} />
-                      <span className="font-mono text-xs text-neutral-500">
+                      <span className="font-mono text-xs text-neutral-700">
                         today {formatDay(listing.dropOffHours[currentDayKey()])}
                       </span>
                     </span>
@@ -291,11 +291,11 @@ export function ListingDetail({
             </div>
 
             {listing.notes && (
-              <div className="mt-5 rounded-md bg-urgent-50 px-4 py-3 text-sm text-urgent-800">
-                <span className="font-mono text-[10px] uppercase tracking-wide">
+              <div className="mt-5 rounded-md bg-neutral-100 px-4 py-3 text-sm text-neutral-800">
+                <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-600">
                   special requests
                 </span>
-                <p className="mt-0.5">{listing.notes}</p>
+                <p className="mt-0.5 whitespace-pre-line">{listing.notes}</p>
               </div>
             )}
 
@@ -316,7 +316,7 @@ export function ListingDetail({
 
             {(listing.photoAtPickupUrl || listing.photoAtDeliveryUrl) && (
               <div className="mt-5">
-                <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+                <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
                   Proof photos
                 </p>
                 <div className="grid grid-cols-2 gap-3">
@@ -338,7 +338,7 @@ export function ListingDetail({
         {/* Side: timeline + actions */}
         <aside className="space-y-6">
           <div className="rounded-2xl border border-neutral-200/40 bg-card p-5">
-            <p className="mb-4 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+            <p className="mb-4 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
               Status
             </p>
             <ol className="space-y-0">
@@ -353,7 +353,7 @@ export function ListingDetail({
                           "grid h-5 w-5 place-items-center rounded-full border text-[10px]",
                           done
                             ? "border-rescued-600 bg-rescued-600 text-white"
-                            : "border-neutral-200 bg-card text-neutral-400"
+                            : "border-neutral-200 bg-card text-neutral-600"
                         )}
                       >
                         {done ? "✓" : i + 1}
@@ -370,7 +370,7 @@ export function ListingDetail({
                     <span
                       className={cn(
                         "pb-4 text-sm",
-                        done ? "text-neutral-900" : "text-neutral-400"
+                        done ? "text-neutral-900" : "text-neutral-600"
                       )}
                     >
                       {STEP_LABEL[step]}
@@ -383,12 +383,12 @@ export function ListingDetail({
 
           {!terminal && (
             <div className="rounded-2xl border border-neutral-200/40 bg-card p-5">
-              <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+              <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
                 Next step
               </p>
               {listing.status === "open" && (
                 <Button
-                  variant="primary"
+                  variant="claim"
                   className="w-full"
                   onClick={onClaim}
                   disabled={isPending}
@@ -442,14 +442,14 @@ export function ListingDetail({
                         type="button"
                         onClick={() => setConfirmCancel(true)}
                         disabled={isPending}
-                        className="mt-3 w-full text-[13px] text-neutral-500 transition-colors hover:text-failed-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1 disabled:opacity-50"
+                        className="mt-3 w-full text-[13px] text-neutral-700 transition-colors hover:text-failed-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1 disabled:opacity-50"
                       >
                         Can&apos;t make it? Cancel pickup
                       </button>
                     )}
                   </>
                 ) : (
-                  <p className="text-sm text-neutral-600">
+                  <p className="text-sm text-neutral-700">
                     Waiting for {listing.claimedBy ?? "the volunteer"} to pick up
                     and start delivery.
                   </p>
@@ -464,13 +464,13 @@ export function ListingDetail({
                     onChange={onDeliveryPhoto}
                   />
                 ) : (
-                  <p className="text-sm text-neutral-600">
+                  <p className="text-sm text-neutral-700">
                     {listing.claimedBy ?? "The volunteer"} is on the way to{" "}
                     {listing.dropOff ?? "the drop-off"}.
                   </p>
                 ))}
               {listing.status === "delivered" && (
-                <p className="text-sm text-neutral-600">
+                <p className="text-sm text-neutral-700">
                   Complete — nothing more to do. 🌱
                 </p>
               )}
@@ -481,7 +481,7 @@ export function ListingDetail({
             <div className="rounded-2xl border border-neutral-200/40 bg-card p-5">
               {listing.buddyName ? (
                 <>
-                  <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+                  <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
                     Buddies
                   </p>
                   <div className="flex items-center gap-3">
@@ -510,7 +510,7 @@ export function ListingDetail({
                 />
               ) : outgoingInvite ? (
                 <>
-                  <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+                  <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
                     Buddy
                   </p>
                   <div className="rounded-md bg-urgent-50 px-4 py-3">
@@ -532,11 +532,11 @@ export function ListingDetail({
                 </>
               ) : (
                 <>
-                  <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+                  <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
                     Buddy
                   </p>
-                  <p className="mb-3 flex items-start gap-2 text-[13px] text-neutral-600">
-                    <span className="mt-0.5 text-neutral-400">
+                  <p className="mb-3 flex items-start gap-2 text-[13px] text-neutral-700">
+                    <span className="mt-0.5 text-neutral-600">
                       <Users />
                     </span>
                     Doing this with someone? Invite a buddy so you&apos;ve got

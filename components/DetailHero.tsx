@@ -30,7 +30,7 @@ export function DetailHero({
     <>
       <Link
         href={backHref}
-        className="mb-4 inline-flex items-center gap-1.5 rounded-full px-1 font-mono text-[11px] uppercase tracking-wide text-neutral-500 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
+        className="mb-4 inline-flex items-center gap-1.5 rounded-full px-1 font-mono text-[11px] uppercase tracking-wide text-neutral-700 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
       >
         <span aria-hidden>←</span> {backLabel}
       </Link>
@@ -39,15 +39,15 @@ export function DetailHero({
         <div className="p-6 sm:p-7">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+              <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
                 {eyebrow}
               </p>
               <h1 className="mt-1.5 font-display text-3xl font-semibold leading-tight text-neutral-900 text-balance">
                 {title}
               </h1>
               {address && (
-                <p className="mt-2 flex items-center gap-1.5 font-mono text-xs text-neutral-500">
-                  <span className="text-neutral-400">
+                <p className="mt-2 flex items-center gap-1.5 font-mono text-xs text-neutral-700">
+                  <span className="text-neutral-600">
                     <MapPin className="h-3.5 w-3.5" />
                   </span>
                   {address}
@@ -64,7 +64,7 @@ export function DetailHero({
                   <dd className="font-display text-2xl font-semibold leading-none text-rescued-600">
                     {s.value}
                   </dd>
-                  <dt className="mt-1.5 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+                  <dt className="mt-1.5 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
                     {s.label}
                   </dt>
                 </div>

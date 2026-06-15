@@ -6,10 +6,10 @@ import { cn } from "./cn";
 
 const fieldCls =
   "w-full rounded-md border border-neutral-200/60 bg-card px-3 py-2 text-sm " +
-  "placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 " +
+  "placeholder:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 " +
   "focus-visible:ring-transit-400 focus-visible:ring-offset-1";
 const labelCls =
-  "mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-600";
+  "mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-700";
 
 interface PasswordFieldProps {
   value: string;
@@ -67,7 +67,7 @@ export function PasswordField({
                   )}
                   aria-hidden
                 />
-                <span className={met ? "text-rescued-600" : "text-neutral-500"}>
+                <span className={met ? "text-rescued-600" : "text-neutral-700"}>
                   {rule.label}
                 </span>
               </li>

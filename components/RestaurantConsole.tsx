@@ -4,10 +4,11 @@ import { useMemo, useState, useTransition } from "react";
 import { Button } from "./Button";
 import { ListingCard } from "./ListingCard";
 import { ImageUploadField } from "./ImageUploadField";
+import { RecurringPostManager } from "./RecurringPostManager";
 import { Toast, useToast } from "./Toast";
 import { cn } from "./cn";
 import { postListing, setRestaurantImage } from "@/app/actions";
-import type { Listing } from "@/lib/types";
+import type { Listing, RecurringPostView } from "@/lib/types";
 
 // Relative pickup windows → minutes. The expiry timestamp is computed
 // server-side in the action from "now" + this value.
@@ -23,11 +24,13 @@ export function RestaurantConsole({
   restaurantId,
   restaurantImageUrl,
   listings,
+  schedules,
 }: {
   restaurant: string;
   restaurantId: string;
   restaurantImageUrl?: string | null;
   listings: Listing[];
+  schedules: RecurringPostView[];
 }) {
   const { message, show } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -93,10 +96,10 @@ export function RestaurantConsole({
   );
 
   const labelCls =
-    "mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-600";
+    "mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-700";
   const fieldCls =
     "w-full rounded-md border border-neutral-200/60 bg-card px-3 py-2 text-sm " +
-    "placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 " +
+    "placeholder:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 " +
     "focus-visible:ring-transit-400 focus-visible:ring-offset-1";
 
   return (
@@ -106,7 +109,7 @@ export function RestaurantConsole({
         {/* Restaurant default photo */}
         <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
           <h2 className="text-lg font-medium">Restaurant photo</h2>
-          <p className="mb-4 text-sm text-neutral-600">
+          <p className="mb-4 text-sm text-neutral-700">
             Shown on a card when a listing has no food photo of its own.
           </p>
           <ImageUploadField
@@ -119,7 +122,7 @@ export function RestaurantConsole({
 
         <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
           <h2 className="text-lg font-medium">Post surplus</h2>
-          <p className="mb-4 text-sm text-neutral-600">Posting from {restaurant}.</p>
+          <p className="mb-4 text-sm text-neutral-700">Posting from {restaurant}.</p>
 
           <div className="space-y-4">
             <div>
@@ -152,7 +155,7 @@ export function RestaurantConsole({
               </div>
               <div>
                 <label className={labelCls} htmlFor="weight">
-                  Weight (lbs) <span className="text-neutral-400">(optional)</span>
+                  Weight (lbs) <span className="text-neutral-600">(optional)</span>
                 </label>
                 <input
                   id="weight"
@@ -188,7 +191,7 @@ export function RestaurantConsole({
             <div>
               <label className={labelCls} htmlFor="notes">
                 Special requests / restraints{" "}
-                <span className="text-neutral-400">(optional)</span>
+                <span className="text-neutral-600">(optional)</span>
               </label>
               <textarea
                 id="notes"
@@ -217,13 +220,15 @@ export function RestaurantConsole({
             </Button>
           </div>
         </div>
+
+        <RecurringPostManager restaurantId={restaurantId} schedules={schedules} />
       </div>
 
       {/* Their listings */}
       <div>
         <section className="mb-8">
           <h2 className="mb-1 text-lg font-medium">Live & claimed</h2>
-          <p className="mb-4 text-sm text-neutral-600">
+          <p className="mb-4 text-sm text-neutral-700">
             What volunteers can see right now.
           </p>
           {live.length > 0 ? (
@@ -233,7 +238,7 @@ export function RestaurantConsole({
               ))}
             </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-neutral-200 bg-card px-6 py-12 text-center text-sm text-neutral-600">
+            <div className="rounded-xl border border-dashed border-neutral-200 bg-card px-6 py-12 text-center text-sm text-neutral-700">
               Nothing posted yet. Add surplus from the form to the left.
             </div>
           )}
@@ -248,7 +253,7 @@ export function RestaurantConsole({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-neutral-600">No past listings yet.</p>
+            <p className="text-sm text-neutral-700">No past listings yet.</p>
           )}
         </section>
       </div>

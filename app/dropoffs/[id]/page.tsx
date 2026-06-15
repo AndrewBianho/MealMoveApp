@@ -39,7 +39,7 @@ export default async function DropOffDetailPage({
               "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide " +
               (dropOff.refrigerated
                 ? "bg-transit-50 text-transit-800"
-                : "bg-neutral-100 text-neutral-600")
+                : "bg-neutral-100 text-neutral-700")
             }
           >
             {dropOff.refrigerated ? "❄ refrigerated" : "ambient"}
@@ -64,11 +64,11 @@ export default async function DropOffDetailPage({
             </span>
           ))}
         </div>
-        <p className="font-mono text-xs text-neutral-600">
+        <p className="font-mono text-xs text-neutral-700">
           holds up to {dropOff.capacity} servings
         </p>
         {dropOff.notes && (
-          <p className="mt-2 text-sm text-neutral-600">{dropOff.notes}</p>
+          <p className="mt-2 text-sm text-neutral-700">{dropOff.notes}</p>
         )}
         <div className="mt-4 border-t border-neutral-200/50 pt-4">
           <RetrievalHoursDisplay hours={parseStoredHours(dropOff.retrievalHours)} />

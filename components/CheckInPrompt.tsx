@@ -54,11 +54,11 @@ export function CheckInPrompt({
 
   return (
     <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
-      <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+      <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
         Check-up
       </p>
       <p className="flex items-center gap-2 font-mono text-sm text-neutral-700">
-        <span className="text-neutral-400">
+        <span className="text-neutral-600">
           <Clock />
         </span>
         auto-releases in {formatCountdown(remaining)}

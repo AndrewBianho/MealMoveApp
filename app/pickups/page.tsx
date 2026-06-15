@@ -31,14 +31,14 @@ export default async function PickupsPage() {
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">
       <header className="mb-6">
-        <h1 className="text-[32px] font-medium leading-tight">My pickups</h1>
-        <p className="mt-1 text-sm text-neutral-600">
+        <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">My pickups</h1>
+        <p className="mt-1 text-sm text-neutral-700">
           Everything you&apos;ve claimed, in flight, or completed.
         </p>
       </header>
 
       <div className="mb-8 max-w-sm rounded-xl border border-neutral-200/40 bg-card p-5">
-        <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+        <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
           your reliability · last 30 days
         </p>
         <ReliabilityMeter name="On-time completion" pct={91} />
@@ -47,7 +47,7 @@ export default async function PickupsPage() {
       {invited.length > 0 && (
         <section className="mb-8">
           <h2 className="mb-1 text-lg font-medium">Buddy invites</h2>
-          <p className="mb-4 text-sm text-neutral-600">
+          <p className="mb-4 text-sm text-neutral-700">
             Volunteers who asked you to join them — open one to accept.
           </p>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

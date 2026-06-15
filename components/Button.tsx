@@ -2,15 +2,21 @@ import type { ButtonHTMLAttributes } from "react";
 import { cn } from "./cn";
 import { primaryFill } from "./styles";
 
-type Variant = "primary" | "secondary" | "danger" | "ghost";
+type Variant = "primary" | "secondary" | "danger" | "ghost" | "claim";
 
 const VARIANTS: Record<Variant, string> = {
   primary: cn(primaryFill, "hover:-translate-y-0.5 hover:shadow-lift"),
+  // The claim action is intentionally colorless — an ink fill, not a status hue
+  // (sage/honey/clay), so it never competes with the semantic colors around it.
+  // The solid dark fill keeps it the clearly dominant, tappable action; ink + 50
+  // invert correctly across themes.
+  claim:
+    "bg-neutral-900 text-neutral-50 shadow-card hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-lift",
   secondary:
     "bg-card text-neutral-900 shadow-[inset_0_0_0_2px_rgb(var(--n-900)_/_0.14)] hover:shadow-[inset_0_0_0_2px_rgb(var(--n-900)_/_0.3)] hover:-translate-y-0.5",
   danger:
     "bg-card text-failed-600 shadow-[inset_0_0_0_2px_rgb(var(--failed-200))] hover:bg-failed-50 hover:-translate-y-0.5",
-  ghost: "text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100",
+  ghost: "text-neutral-700 hover:text-neutral-900 hover:bg-neutral-100",
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

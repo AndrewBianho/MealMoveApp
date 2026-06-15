@@ -48,14 +48,40 @@ enum BuddyInviteStatus {
   cancelled
 }
 
+// Which world an account sees and acts in. Demo is a curated, fully interactive
+// sample (for showing the app off / handing it to next year's leaders); real is
+// the chapter's live data. Every data-bearing row carries a matching `demo` flag
+// so the two worlds never mix.
+enum DataMode {
+  real
+  demo
+}
+
+// Whether an account is usable yet. Volunteers (and admin-invited teammates) are
+// `active` on creation; a self-serve restaurant or drop-off sign-up starts
+// `pending` and can't sign in until an org admin approves it. The matching
+// Restaurant/DropOff row isn't created until approval (see User.pendingOrg), so
+// an unapproved partner has nothing operational in the system.
+enum AccountStatus {
+  pending
+  active
+}
+
 model User {
-  id           String      @id @default(cuid())
-  email        String      @unique
+  id           String        @id @default(cuid())
+  email        String        @unique
   name         String
   phone        String? // contact number for pickup coordination; never shown to admins
-  role         Role        @default(volunteer)
+  role         Role          @default(volunteer)
+  status       AccountStatus @default(active)
+  // For a pending restaurant/drop-off account: the org/location captured at
+  // sign-up, held until an org admin approves. Cleared on approval (the real
+  // Restaurant/DropOff row is created then). Shape:
+  // { kind: "restaurant" | "drop_off", name: string, address: string }.
+  pendingOrg   Json?
   passwordHash String? // bcrypt hash for the Credentials provider
-  restaurant   Restaurant? @relation(fields: [restaurantId], references: [id])
+  dataMode     DataMode      @default(real) // which world this account sees/acts in
+  restaurant   Restaurant?   @relation(fields: [restaurantId], references: [id])
   restaurantId String?
   pickups      Pickup[]
   buddyPickups Pickup[]    @relation("PickupBuddy") // pickups where this user is the second seat
@@ -67,6 +93,8 @@ model User {
   adminTargeted AdminEvent[] @relation("AdminTarget")
   passwordResetTokens PasswordResetToken[]
   createdAt    DateTime    @default(now())
+
+  @@index([status]) // the org-admin pending-approval queue
 }
 
 // Single-use, time-boxed tokens for the email password-reset flow. Only the
@@ -91,9 +119,40 @@ model Restaurant {
   lat       Float
   lng       Float
   imageUrl  String? // default image, shown on a card when the listing has no food photo
+  demo      Boolean       @default(false) // belongs to the curated demo world, not real data
   members   User[]
   listings  FoodListing[]
+  recurringPosts RecurringPost[]
   createdAt DateTime      @default(now())
+}
+
+// A restaurant's standing surplus schedule — "every weekday at 8pm",
+// "Mon & Thu at 6pm", "daily". A generator (lib/recurring + the sweep cron)
+// materializes upcoming FoodListings from each active schedule, ahead of time,
+// so volunteers can see future pickups. daysOfWeek uses JS getDay(): 0 = Sunday
+// … 6 = Saturday (daily = all 7; weekly = a single day; specific = any subset).
+model RecurringPost {
+  id            String        @id @default(cuid())
+  restaurant    Restaurant    @relation(fields: [restaurantId], references: [id])
+  restaurantId  String
+  // Template copied onto each generated listing.
+  title         String
+  servings      Int
+  weightLbs     Float?
+  category      FoodCategory  @default(prepared)
+  perishable    Boolean       @default(false)
+  notes         String?
+  imageUrl      String?
+  // Recurrence.
+  daysOfWeek    Int[] // 0=Sun … 6=Sat
+  timeOfDay     Int // minutes from local midnight (0–1439) when it goes live
+  windowMinutes Int           @default(120) // how long the pickup window stays open once live
+  active        Boolean       @default(true)
+  demo          Boolean       @default(false)
+  listings      FoodListing[]
+  createdAt     DateTime      @default(now())
+
+  @@index([active])
 }
 
 model DropOff {
@@ -108,6 +167,7 @@ model DropOff {
   capacity           Int            @default(100) // max servings it can hold
   notes              String? // human-readable restrictions (allergens, hours…)
   retrievalHours     Json? // RetrievalHours: per-weekday food-retrieval windows (see lib/hours.ts)
+  demo               Boolean        @default(false) // belongs to the curated demo world, not real data
   listings  FoodListing[]
   createdAt DateTime      @default(now())
 }
@@ -121,11 +181,19 @@ model FoodListing {
   perishable   Boolean        @default(false)
   imageUrl     String? // photo of this specific food; takes priority over the restaurant's default
   notes        String? // special requests / restraints from the restaurant
+  demo         Boolean        @default(false) // belongs to the curated demo world, not real data
   status       ListingStatus  @default(open)
   restaurant   Restaurant     @relation(fields: [restaurantId], references: [id])
   restaurantId String
   dropOff      DropOff?       @relation(fields: [dropOffId], references: [id])
   dropOffId    String?
+  // When a scheduled/future listing becomes claimable. null = available now
+  // (a normal one-off post). Until this passes, the listing is visible but
+  // locked (see claimListing); the generator that creates it lives in
+  // lib/recurring.
+  availableAt  DateTime?
+  recurringPost   RecurringPost? @relation(fields: [recurringPostId], references: [id])
+  recurringPostId String?
   postedAt     DateTime       @default(now())
   expiresAt    DateTime // real timestamp — "minutes left" is derived from this
   pickup       Pickup?
@@ -133,7 +201,8 @@ model FoodListing {
   messages     Message[]
   buddyInvites BuddyInvite[]
 
-  @@index([status, expiresAt])
+  @@index([demo, status, expiresAt])
+  @@index([recurringPostId, availableAt])
 }
 
 model Pickup {

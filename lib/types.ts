@@ -66,6 +66,12 @@ export interface Listing {
   expiresAt: string;
   /** Minutes until expiry — drives the urgency strip color. */
   minutesLeft: number;
+  /** True when this is a future/scheduled listing not yet open for claiming. */
+  scheduled?: boolean;
+  /** Epoch ms when a scheduled listing becomes claimable. */
+  availableAt?: number;
+  /** Human label for when a scheduled listing opens, e.g. "Thu, 8:00 PM". */
+  availableLabel?: string;
   servings: number;
   /** Actual weight in pounds, when the restaurant provides it. */
   weightLbs?: number;
@@ -105,6 +111,18 @@ export interface Listing {
   buddyName?: string;
   /** True when the current viewer is the buddy (not the primary) on this claim. */
   iAmBuddy?: boolean;
+}
+
+/** A restaurant's recurring surplus schedule, as the console renders it. */
+export interface RecurringPostView {
+  id: string;
+  title: string;
+  servings: number;
+  daysOfWeek: number[]; // 0=Sun … 6=Sat
+  timeOfDay: number; // minutes from local midnight
+  windowMinutes: number;
+  notes?: string;
+  active: boolean;
 }
 
 export interface Volunteer {

@@ -32,7 +32,10 @@ export default async function DropoffPage() {
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">
       <header className="mb-6">
-        <h1 className="text-[32px] font-medium leading-tight">Drop-off locations</h1>
+        <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">Drop-off locations</h1>
+        <p className="mt-1 text-sm text-neutral-700">
+          Where rescued food is delivered, and what&apos;s inbound to each.
+        </p>
       </header>
 
       <section className="mb-8 max-w-md">
@@ -75,7 +78,7 @@ export default async function DropoffPage() {
                   </span>
                 ))}
               </div>
-              <p className="font-mono text-xs text-neutral-600">
+              <p className="font-mono text-xs text-neutral-700">
                 holds up to {d.capacity} servings
               </p>
               <DropOffNotesEditor dropOffId={d.id} initialNotes={d.notes ?? ""} />

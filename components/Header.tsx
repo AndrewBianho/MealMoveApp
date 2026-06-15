@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { getDataMode } from "@/lib/mode";
 import { NavBar } from "./NavBar";
 import { WelcomeIntro } from "./WelcomeIntro";
 
 export async function Header() {
   const session = await auth();
   const user = session?.user;
+  const demo = user ? (await getDataMode()) === "demo" : false;
 
   // The first-run welcome is gated on account age, so fetch when the account was
   // created (indexed PK lookup). 0 = unknown → the intro simply won't auto-open.
@@ -34,6 +36,18 @@ export async function Header() {
               Meal Move
             </span>
           </Link>
+
+          {demo && (
+            // Calm, neutral cue (never a status hue) so it's clear the data on
+            // screen is the sample world, not the chapter's live listings.
+            <Link
+              href="/settings"
+              title="You're viewing demo data — change in Settings"
+              className="rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-neutral-700 transition-colors hover:text-neutral-900"
+            >
+              demo data
+            </Link>
+          )}
 
           {user && <NavBar role={user.role} name={user.name ?? "?"} />}
         </div>

@@ -7,13 +7,26 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { Avatar } from "./Avatar";
 import { cn } from "./cn";
+import { resetDemoOnLogout } from "@/app/actions";
 import type { Role } from "@prisma/client";
+
+// Reset the demo world (if the user is in it) before signing out, so the next
+// person meets a pristine showcase. The reset is best-effort — a failure must
+// never trap someone on the page, so we sign out regardless.
+async function signOutAndResetDemo() {
+  try {
+    await resetDemoOnLogout();
+  } catch {
+    // ignore — signing out is what matters
+  }
+  await signOut({ callbackUrl: "/login" });
+}
 
 type Item = { href: string; label: string; short?: string; icon: string };
 
-const FEED: Item = { href: "/", label: "Rescues", icon: "feed" };
+const FEED: Item = { href: "/", label: "Available", icon: "feed" };
 const MAP: Item = { href: "/map", label: "Map", icon: "map" };
-const PICKUPS: Item = { href: "/pickups", label: "My pickups", short: "Pickups", icon: "pickups" };
+const PICKUPS: Item = { href: "/pickups", label: "My pickups", short: "My pickups", icon: "pickups" };
 const RESTAURANT: Item = { href: "/restaurant", label: "Restaurant", short: "Restaurant", icon: "restaurant" };
 const DROPOFF: Item = { href: "/dropoff", label: "Drop-off", icon: "dropoff" };
 const IMPACT: Item = { href: "/impact", label: "Impact", icon: "impact" };
@@ -29,7 +42,7 @@ const NAV_BY_ROLE: Record<Role, Item[]> = {
 // Line icons for the mobile bottom bar / more-sheet, keyed by Item.icon.
 const ICONS: Record<string, React.ReactNode> = {
   feed: (
-    <path d="M12 21s-7-4.4-9.4-8.6C1.2 9.1 2.8 5.5 6.2 5.5c1.9 0 3.1 1.1 3.8 2.1.7-1 1.9-2.1 3.8-2.1 3.4 0 5 3.6 3.6 6.9C19 16.6 12 21 12 21z" />
+    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z" />
   ),
   map: (
     <>
@@ -146,7 +159,7 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
               "rounded-full px-4 py-1.5 text-sm font-semibold transition duration-150",
               isActive(item.href)
                 ? "bg-neutral-900 text-neutral-50 shadow-card"
-                : "text-neutral-600 hover:bg-card hover:text-neutral-900 hover:shadow-card"
+                : "text-neutral-700 hover:bg-card hover:text-neutral-900 hover:shadow-card"
             )}
           >
             {item.label}
@@ -156,14 +169,14 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
 
       {/* Desktop: user + sign out */}
       <div className="ml-auto hidden items-center gap-2.5 md:flex">
-        <span className="rounded-full bg-neutral-100 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+        <span className="rounded-full bg-neutral-100 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
           {roleLabel}
         </span>
         <Link
           href="/settings"
           aria-label="Settings"
           aria-current={isActive("/settings") ? "page" : undefined}
-          className="grid h-9 w-9 place-items-center rounded-full text-neutral-600 transition duration-150 hover:bg-card hover:text-neutral-900 hover:shadow-card focus:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
+          className="grid h-9 w-9 place-items-center rounded-full text-neutral-700 transition duration-150 hover:bg-card hover:text-neutral-900 hover:shadow-card focus:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
         >
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />
@@ -179,8 +192,8 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
           <Avatar name={name} className="shadow-card" />
         </Link>
         <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="rounded-full px-3 py-1.5 text-sm font-semibold text-neutral-600 transition duration-150 hover:bg-card hover:text-neutral-900 hover:shadow-card"
+          onClick={() => signOutAndResetDemo()}
+          className="rounded-full px-3 py-1.5 text-sm font-semibold text-neutral-700 transition duration-150 hover:bg-card hover:text-neutral-900 hover:shadow-card"
         >
           Sign out
         </button>
@@ -208,15 +221,15 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
               <span
                 className={cn(
                   "grid h-9 w-9 place-items-center rounded-full transition-colors",
-                  active ? "bg-neutral-900 text-neutral-50" : "text-neutral-500"
+                  active ? "bg-neutral-900 text-neutral-50" : "text-neutral-700"
                 )}
               >
                 <TabIcon icon={item.icon} />
               </span>
               <span
                 className={cn(
-                  "text-[10px] leading-none",
-                  active ? "font-semibold text-neutral-900" : "text-neutral-500"
+                  "whitespace-nowrap text-[10px] leading-none",
+                  active ? "font-semibold text-neutral-900" : "text-neutral-700"
                 )}
               >
                 {item.short ?? item.label}
@@ -244,7 +257,7 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
           <span
             className={cn(
               "text-[10px] leading-none",
-              moreActive ? "font-semibold text-neutral-900" : "text-neutral-500"
+              moreActive ? "font-semibold text-neutral-900" : "text-neutral-700"
             )}
           >
             More
@@ -269,7 +282,7 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
                 <div className="truncate font-display text-base font-semibold text-neutral-900">
                   {name}
                 </div>
-                <div className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+                <div className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
                   {roleLabel}
                 </div>
               </div>
@@ -292,7 +305,7 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
                           : "text-neutral-700 hover:bg-neutral-100"
                       )}
                     >
-                      <span className={active ? "text-neutral-50" : "text-neutral-500"}>
+                      <span className={active ? "text-neutral-50" : "text-neutral-700"}>
                         <TabIcon icon={item.icon} />
                       </span>
                       {item.label}
@@ -310,14 +323,14 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
               }}
               className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-neutral-100"
             >
-              <span className="text-neutral-500">
+              <span className="text-neutral-700">
                 <TabIcon icon="replay" />
               </span>
               Replay welcome
             </button>
 
             <button
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={() => signOutAndResetDemo()}
               className="mt-2 w-full rounded-xl border-t border-neutral-200/40 px-3 pt-3 text-left text-sm font-medium text-neutral-700 hover:text-neutral-900"
             >
               Sign out

@@ -28,6 +28,9 @@ export function SignupForm() {
   const [dropOffAddress, setDropOffAddress] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Set once a restaurant/drop-off sign-up is submitted — their account is
+  // pending an org admin's approval, so we can't sign them in yet.
+  const [pending, setPending] = useState(false);
   // A pending invite for the typed email, if any — joining an existing org takes
   // over the form (no role picker, no new-org fields).
   const [invite, setInvite] = useState<{
@@ -88,6 +91,13 @@ export function SignupForm() {
       return;
     }
 
+    // Restaurant/drop-off accounts wait for org-admin approval — no session yet.
+    if (res.pending) {
+      setLoading(false);
+      setPending(true);
+      return;
+    }
+
     // Account created — sign in and let middleware route to the role's home.
     const signInRes = await signIn("credentials", {
       email: email.trim().toLowerCase(),
@@ -104,10 +114,25 @@ export function SignupForm() {
 
   const fieldCls =
     "w-full rounded-md border border-neutral-200/60 bg-card px-3 py-2 text-sm " +
-    "placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 " +
+    "placeholder:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 " +
     "focus-visible:ring-transit-400 focus-visible:ring-offset-1";
   const labelCls =
-    "mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-600";
+    "mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-700";
+
+  if (pending) {
+    return (
+      <div className="rounded-2xl bg-rescued-50 px-5 py-6 text-rescued-800">
+        <h2 className="font-display text-2xl font-semibold">Thanks — you&apos;re almost in</h2>
+        <p className="mt-2 text-sm leading-relaxed">
+          {role === "restaurant" ? "Restaurant" : "Drop-off"} accounts are
+          confirmed by an org admin before they go live. We&apos;ll email{" "}
+          <span className="font-mono text-[13px]">{email.trim().toLowerCase()}</span>{" "}
+          once <span className="font-medium">{role === "restaurant" ? restaurantName : dropOffName}</span>{" "}
+          is approved — then you can sign in and get started.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -133,7 +158,7 @@ export function SignupForm() {
                   "flex-1 rounded px-3 py-1.5 text-sm transition-colors",
                   role === r
                     ? "bg-neutral-900 font-medium text-neutral-50"
-                    : "text-neutral-600 hover:text-neutral-900"
+                    : "text-neutral-700 hover:text-neutral-900"
                 )}
               >
                 {ROLE_LABELS[r]}
@@ -170,7 +195,7 @@ export function SignupForm() {
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
         />
-        <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-neutral-500">
+        <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-neutral-700">
           Your number won&apos;t be shared with admins — it&apos;s only used to
           coordinate pickups.
         </p>
@@ -230,7 +255,7 @@ export function SignupForm() {
               value={dropOffAddress}
               onChange={(e) => setDropOffAddress(e.target.value)}
             />
-            <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-neutral-500">
+            <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-neutral-700">
               Your location starts open to all food types — you can refine what it
               accepts later.
             </p>

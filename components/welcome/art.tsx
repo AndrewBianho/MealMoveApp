@@ -226,7 +226,7 @@ function ClaimArt() {
         </span>
         <div className="mt-2.5 h-2.5 w-4/5 rounded-full bg-neutral-200" />
         <div className="mt-1.5 h-2 w-2/3 rounded-full bg-neutral-100" />
-        <div className="mt-2.5 flex items-center gap-1.5 font-mono text-[9px] text-neutral-500">
+        <div className="mt-2.5 flex items-center gap-1.5 font-mono text-[9px] text-neutral-700">
           <span className="h-1.5 w-1.5 rounded-full bg-clay-400" />
           24 servings · 0.6 mi
         </div>
@@ -331,7 +331,7 @@ function TeamArt() {
   return (
     <Panel className="bg-neutral-100">
       <div className="w-52 rounded-2xl bg-card p-3.5 shadow-card">
-        <p className="mb-2.5 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+        <p className="mb-2.5 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
           your team
         </p>
         <div className="space-y-2">

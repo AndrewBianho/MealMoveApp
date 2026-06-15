@@ -158,7 +158,7 @@ export function WelcomeIntro({
           <button
             type="button"
             onClick={close}
-            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-mono text-[11px] text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+            className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-mono text-[11px] text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
           >
             skip
             <X className="h-3 w-3" />
@@ -193,7 +193,7 @@ export function WelcomeIntro({
           >
             {slide.title.replace("{name}", firstName)}
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-neutral-600">
+          <p className="mt-2 text-sm leading-relaxed text-neutral-700">
             {slide.body}
           </p>
         </div>

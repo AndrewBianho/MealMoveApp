@@ -25,6 +25,17 @@ type Filter = "all" | "open" | "claimed" | "in transit" | "delivered";
 
 const FILTERS: Filter[] = ["all", "open", "claimed", "in transit", "delivered"];
 
+// Each filter wears the status's semantic hue as a dot, so the filter row speaks
+// the same color language as the cards/map (sage = open & delivered/rescued,
+// honey = claimed, plum = in transit). "all" is the neutral aggregate.
+const FILTER_DOT: Record<Filter, string> = {
+  all: "bg-neutral-400",
+  open: "bg-rescued-600",
+  claimed: "bg-urgent-600",
+  "in transit": "bg-transit-600",
+  delivered: "bg-rescued-600",
+};
+
 function isSpent(status: ListingStatus): boolean {
   return ["delivered", "expired", "failed"].includes(status);
 }
@@ -40,7 +51,7 @@ function SectionHeader({ title, count }: { title: string; count: number }) {
   return (
     <div className="mb-3 flex items-center gap-2">
       <h2 className="text-base font-semibold text-neutral-800">{title}</h2>
-      <span className="font-mono text-xs text-neutral-500">{count}</span>
+      <span className="font-mono text-xs text-neutral-700">{count}</span>
     </div>
   );
 }
@@ -90,6 +101,10 @@ export function ListingFeed({ listings }: { listings: Listing[] }) {
   const counts = useMemo(() => {
     const c: Record<string, number> = { all: listings.length };
     for (const l of listings) c[l.status] = (c[l.status] ?? 0) + 1;
+    // "open" on the pill means claimable now — future/scheduled listings are
+    // counted under "Coming up", not here.
+    const scheduled = listings.filter((l) => l.status === "open" && l.scheduled).length;
+    if (c.open) c.open = Math.max(0, c.open - scheduled);
     return c;
   }, [listings]);
 
@@ -104,9 +119,14 @@ export function ListingFeed({ listings }: { listings: Listing[] }) {
     });
   }, [listings, filter]);
 
-  // Split what's shown into what a volunteer can act on (open) and everything
-  // else — claimed, in transit, or closed — so the eye goes to claimable food.
-  const claimable = shown.filter((l) => l.status === "open");
+  // Split what's shown into three bands so the eye goes to claimable food
+  // first: claimable now (open + live), upcoming (open but scheduled for a
+  // future time, sorted soonest-first), and everything else (claimed / in
+  // transit / closed).
+  const claimable = shown.filter((l) => l.status === "open" && !l.scheduled);
+  const comingUp = shown
+    .filter((l) => l.status === "open" && l.scheduled)
+    .sort((a, b) => (a.availableAt ?? 0) - (b.availableAt ?? 0));
   const unclaimable = shown.filter((l) => l.status !== "open");
 
   return (
@@ -118,19 +138,24 @@ export function ListingFeed({ listings }: { listings: Listing[] }) {
             <button
               key={f}
               onClick={() => setFilter(f)}
+              aria-pressed={active}
               className={cn(
-                "rounded-full border px-3.5 py-1.5 text-sm transition-all",
+                "inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm transition-all",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50",
                 active
                   ? "border-neutral-900 bg-neutral-900 font-medium text-neutral-50"
-                  : "border-neutral-200/60 text-neutral-600 hover:bg-card hover:shadow-card"
+                  : "border-neutral-200/60 text-neutral-700 hover:bg-card hover:shadow-card"
               )}
             >
+              <span
+                className={cn("h-2 w-2 rounded-full", FILTER_DOT[f])}
+                aria-hidden="true"
+              />
               {f}
               <span
                 className={cn(
-                  "ml-1.5 font-mono text-xs",
-                  active ? "text-neutral-300" : "text-neutral-500"
+                  "font-mono text-xs tabular-nums",
+                  active ? "text-neutral-300" : "text-neutral-700"
                 )}
               >
                 {counts[f] ?? 0}
@@ -146,6 +171,16 @@ export function ListingFeed({ listings }: { listings: Listing[] }) {
             <section>
               <SectionHeader title="Available to claim" count={claimable.length} />
               <ListingGrid listings={claimable} feature onClaim={handleClaim} />
+            </section>
+          )}
+          {comingUp.length > 0 && (
+            <section>
+              <SectionHeader title="Coming up" count={comingUp.length} />
+              <p className="-mt-2 mb-3 text-sm text-neutral-700">
+                Scheduled pickups you can plan around — each opens to claim at its
+                listed time.
+              </p>
+              <ListingGrid listings={comingUp} />
             </section>
           )}
           {unclaimable.length > 0 && (

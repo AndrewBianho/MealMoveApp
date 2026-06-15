@@ -90,7 +90,7 @@ export function ReliabilityRing({ pct, label }: { pct: number; label?: string })
           {Math.round(shown)}%
         </div>
         {label && (
-          <div className="mt-1 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+          <div className="mt-1 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
             {label}
           </div>
         )}

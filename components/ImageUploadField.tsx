@@ -136,9 +136,9 @@ export function ImageUploadField({
 
   return (
     <div>
-      <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+      <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-700">
         {label}{" "}
-        {optional && <span className="text-neutral-400">(optional)</span>}
+        {optional && <span className="text-neutral-600">(optional)</span>}
       </span>
 
       {preview ? (
@@ -167,7 +167,7 @@ export function ImageUploadField({
           )}
         >
           {busy ? (
-            <span className="text-[13px] text-neutral-600">Uploading…</span>
+            <span className="text-[13px] text-neutral-700">Uploading…</span>
           ) : (
             <div className="flex gap-2">
               <button
@@ -196,7 +196,7 @@ export function ImageUploadField({
       )}
 
       {hint && !error && (
-        <p className="mt-1.5 text-[12px] text-neutral-600">{hint}</p>
+        <p className="mt-1.5 text-[12px] text-neutral-700">{hint}</p>
       )}
       {error && <p className="mt-1.5 text-[12px] text-failed-600">{error}</p>}
 
@@ -233,7 +233,7 @@ export function ImageUploadField({
               <button
                 type="button"
                 onClick={() => setCameraOpen(false)}
-                className={cn(btn, "text-neutral-600 hover:bg-neutral-100")}
+                className={cn(btn, "text-neutral-700 hover:bg-neutral-100")}
               >
                 Cancel
               </button>

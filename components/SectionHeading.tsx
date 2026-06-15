@@ -13,7 +13,7 @@ export function SectionHeading({
         {title}
       </h2>
       {count != null && (
-        <span className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-[11px] tabular-nums text-neutral-500">
+        <span className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-[11px] tabular-nums text-neutral-700">
           {count}
         </span>
       )}

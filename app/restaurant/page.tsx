@@ -21,6 +21,25 @@ export default async function RestaurantPage() {
   const all = await getListings();
   const mine = restaurant ? all.filter((l) => l.source === restaurant.name) : [];
 
+  // This restaurant's recurring schedules, newest first.
+  const schedules = restaurant
+    ? (
+        await prisma.recurringPost.findMany({
+          where: { restaurantId: restaurant.id },
+          orderBy: { createdAt: "desc" },
+        })
+      ).map((s) => ({
+        id: s.id,
+        title: s.title,
+        servings: s.servings,
+        daysOfWeek: s.daysOfWeek,
+        timeOfDay: s.timeOfDay,
+        windowMinutes: s.windowMinutes,
+        notes: s.notes ?? undefined,
+        active: s.active,
+      }))
+    : [];
+
   // The team that shares this restaurant: every linked member + open invites.
   const members = restaurant
     ? await prisma.user.findMany({
@@ -40,8 +59,8 @@ export default async function RestaurantPage() {
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">
       <header className="mb-6">
-        <h1 className="text-[32px] font-medium leading-tight">Restaurant console</h1>
-        <p className="mt-1 text-sm text-neutral-600">
+        <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">Restaurant console</h1>
+        <p className="mt-1 text-sm text-neutral-700">
           Post tonight&apos;s surplus and track who&apos;s picking it up.
         </p>
       </header>
@@ -53,6 +72,7 @@ export default async function RestaurantPage() {
             restaurantId={restaurant.id}
             restaurantImageUrl={restaurant.imageUrl}
             listings={mine}
+            schedules={schedules}
           />
           <div className="mt-8 max-w-md">
             <TeamPanel
@@ -63,7 +83,7 @@ export default async function RestaurantPage() {
           </div>
         </>
       ) : (
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-neutral-700">
           Restaurant account not found. Run <code className="font-mono">npm run db:seed</code>.
         </p>
       )}

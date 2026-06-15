@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "./cn";
-import { Clock, MapPin, ArrowRight } from "./icons";
+import { Clock, MapPin, ArrowRight, Calendar } from "./icons";
 import { Button } from "./Button";
 import { StatusBadge } from "./StatusBadge";
 import type { Listing } from "@/lib/types";
@@ -24,42 +24,24 @@ const SPENT: Listing["status"][] = ["delivered", "expired", "failed"];
 // Meal Move logo, shown as a contained brand placeholder rather than a crop.
 const DEFAULT_IMAGE = "/mealmovelogo.jpg";
 
-// Urgency drives the top strip, the countdown chip, and (when very urgent) a
-// ring. The chip always carries the clock icon + the literal minutes, so the
-// signal never relies on hue alone (color-blind-safe). Spent listings read as
-// neutral "closed" rather than a false countdown.
+// Urgency is shown as one filled color pill on the card itself (ramp-50 fill +
+// ramp-800 text — the project's status-badge pattern), pairing the hue with a
+// word and the literal minutes so it never relies on color alone
+// (color-blind-safe). Bands: open (35m+) · soon (10–35) · closing soon (<10) ·
+// closed (spent). This replaces the old top color strip + the separate "time
+// left" legend — each card now carries its own labelled band.
 function urgency(listing: Listing) {
   if (SPENT.includes(listing.status)) {
-    return {
-      strip: "bg-neutral-200",
-      chip: "text-neutral-600",
-      label: "closed",
-      soon: false,
-    };
+    return { fill: "bg-neutral-100 text-neutral-700", word: "closed", minutes: null, soon: false };
   }
   const m = listing.minutesLeft;
   if (m < 10) {
-    return {
-      strip: "bg-failed-400",
-      chip: "text-failed-600",
-      label: `${m}m`,
-      soon: true,
-    };
+    return { fill: "bg-failed-50 text-failed-800", word: "closing soon", minutes: m, soon: true };
   }
   if (m < 35) {
-    return {
-      strip: "bg-urgent-400",
-      chip: "text-urgent-600",
-      label: `${m}m`,
-      soon: false,
-    };
+    return { fill: "bg-urgent-50 text-urgent-800", word: "soon", minutes: m, soon: false };
   }
-  return {
-    strip: "bg-rescued-400",
-    chip: "text-rescued-600",
-    label: `${m}m`,
-    soon: false,
-  };
+  return { fill: "bg-rescued-50 text-rescued-800", word: "open", minutes: m, soon: false };
 }
 
 export function ListingCard({
@@ -82,8 +64,13 @@ export function ListingCard({
     notes,
     imageUrl,
     minutesLeft,
+    availableLabel,
   } = listing;
 
+  // A future/scheduled listing reads calm — it's not claimable yet, so it gets
+  // the clay secondary accent and a "available <when>" cue, never a status hue
+  // or a live countdown.
+  const scheduled = !!listing.scheduled;
   const spent = SPENT.includes(status);
   const u = urgency(listing);
   const img = imageUrl ?? DEFAULT_IMAGE;
@@ -97,18 +84,33 @@ export function ListingCard({
   const showRoute = audience !== "dropoff";
   const sourceLabel = audience === "dropoff" ? `from ${source}` : source;
 
-  const chip = (
+  // The single color pill that lives on the card. Scheduled listings get a calm
+  // clay "available <when>" pill; everything else gets its urgency band.
+  const pill = scheduled ? (
     <span
-      aria-label={spent ? "closed" : `${minutesLeft} minutes left`}
+      aria-label={`available ${availableLabel}`}
+      className="inline-flex items-center gap-1.5 rounded-full bg-clay-50 px-2.5 py-1 font-mono text-[11px] text-clay-800"
+    >
+      <Calendar className="text-[0.95em]" />
+      <span className="font-semibold">available</span>
+      <span className="tabular-nums">{availableLabel}</span>
+    </span>
+  ) : (
+    <span
+      aria-label={spent ? "closed" : `${u.word}, ${minutesLeft} minutes left`}
       className={cn(
-        "inline-flex items-center gap-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.6)]",
-        "font-mono text-xs font-bold",
-        u.chip,
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[11px]",
+        u.fill,
         u.soon && "motion-safe:animate-pulse"
       )}
     >
-      <Clock className="text-[0.95em]" />
-      {u.label}
+      {spent ? (
+        <span className="inline-block h-1.5 w-1.5 rounded-full bg-neutral-400" aria-hidden="true" />
+      ) : (
+        <Clock className="text-[0.95em]" />
+      )}
+      <span className="font-semibold">{u.word}</span>
+      {u.minutes != null && <span className="tabular-nums">{u.minutes}m</span>}
     </span>
   );
 
@@ -116,14 +118,12 @@ export function ListingCard({
     <div
       className={cn(
         "group animate-fade-up overflow-hidden rounded-2xl border border-neutral-900/5 bg-card shadow-card transition-all duration-200 hover:-translate-y-1 hover:shadow-lift",
-        u.soon && "ring-2 ring-failed-200",
         className
       )}
     >
-      <div className={cn("h-1.5", u.strip)} />
-
       <div className="flex">
         <div className="min-w-0 flex-1 p-4">
+          <div className="mb-2">{pill}</div>
           <h3 className="text-xl font-semibold leading-snug">
             <Link
               href={`/listings/${id}`}
@@ -139,29 +139,29 @@ export function ListingCard({
           <div className="mt-3 flex items-baseline gap-3 font-mono">
             <span className="text-neutral-900">
               <span className="text-lg font-semibold">{servings}</span>
-              <span className="ml-1 text-[11px] text-neutral-500">servings</span>
+              <span className="ml-1 text-[11px] text-neutral-700">servings</span>
             </span>
             {showDistance && (
               <>
-                <span className="text-neutral-300">·</span>
+                <span className="text-neutral-500">·</span>
                 <span className="text-neutral-900">
                   <span className="text-base font-semibold">{distance}</span>
-                  <span className="ml-1 text-[11px] text-neutral-500">away</span>
+                  <span className="ml-1 text-[11px] text-neutral-700">away</span>
                 </span>
               </>
             )}
           </div>
 
           {/* Tier 3 — supporting context. */}
-          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 font-sans text-[13px] text-neutral-600">
+          <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 font-sans text-[13px] text-neutral-700">
             {category && (
-              <span className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+              <span className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
                 {category}
               </span>
             )}
             {showSource && (
               <span className="flex items-center gap-1.5">
-                <MapPin className="text-neutral-400" />
+                <MapPin className="text-neutral-600" />
                 {sourceLabel}
               </span>
             )}
@@ -175,15 +175,17 @@ export function ListingCard({
           )}
 
           {notes && (
-            <p className="mt-2 rounded-md bg-urgent-50 px-2.5 py-1.5 text-xs text-urgent-800">
+            // Clamp on the card so a full special-needs paragraph stays
+            // scannable; the listing detail shows it in full.
+            <p className="mt-2 line-clamp-3 rounded-md bg-neutral-100 px-2.5 py-1.5 text-xs text-neutral-800">
               {notes}
             </p>
           )}
         </div>
 
         {/* Photo sits as a fixed-width panel on the card's right, stretched to
-            the content's height; the urgency chip overlays its top-right.
-            No photo → the Meal Move logo as a contained brand placeholder. */}
+            the content's height. No photo → the Meal Move logo as a contained
+            brand placeholder. */}
         <Link
           href={`/listings/${id}`}
           className={cn(
@@ -210,30 +212,49 @@ export function ListingCard({
               )}
             />
           )}
-          <span className="absolute right-2 top-2">{chip}</span>
         </Link>
       </div>
 
-      <div className="flex items-center justify-between border-t border-neutral-200/40 px-4 py-3">
-        {status === "open" && onClaim ? (
-          <Button variant="primary" onClick={() => onClaim(id)}>
-            Claim pickup
-          </Button>
-        ) : (
-          <span className="flex items-center gap-2">
-            <StatusBadge status={status} />
-            {buddyName && (
-              <span className="rounded-full bg-rescued-50 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-rescued-800">
-                +1 buddy
-              </span>
-            )}
-          </span>
-        )}
-        {claimedBy && status !== "open" && (
-          <span className="font-sans text-[13px] text-neutral-600">
-            by {claimedBy}
-          </span>
-        )}
+      <div className="flex items-center justify-between gap-3 border-t border-neutral-200/40 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2">
+          {scheduled ? (
+            // Locked until it goes live — a calm, non-actionable cue, not a
+            // disabled claim button (which would read as "broken").
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1 font-mono text-[11px] uppercase tracking-wide text-neutral-700">
+              <Clock className="text-[0.95em]" />
+              opens {availableLabel}
+            </span>
+          ) : status === "open" && onClaim ? (
+            <Button variant="claim" onClick={() => onClaim(id)}>
+              Claim pickup
+            </Button>
+          ) : (
+            <>
+              <StatusBadge status={status} />
+              {buddyName && (
+                <span className="rounded-full bg-rescued-50 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-rescued-800">
+                  +1 buddy
+                </span>
+              )}
+              {claimedBy && (
+                <span className="truncate font-sans text-[13px] text-neutral-700">
+                  by {claimedBy}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Explicit "tap for more" affordance: the title and photo already link
+            to the detail, but a labelled clay link makes the whole card read as
+            tappable — important for first-timers on a phone. */}
+        <Link
+          href={`/listings/${id}`}
+          className="flex shrink-0 items-center gap-1 rounded-sm font-sans text-[13px] font-semibold text-neutral-700 transition-colors hover:text-neutral-900 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+        >
+          Details
+          <ArrowRight className="text-[0.95em] text-neutral-600" />
+        </Link>
       </div>
     </div>
   );

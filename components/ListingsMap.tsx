@@ -20,7 +20,9 @@ function urgencyColor(l: Listing): string {
   if (["delivered", "expired", "failed"].includes(l.status)) return RAMP.neutral400;
   if (l.minutesLeft < 10) return RAMP.failed400;
   if (l.minutesLeft < 35) return RAMP.urgent600;
-  return RAMP.rescued600;
+  // Plenty of time: plum, not sage — sage disappears into the green of the
+  // satellite imagery, plum stands off it. (Urgent/closing keep honey/tomato.)
+  return RAMP.transit600;
 }
 
 // Great-circle distance in miles.
@@ -176,8 +178,8 @@ export function ListingsMap({ listings }: { listings: Listing[] }) {
     return (
       <div className="grid h-[60vh] place-items-center rounded-2xl border border-dashed border-neutral-200 bg-card text-center">
         <div>
-          <p className="text-sm text-neutral-600">The map needs a Mapbox token.</p>
-          <p className="mt-1 font-mono text-xs text-neutral-500">
+          <p className="text-sm text-neutral-700">The map needs a Mapbox token.</p>
+          <p className="mt-1 font-mono text-xs text-neutral-700">
             Add NEXT_PUBLIC_MAPBOX_TOKEN to Code/.env, then restart the dev server.
           </p>
         </div>

@@ -76,7 +76,7 @@ export function ThemeToggle() {
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1 focus-visible:ring-offset-card",
               active
                 ? "bg-neutral-900 text-neutral-50"
-                : "text-neutral-600 hover:text-neutral-900"
+                : "text-neutral-700 hover:text-neutral-900"
             )}
           >
             {o.label}
