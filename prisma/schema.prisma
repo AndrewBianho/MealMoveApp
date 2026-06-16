@@ -94,9 +94,12 @@ model User {
   buddyInvitesReceived BuddyInvite[] @relation("InviteInvitee")
   adminActions  AdminEvent[] @relation("AdminActor")
   adminTargeted AdminEvent[] @relation("AdminTarget")
-  passwordResetTokens PasswordResetToken[]
-  dropOffNotices DropOffNotice[]
-  createdAt    DateTime    @default(now())
+  passwordResetTokens  PasswordResetToken[]
+  dropOffNotices       DropOffNotice[]
+  notificationsEnabled Boolean       @default(false)
+  notifyPrimedAt       DateTime?
+  deviceTokens         DeviceToken[]
+  createdAt            DateTime      @default(now())
 
   @@index([status]) // the org-admin pending-approval queue
 }
@@ -339,4 +342,19 @@ model TeamInvite {
   respondedAt  DateTime?
 
   @@index([email, status])
+}
+
+// FCM device token registered by a volunteer to receive push notifications.
+// One user may have multiple tokens (different devices / browsers). Tokens are
+// upserted on each FCM registration and pruned when FCM reports them invalid.
+model DeviceToken {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
 }
