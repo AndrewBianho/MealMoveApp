@@ -1,5 +1,8 @@
 import { CHECK_IN_MARKS } from "./checkin-marks";
 import type { PrismaClient } from "@prisma/client";
+import { prisma } from "./prisma";
+import { dispatchToUser, type NotifyPayload } from "./notify-dispatch";
+import { absoluteUrl, escapeHtml } from "./email";
 
 /**
  * Every account that shares a restaurant org. Multiple users can belong to one
@@ -28,39 +31,12 @@ export interface CheckInPush {
   markIndex: number;
 }
 
-/**
- * Integration seam for the check-up push notification. No-op until Firebase
- * Cloud Messaging is provisioned — this is the ONLY place FCM plugs in. When
- * wired, look up the volunteer's FCM token(s) and send via firebase-admin here.
- */
-export async function sendCheckInPush(push: CheckInPush): Promise<void> {
-  if (process.env.NODE_ENV !== "production") {
-    const minutes = CHECK_IN_MARKS[push.markIndex - 1];
-    console.log(
-      `[check-in] would push volunteer ${push.volunteerId} at the ${minutes}-min mark for "${push.listingTitle}"`
-    );
-  }
-}
-
 export interface BuddyInvitePush {
   inviteId: string;
   listingId: string;
   inviteeId: string;
   listingTitle: string;
   inviterName: string;
-}
-
-/**
- * Integration seam for the buddy-invite push notification. No-op until Firebase
- * Cloud Messaging is provisioned — same seam pattern as `sendCheckInPush`. When
- * wired, look up the invitee's FCM token(s) and send via firebase-admin here.
- */
-export async function sendBuddyInvitePush(push: BuddyInvitePush): Promise<void> {
-  if (process.env.NODE_ENV !== "production") {
-    console.log(
-      `[buddy] would push volunteer ${push.inviteeId}: ${push.inviterName} invited you to buddy "${push.listingTitle}"`
-    );
-  }
 }
 
 export interface DropOffPickupNotice {
@@ -70,20 +46,86 @@ export interface DropOffPickupNotice {
   listingTitle: string;
 }
 
-/**
- * Integration seam for the "your delivery is on its way" notice to a drop-off,
- * fired once a volunteer captures the pickup photo (claimed → in_transit). No-op
- * until Firebase Cloud Messaging is provisioned — same seam pattern as the other
- * pushes. When wired, notify the drop-off admins here (the schema doesn't tie an
- * admin to a specific DropOff, so this mirrors the /dropoff page and reaches all
- * drop-off admins).
- */
+function emailButton(label: string, path: string): string {
+  return `<p><a href="${absoluteUrl(path)}">${label}</a></p>`;
+}
+
+export function buildCheckInPayload(push: CheckInPush): NotifyPayload {
+  const minutes = CHECK_IN_MARKS[push.markIndex - 1];
+  const title = escapeHtml(push.listingTitle);
+  return {
+    title: "Still on for your pickup?",
+    body: `Tap to check in on "${push.listingTitle}".`,
+    url: `/listings/${push.listingId}`,
+    email: {
+      subject: "Checking in on your Meal Move pickup",
+      html:
+        `<p>You're ${minutes} minutes into your hold on "${title}". ` +
+        `Tap below to confirm you're still on for it.</p>` +
+        emailButton("Open the pickup", `/listings/${push.listingId}`),
+    },
+  };
+}
+
+export async function sendCheckInPush(push: CheckInPush): Promise<void> {
+  await dispatchToUser(push.volunteerId, buildCheckInPayload(push));
+}
+
+export function buildBuddyInvitePayload(push: BuddyInvitePush): NotifyPayload {
+  const title = escapeHtml(push.listingTitle);
+  const inviter = escapeHtml(push.inviterName);
+  return {
+    title: "You've been invited to buddy a rescue",
+    body: `${push.inviterName} invited you to "${push.listingTitle}".`,
+    url: `/listings/${push.listingId}`,
+    email: {
+      subject: "A buddy invite on Meal Move",
+      html:
+        `<p>${inviter} invited you to buddy the pickup "${title}".</p>` +
+        emailButton("See the invite", `/listings/${push.listingId}`),
+    },
+  };
+}
+
+export async function sendBuddyInvitePush(push: BuddyInvitePush): Promise<void> {
+  await dispatchToUser(push.inviteeId, buildBuddyInvitePayload(push));
+}
+
+export function buildDropOffPayload(notice: DropOffPickupNotice): NotifyPayload {
+  const title = escapeHtml(notice.listingTitle);
+  return {
+    title: "A delivery is on its way",
+    body: `"${notice.listingTitle}" was just picked up.`,
+    url: `/dropoff`,
+    email: {
+      subject: "An inbound delivery on Meal Move",
+      html:
+        `<p>"${title}" was just picked up and is on its way to ${escapeHtml(notice.dropOffName)}.</p>` +
+        emailButton("View inbound deliveries", `/dropoff`),
+    },
+  };
+}
+
+// Reaches every drop-off admin (the schema doesn't tie an admin to one DropOff,
+// mirroring the /dropoff page). Recipient lookup is injectable for tests.
 export async function sendDropOffPickupNotice(
-  notice: DropOffPickupNotice
+  notice: DropOffPickupNotice,
+  deps: {
+    recipientIds?: (db: Pick<PrismaClient, "user">) => Promise<string[]>;
+    dispatch?: typeof dispatchToUser;
+  } = {}
 ): Promise<void> {
-  if (process.env.NODE_ENV !== "production") {
-    console.log(
-      `[drop-off] would notify ${notice.dropOffName}: "${notice.listingTitle}" was just picked up and is on its way.`
-    );
-  }
+  const dispatch = deps.dispatch ?? dispatchToUser;
+  const recipientIds =
+    deps.recipientIds ??
+    (async (db) =>
+      (
+        await db.user.findMany({
+          where: { role: "drop_off_admin" },
+          select: { id: true },
+        })
+      ).map((u) => u.id));
+  const ids = await recipientIds(prisma);
+  const payload = buildDropOffPayload(notice);
+  await Promise.all(ids.map((id) => dispatch(id, payload)));
 }
