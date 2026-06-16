@@ -26,6 +26,9 @@ function configured(): boolean {
 // Lazy, singleton admin app — only loaded/initialized when actually sending.
 // firebase-admin v12+ exposes named exports; use getMessaging() from the
 // firebase-admin/messaging subpath and cert/initializeApp/getApps from the root.
+// Note: a rejected init promise (e.g. bad credentials) is cached, so every later
+// send re-throws it — caught below as a transient failure (no pruning). Pushes
+// stay silent until the process restarts; fix the credentials and redeploy.
 let messagingPromise: Promise<import("firebase-admin/messaging").Messaging> | null = null;
 
 async function getMessagingInstance() {
@@ -48,6 +51,10 @@ async function getMessagingInstance() {
   return messagingPromise;
 }
 
+// Per-token error codes that mean the token is permanently dead and should be
+// pruned. `invalid-argument` is mildly ambiguous (it can also signal a malformed
+// payload), but our payloads are always built from the typed PushMessage above,
+// so in practice it only fires for a bad token here.
 const INVALID_CODES = new Set([
   "messaging/registration-token-not-registered",
   "messaging/invalid-registration-token",
