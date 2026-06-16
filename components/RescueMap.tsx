@@ -540,6 +540,9 @@ export function RescueMap({
         style: MAP_STYLES[modeRef.current],
         center: myLocRef.current,
         zoom: 12,
+        // Default attribution sits bottom-right; we move it to bottom-left (below)
+        // so the bottom-right corner is free for the compass/home/toggle stack.
+        attributionControl: false,
       });
       mapRef.current = map;
 
@@ -565,16 +568,23 @@ export function RescueMap({
         else map.flyTo({ center: myLocRef.current, zoom: 12, bearing: 0, pitch: 0 });
       };
 
-      // Compass only — zoom +/- is handled by pinch/scroll; the home button
-      // restores the framed view.
+      // Map controls live bottom-right so they never collide with the top-left
+      // search card (which grows to ~340px wide / 45% tall on phones and would
+      // otherwise overlap a top-right stack). Compass only — zoom +/- is handled
+      // by pinch/scroll; the home button restores the framed view. They stack
+      // upward in add order: compass (lowest), home, then mode toggle.
+      map.addControl(
+        new mapboxgl.AttributionControl({ compact: true }),
+        "bottom-left"
+      );
       map.addControl(
         new mapboxgl.NavigationControl({ showZoom: false, showCompass: true }),
-        "top-right"
+        "bottom-right"
       );
-      map.addControl(createHomeControl({ onClick: resetView }), "top-right");
+      map.addControl(createHomeControl({ onClick: resetView }), "bottom-right");
       const toggle = createModeToggle({ initial: modeRef.current, onChange: setMode });
       toggleRef.current = toggle;
-      map.addControl(toggle, "top-right");
+      map.addControl(toggle, "bottom-right");
 
       // "My location" — a bold ink dot with a thick white ring and a live,
       // pulsing accuracy ring behind it (repositioned by an effect).
