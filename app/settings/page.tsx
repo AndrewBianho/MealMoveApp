@@ -1,6 +1,9 @@
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DataModeToggle } from "@/components/DataModeToggle";
+import { NotificationsToggle } from "@/components/NotificationsToggle";
 import { getDataMode } from "@/lib/mode";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
 
 export const metadata = { title: "Settings · Meal Move" };
 
@@ -8,6 +11,14 @@ export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   const mode = await getDataMode();
+
+  const session = await auth();
+  const me = session?.user?.id
+    ? await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { notificationsEnabled: true },
+      })
+    : null;
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-8">
@@ -25,6 +36,18 @@ export default async function SettingsPage() {
         </p>
         <div className="mt-4">
           <ThemeToggle />
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-neutral-900/5 bg-card p-5 shadow-card">
+        <h2 className="text-lg font-medium">Notifications</h2>
+        <p className="mt-1 text-sm text-neutral-700">
+          Get a gentle nudge when it&apos;s time to check in on a pickup, when
+          someone invites you to buddy a rescue, or when a delivery is inbound.
+          We&apos;ll use push where your device supports it, and email otherwise.
+        </p>
+        <div className="mt-4">
+          <NotificationsToggle initialEnabled={me?.notificationsEnabled ?? false} />
         </div>
       </section>
 
