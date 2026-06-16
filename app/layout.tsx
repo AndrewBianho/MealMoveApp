@@ -28,6 +28,7 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Meal Move",
   description: "Food-rescue for a campus volunteer org.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
