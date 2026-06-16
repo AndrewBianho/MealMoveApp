@@ -18,7 +18,7 @@
     "db:studio": "prisma studio",
     "make-admin": "node --env-file=.env --import tsx scripts/make-admin.ts",
     "sweep": "node --env-file=.env --import tsx scripts/sweep.ts",
-    "test": "node --import tsx --test \"lib/**/*.test.ts\""
+    "test": "node --require ./lib/stub-server-only.cjs --import tsx --test \"lib/**/*.test.ts\""
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -33,7 +33,8 @@
     "nodemailer": "^7.0.13",
     "prisma": "^6.19.3",
     "react": "^18",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
