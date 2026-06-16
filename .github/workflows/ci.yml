@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, integration/all-features]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # No postinstall hook, so generate the Prisma client explicitly before
+      # anything that imports @prisma/client (typecheck, tests, build).
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      # Placeholder env so `next build` can collect routes without real infra.
+      # Pages are force-dynamic, so no database is hit at build time; these
+      # values only satisfy module-load-time checks and are never used.
+      - name: Build
+        run: npm run build
+        env:
+          AUTH_SECRET: ci-placeholder-not-used-at-build
+          DATABASE_URL: postgresql://user:pass@localhost:5432/db
+          DIRECT_URL: postgresql://user:pass@localhost:5432/db
+          NEXT_PUBLIC_MAPBOX_TOKEN: ci-placeholder

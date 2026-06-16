@@ -65,7 +65,10 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
       : undefined,
     servings: l.servings,
     weightLbs: l.weightLbs ?? undefined,
-    distance: "—", // TODO: derive from volunteer location once geo is wired
+    // Placeholder until the client knows where the volunteer is: ListingFeed
+    // fills this in from the browser's geolocation (straight-line miles to the
+    // restaurant's lat/lng). Stays "—" when location is denied or unavailable.
+    distance: "—",
     status: fromEnum(l.status),
     claimedBy: l.pickup?.volunteer.name,
     dropOff: l.dropOff?.name ?? undefined,

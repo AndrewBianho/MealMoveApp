@@ -5,7 +5,9 @@ import { cn } from "./cn";
 import { ListingCard } from "./ListingCard";
 import { EmptyState } from "./EmptyState";
 import { Toast, useToast } from "./Toast";
+import { useGeolocation } from "./useGeolocation";
 import { claimListing } from "@/app/actions";
+import { haversineMiles, formatMiles } from "@/lib/distance";
 import type { Listing, ListingStatus } from "@/lib/types";
 
 // Per-card entrance delay (arbitrary animation-delay utilities), capped so a
@@ -249,6 +251,19 @@ export function ListingFeed({
   }
   const onClaim = canClaim ? handleClaim : undefined;
 
+  // Real "how far" once the browser shares a location: straight-line miles from
+  // the volunteer to each listing's restaurant. Until then (or if denied) the
+  // listings keep their "—" placeholder, so the feed never blocks on geo.
+  const here = useGeolocation();
+  const located = useMemo(() => {
+    if (!here) return listings;
+    return listings.map((l) =>
+      l.lat != null && l.lng != null
+        ? { ...l, distance: formatMiles(haversineMiles(here, { lat: l.lat, lng: l.lng })) }
+        : l
+    );
+  }, [listings, here]);
+
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
     for (const l of listings) c[l.status] = (c[l.status] ?? 0) + 1;
@@ -265,13 +280,13 @@ export function ListingFeed({
     let list: Listing[];
     if (filter === "all") {
       // Everything claimable-or-past, minus the scheduled posts (own pill).
-      list = listings.filter((l) => !(l.status === "open" && l.scheduled));
+      list = located.filter((l) => !(l.status === "open" && l.scheduled));
     } else if (filter === "coming up") {
-      list = listings.filter((l) => l.status === "open" && l.scheduled);
+      list = located.filter((l) => l.status === "open" && l.scheduled);
     } else if (filter === "open") {
-      list = listings.filter((l) => l.status === "open" && !l.scheduled);
+      list = located.filter((l) => l.status === "open" && !l.scheduled);
     } else {
-      list = listings.filter((l) => l.status === filter);
+      list = located.filter((l) => l.status === filter);
     }
     return [...list].sort((a, b) => {
       if (isSpent(a.status) !== isSpent(b.status)) {
@@ -279,7 +294,7 @@ export function ListingFeed({
       }
       return a.minutesLeft - b.minutesLeft;
     });
-  }, [listings, filter]);
+  }, [located, filter]);
 
   // Split what's shown into three bands so the eye goes to claimable food
   // first: claimable now (open + live), upcoming (open but scheduled for a
