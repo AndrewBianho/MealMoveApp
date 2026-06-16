@@ -19,6 +19,9 @@ function smtpConfigured(): boolean {
   return Boolean(SMTP_HOST && SMTP_PORT && SMTP_FROM);
 }
 
+// Encodes the three characters that break out of an HTML text node. Safe for
+// text content (the only use here, building email bodies); NOT sufficient for
+// attribute values, which would also need quote escaping.
 export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -28,6 +31,12 @@ export function escapeHtml(s: string): string {
 
 export function absoluteUrl(path: string): string {
   const base = (process.env.APP_URL ?? "").replace(/\/$/, "");
+  // Without APP_URL the result is only root-relative, which produces dead links
+  // in emails (they open in no browser context). Warn so the misconfiguration is
+  // visible at send time rather than when a recipient clicks a broken link.
+  if (!base) {
+    console.warn("[email] APP_URL is not set — email links will be relative and may not work.");
+  }
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
