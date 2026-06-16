@@ -9,11 +9,15 @@ const LBS_PER_SERVING = 0.8;
 export async function getImpactStats(): Promise<ImpactStat[]> {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [delivered, pickupsThisWeek, restaurants, distinctVolunteers] =
+  const [delivered, completedPickups, pickupsThisWeek, restaurants, distinctVolunteers] =
     await Promise.all([
       prisma.foodListing.findMany({
         where: { status: "delivered" },
         select: { servings: true, weightLbs: true },
+      }),
+      prisma.pickup.findMany({
+        where: { deliveredAt: { not: null } },
+        select: { claimedAt: true, deliveredAt: true },
       }),
       prisma.pickup.count({ where: { claimedAt: { gte: weekAgo } } }),
       prisma.restaurant.count(),
@@ -30,14 +34,80 @@ export async function getImpactStats(): Promise<ImpactStat[]> {
       0
     )
   );
+  const hoursDriven = Math.round(driveHours(completedPickups));
 
   return [
     { label: "meals rescued", value: mealsRescued.toLocaleString() },
     { label: "lbs rescued", value: lbsRescued.toLocaleString() },
+    { label: "hours driven", value: hoursDriven.toLocaleString() },
     { label: "pickups this week", value: pickupsThisWeek.toLocaleString() },
     { label: "partner restaurants", value: restaurants.toLocaleString() },
     { label: "active volunteers", value: distinctVolunteers.length.toLocaleString() },
   ];
+}
+
+// One restaurant's own impact — the same shape as the chapter stats, but every
+// query is scoped to this restaurant's listings. "partner restaurants / active
+// volunteers" give way to numbers that mean something to a single restaurant:
+// the volunteers who've carried its food and the drop-offs that food reached.
+export async function getRestaurantImpactStats(
+  restaurantId: string
+): Promise<ImpactStat[]> {
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  const [delivered, completedPickups, pickupsThisWeek, volunteers, dropOffs] =
+    await Promise.all([
+      prisma.foodListing.findMany({
+        where: { restaurantId, status: "delivered" },
+        select: { servings: true, weightLbs: true },
+      }),
+      prisma.pickup.findMany({
+        where: { deliveredAt: { not: null }, listing: { restaurantId } },
+        select: { claimedAt: true, deliveredAt: true },
+      }),
+      prisma.pickup.count({
+        where: { claimedAt: { gte: weekAgo }, listing: { restaurantId } },
+      }),
+      prisma.pickup.findMany({
+        where: { listing: { restaurantId } },
+        distinct: ["volunteerId"],
+        select: { volunteerId: true },
+      }),
+      prisma.foodListing.findMany({
+        where: { restaurantId, status: "delivered", dropOffId: { not: null } },
+        distinct: ["dropOffId"],
+        select: { dropOffId: true },
+      }),
+    ]);
+
+  const mealsRescued = delivered.reduce((sum, l) => sum + l.servings, 0);
+  const lbsRescued = Math.round(
+    delivered.reduce((sum, l) => sum + (l.weightLbs ?? l.servings * LBS_PER_SERVING), 0)
+  );
+  const hoursDriven = Math.round(driveHours(completedPickups));
+
+  return [
+    { label: "meals rescued", value: mealsRescued.toLocaleString() },
+    { label: "lbs rescued", value: lbsRescued.toLocaleString() },
+    { label: "hours driven", value: hoursDriven.toLocaleString() },
+    { label: "pickups this week", value: pickupsThisWeek.toLocaleString() },
+    { label: "volunteers helped", value: volunteers.length.toLocaleString() },
+    { label: "drop-offs reached", value: dropOffs.length.toLocaleString() },
+  ];
+}
+
+// Hours spent on completed rescues, summed from each pickup's claim → delivery
+// elapsed time. We don't track GPS or persist route durations, so this
+// claim-to-drop-off span is the honest proxy for time a volunteer was out
+// moving food. Returns fractional hours; callers round as they wish.
+function driveHours(
+  pickups: { claimedAt: Date; deliveredAt: Date | null }[]
+): number {
+  const ms = pickups.reduce(
+    (sum, p) => sum + (p.deliveredAt ? p.deliveredAt.getTime() - p.claimedAt.getTime() : 0),
+    0
+  );
+  return ms / 3_600_000;
 }
 
 // Reliability from the event log: completed vs flaked attempts. A delivered
@@ -86,7 +156,7 @@ export async function getVolunteerReliability(): Promise<Volunteer[]> {
 
 // A structural slice of the Prisma client — just the delegates this function
 // touches. Lets tests inject a fake db without standing up a database.
-type ImpactDb = Pick<typeof prisma, "listingEvent" | "foodListing">;
+type ImpactDb = Pick<typeof prisma, "listingEvent" | "foodListing" | "pickup">;
 
 // One volunteer's lifetime profile numbers, all live from the DB. Impact comes
 // from the listings they delivered; completion rate reuses the same event types
@@ -129,11 +199,23 @@ export async function getVolunteerImpact(
     )
   );
 
+  // Hours on the road, from the claim → delivery span of each rescue this user
+  // completed. Both seats are credited equally (a buddy who helped delivered
+  // the same listing), matching how meals/lbs are credited above.
+  const pickups = deliveredListingIds.length
+    ? await db.pickup.findMany({
+        where: { listingId: { in: deliveredListingIds }, deliveredAt: { not: null } },
+        select: { claimedAt: true, deliveredAt: true },
+      })
+    : [];
+  const hoursDriven = Math.round(driveHours(pickups) * 10) / 10;
+
   return {
     mealsRescued,
     lbsSaved,
     pickupsCompleted: delivered,
     restaurantsHelped: new Set(listings.map((l) => l.restaurantId)).size,
+    hoursDriven,
     completionRate,
     attempts,
   };

@@ -2,6 +2,7 @@ import { RoleSelect } from "@/components/RoleSelect";
 import { ApprovalActions } from "@/components/ApprovalActions";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { isDemo } from "@/lib/mode";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,10 @@ function pendingOrgName(value: unknown): string | null {
 
 export default async function AdminUsersPage() {
   const session = await auth();
+  // Demo org-admins are showcase-only: they can browse the roster but the
+  // server blocks them from approving, declining, or changing real accounts, so
+  // disable the controls and say why rather than let a click fail.
+  const demo = await isDemo();
   // Explicit select — phone is deliberately omitted so a volunteer's number is
   // never even fetched into admin-facing code (the sign-up promise, kept in code).
   const [users, pending] = await Promise.all([
@@ -48,6 +53,14 @@ export default async function AdminUsersPage() {
         </p>
       </header>
 
+      {demo && (
+        <div className="mb-6 rounded-xl border border-transit-200/60 bg-transit-50 px-4 py-3 text-sm text-transit-800">
+          You&apos;re exploring in demo mode. Member management is disabled here
+          so the showcase can&apos;t change real accounts — switch to your real
+          account to approve partners or assign roles.
+        </div>
+      )}
+
       {pending.length > 0 && (
         <section className="mb-8">
           <div className="mb-3 flex items-center gap-2">
@@ -58,19 +71,19 @@ export default async function AdminUsersPage() {
             New restaurants and drop-offs need your confirmation before they can
             sign in or go live on the map.
           </p>
-          <div className="overflow-hidden rounded-xl border border-neutral-200/40 bg-card">
+          <div className="overflow-hidden rounded-xl border border-urgent-200/60 bg-card shadow-card">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-neutral-200/40 text-left">
-                  <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">Requested by</th>
-                  <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">Email</th>
-                  <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">Wants to add</th>
+                <tr className="border-b border-urgent-200/50 bg-urgent-50/60 text-left">
+                  <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-wide text-urgent-800">Requested by</th>
+                  <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-wide text-urgent-800">Email</th>
+                  <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-wide text-urgent-800">Wants to add</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody>
                 {pending.map((u) => (
-                  <tr key={u.id} className="border-b border-neutral-200/40 last:border-0">
+                  <tr key={u.id} className="border-b border-neutral-200/40 transition-colors last:border-0 hover:bg-urgent-50/40">
                     <td className="px-4 py-3">{u.name}</td>
                     <td className="px-4 py-3 font-mono text-xs text-neutral-700">{u.email}</td>
                     <td className="px-4 py-3">
@@ -80,7 +93,7 @@ export default async function AdminUsersPage() {
                       <span className="ml-2 text-neutral-800">{pendingOrgName(u.pendingOrg) ?? "—"}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <ApprovalActions userId={u.id} />
+                      <ApprovalActions userId={u.id} demo={demo} />
                     </td>
                   </tr>
                 ))}
@@ -90,10 +103,10 @@ export default async function AdminUsersPage() {
         </section>
       )}
 
-      <div className="overflow-hidden rounded-xl border border-neutral-200/40 bg-card">
+      <div className="overflow-hidden rounded-xl border border-neutral-200/40 bg-card shadow-card">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-neutral-200/40 text-left">
+            <tr className="border-b border-neutral-200/40 bg-neutral-100/60 text-left">
               <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
                 Name
               </th>
@@ -110,7 +123,7 @@ export default async function AdminUsersPage() {
               const isSelf = u.id === session?.user?.id;
               const managed = MANAGED.includes(u.role as ManagedRole);
               return (
-                <tr key={u.id} className="border-b border-neutral-200/40 last:border-0">
+                <tr key={u.id} className="border-b border-neutral-200/40 transition-colors last:border-0 hover:bg-rescued-50/40">
                   <td className="px-4 py-3">
                     {u.name}
                     {isSelf && (
@@ -128,6 +141,7 @@ export default async function AdminUsersPage() {
                         userId={u.id}
                         current={u.role as ManagedRole}
                         isSelf={isSelf}
+                        demo={demo}
                       />
                     ) : (
                       <span className="font-mono text-xs text-neutral-700">

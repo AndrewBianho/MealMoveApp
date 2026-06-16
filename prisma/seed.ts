@@ -16,6 +16,7 @@ async function main() {
   await prisma.pickup.deleteMany();
   await prisma.foodListing.deleteMany();
   await prisma.recurringPost.deleteMany();
+  await prisma.dropOffNotice.deleteMany();
   await prisma.dropOff.deleteMany();
   await prisma.user.deleteMany();
   await prisma.restaurant.deleteMany();

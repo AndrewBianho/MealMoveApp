@@ -1,11 +1,13 @@
 import { ListingFeed } from "@/components/ListingFeed";
 import { getListings } from "@/lib/listings";
+import { auth } from "@/auth";
 
 // Reads live data per request (and after revalidation from server actions).
 export const dynamic = "force-dynamic";
 
 export default async function FeedPage() {
-  const listings = await getListings();
+  const [listings, session] = await Promise.all([getListings(), auth()]);
+  const canClaim = session?.user?.role !== "org_admin";
 
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">
@@ -17,7 +19,7 @@ export default async function FeedPage() {
         </p>
       </header>
 
-      <ListingFeed listings={listings} />
+      <ListingFeed listings={listings} canClaim={canClaim} />
     </main>
   );
 }

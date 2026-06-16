@@ -16,10 +16,12 @@ export function RoleSelect({
   userId,
   current,
   isSelf,
+  demo = false,
 }: {
   userId: string;
   current: ManagedRole;
   isSelf: boolean;
+  demo?: boolean;
 }) {
   const [value, setValue] = useState<ManagedRole>(current);
   const [isPending, startTransition] = useTransition();
@@ -45,8 +47,9 @@ export function RoleSelect({
       <select
         value={value}
         onChange={onChange}
-        disabled={isPending}
-        className="rounded-md border border-neutral-200/60 bg-card px-2.5 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-transit-400"
+        disabled={isPending || demo}
+        title={demo ? "Demo accounts can't change roles" : undefined}
+        className="rounded-md border border-neutral-200/60 bg-card px-2.5 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-transit-400 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>

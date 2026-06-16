@@ -1,16 +1,25 @@
 import { ListingCard } from "@/components/ListingCard";
 import { DropOffNotesEditor } from "@/components/DropOffNotesEditor";
+import { DropOffNoticeManager } from "@/components/DropOffNoticeManager";
+import { DropOffChats } from "@/components/DropOffChats";
 import { RetrievalHoursEditor } from "@/components/RetrievalHoursEditor";
 import { TeamPanel } from "@/components/TeamPanel";
 import { EmptyState } from "@/components/EmptyState";
 import { getDropOffs } from "@/lib/map";
 import { getListings } from "@/lib/listings";
+import { getActiveNoticesByDropOff } from "@/lib/dropoffNotices";
+import { isDemo } from "@/lib/mode";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function DropoffPage() {
+  const session = await auth();
+  const viewerId = session?.user?.id;
   const [all, locations] = await Promise.all([getListings(), getDropOffs()]);
+  const noticesByDropOff = await getActiveNoticesByDropOff(locations.map((d) => d.id));
+  const demo = await isDemo();
 
   // Drop-off admins are chapter-wide: the "team" is every drop-off admin, and
   // invites add another chapter-wide admin account.
@@ -25,7 +34,7 @@ export default async function DropoffPage() {
     orderBy: { createdAt: "asc" },
   });
   const incoming = all.filter(
-    (l) => l.dropOff && ["claimed", "in transit"].includes(l.status)
+    (l) => l.dropOff && ["claimed", "in transit", "taken home"].includes(l.status)
   );
   const arrived = all.filter((l) => l.dropOff && l.status === "delivered");
 
@@ -44,6 +53,7 @@ export default async function DropoffPage() {
           invites={invites}
           title="Drop-off team"
           description="Drop-off admins manage every location together. Invite a teammate to add another admin account."
+          demo={demo}
         />
       </section>
 
@@ -83,9 +93,33 @@ export default async function DropoffPage() {
               </p>
               <DropOffNotesEditor dropOffId={d.id} initialNotes={d.notes ?? ""} />
               <RetrievalHoursEditor dropOffId={d.id} initialHours={d.retrievalHours} />
+              <DropOffNoticeManager dropOffId={d.id} initial={noticesByDropOff[d.id] ?? []} />
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="mb-8">
+        <h2 className="mb-1 text-lg font-medium">Conversations</h2>
+        <p className="mb-4 text-sm text-neutral-700">
+          Every active delivery headed your way, in one place — switch between
+          volunteers without leaving the page.
+        </p>
+        {viewerId ? (
+          <DropOffChats
+            viewerId={viewerId}
+            threads={incoming.map((l) => ({
+              id: l.id,
+              title: l.title,
+              source: l.source,
+              dropOff: l.dropOff,
+              volunteerName: l.claimedBy,
+              status: l.status,
+            }))}
+          />
+        ) : (
+          <p className="text-sm text-neutral-700">Sign in to coordinate deliveries.</p>
+        )}
       </section>
 
       <section className="mb-8">

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { Avatar } from "@/components/Avatar";
-import { MetricCard } from "@/components/MetricCard";
+import { MetricCard, metricAccent } from "@/components/MetricCard";
 import { ReliabilityRing } from "@/components/ReliabilityRing";
 import { getVolunteerImpact } from "@/lib/stats";
 
@@ -45,22 +45,31 @@ export default async function ProfilePage() {
         <h2 className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
           lifetime impact
         </h2>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
           <MetricCard
             label="meals rescued"
             value={impact.mealsRescued.toLocaleString()}
+            accent={metricAccent("meals rescued")}
           />
           <MetricCard
             label="lbs saved"
             value={impact.lbsSaved.toLocaleString()}
+            accent={metricAccent("lbs saved")}
+          />
+          <MetricCard
+            label="hours driven"
+            value={impact.hoursDriven.toLocaleString()}
+            accent={metricAccent("hours driven")}
           />
           <MetricCard
             label="pickups completed"
             value={impact.pickupsCompleted.toLocaleString()}
+            accent={metricAccent("pickups completed")}
           />
           <MetricCard
             label="restaurants helped"
             value={impact.restaurantsHelped.toLocaleString()}
+            accent={metricAccent("restaurants helped")}
           />
         </div>
       </section>

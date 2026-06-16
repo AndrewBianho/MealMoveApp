@@ -1,5 +1,6 @@
 import { ListingDetail } from "@/components/ListingDetail";
 import { getListing } from "@/lib/listings";
+import { getActiveDropOffNotices } from "@/lib/dropoffNotices";
 import { canAccessChat } from "@/lib/chat";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
@@ -13,7 +14,18 @@ export default async function ListingDetailPage({
 }) {
   const session = await auth();
   const viewerId = session?.user?.id;
+  const canClaim = session?.user?.role !== "org_admin";
   const listing = await getListing(params.id, viewerId);
+
+  // Any active service notices for this listing's drop-off — a volunteer
+  // heading there should see "closing early / fridge down" up front.
+  const listingRow = await prisma.foodListing.findUnique({
+    where: { id: params.id },
+    select: { dropOffId: true },
+  });
+  const dropOffNotices = listingRow?.dropOffId
+    ? await getActiveDropOffNotices(listingRow.dropOffId)
+    : [];
 
   // Decide chat access server-side: it depends on the user's role + restaurantId
   // (not carried in the JWT session) and the claim's parties.
@@ -61,8 +73,10 @@ export default async function ListingDetailPage({
         listing={listing}
         viewerId={viewerId}
         canChat={canChat}
+        canClaim={canClaim}
         incomingInvite={incomingInvite}
         outgoingInvite={outgoingInvite}
+        dropOffNotices={dropOffNotices}
       />
     </main>
   );

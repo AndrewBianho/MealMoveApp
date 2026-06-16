@@ -24,6 +24,9 @@ enum ListingStatus {
   open
   claimed
   in_transit
+  // Volunteer has the food but couldn't deliver today — kept overnight to drop
+  // off the next day. A deferred rescue, not a flake (never auto-expired).
+  taken_home
   delivered
   expired
   failed
@@ -92,6 +95,7 @@ model User {
   adminActions  AdminEvent[] @relation("AdminActor")
   adminTargeted AdminEvent[] @relation("AdminTarget")
   passwordResetTokens PasswordResetToken[]
+  dropOffNotices DropOffNotice[]
   createdAt    DateTime    @default(now())
 
   @@index([status]) // the org-admin pending-approval queue
@@ -169,7 +173,35 @@ model DropOff {
   retrievalHours     Json? // RetrievalHours: per-weekday food-retrieval windows (see lib/hours.ts)
   demo               Boolean        @default(false) // belongs to the curated demo world, not real data
   listings  FoodListing[]
+  notices   DropOffNotice[]
   createdAt DateTime      @default(now())
+}
+
+// What a service notice is about — drives the icon/label volunteers see.
+enum DropOffNoticeKind {
+  hours // a change to the normal open / retrieval hours
+  conditions // a change to normal conditions (capacity, refrigeration, access)
+  general
+}
+
+// A temporary service notice a drop-off posts when its normal hours or
+// conditions change ("closing at 6 today", "fridge down this week", "use the
+// side door"). Distinct from the standing `notes` / `retrievalHours`: it's
+// dated and clears itself once `until` passes (null = until removed). Surfaced
+// to volunteers wherever the drop-off appears.
+model DropOffNotice {
+  id        String            @id @default(cuid())
+  dropOff   DropOff           @relation(fields: [dropOffId], references: [id])
+  dropOffId String
+  author    User              @relation(fields: [authorId], references: [id])
+  authorId  String
+  kind      DropOffNoticeKind @default(general)
+  body      String
+  until     DateTime? // auto-expires after this; null = stays until removed
+  demo      Boolean           @default(false)
+  createdAt DateTime          @default(now())
+
+  @@index([dropOffId, createdAt])
 }
 
 model FoodListing {
@@ -219,6 +251,8 @@ model Pickup {
   claimedAt   DateTime    @default(now())
   holdUntil   DateTime // the 15-min hold; a cron releases claims past this
   deliveredAt DateTime?
+  takenHomeAt DateTime? // set when the volunteer kept the food to deliver next day
+  deliverBy   DateTime? // gentle next-day deadline for a taken-home pickup (display + nudge)
   lastCheckInAt DateTime? // last "still on it" confirmation; suppresses re-prompting
   nudgesSent    Int       @default(0) // count of 5-min check-up nudges the cron has dispatched (0–2)
   // Proof photos the volunteer captures — required to advance the claim.
@@ -267,7 +301,7 @@ model ListingEvent {
   id        String      @id @default(cuid())
   listing   FoodListing @relation(fields: [listingId], references: [id])
   listingId String
-  type      String // posted | claimed | in_transit | delivered | expired | released | failed
+  type      String // posted | claimed | in_transit | taken_home | delivered | expired | released | failed
   actor     User?       @relation(fields: [actorId], references: [id])
   actorId   String?
   meta      Json?

@@ -15,11 +15,13 @@ export function TeamPanel({
   invites,
   title = "Team",
   description,
+  demo = false,
 }: {
   members: { id: string; name: string; email: string }[];
   invites: { id: string; email: string }[];
   title?: string;
   description?: string;
+  demo?: boolean;
 }) {
   const router = useRouter();
   const { message, show } = useToast();
@@ -84,24 +86,30 @@ export function TeamPanel({
         ))}
       </ul>
 
-      <form onSubmit={onInvite} className="flex gap-2">
-        <input
-          type="email"
-          autoComplete="off"
-          className={fieldCls}
-          placeholder="teammate@email.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          disabled={isPending}
-        />
-        <Button
-          type="submit"
-          variant="secondary"
-          disabled={isPending || !email.trim()}
-        >
-          {isPending ? "…" : "Invite"}
-        </Button>
-      </form>
+      {demo ? (
+        <p className="rounded-md bg-neutral-100 px-3 py-2 font-mono text-[11px] text-neutral-600">
+          demo — inviting teammates is disabled
+        </p>
+      ) : (
+        <form onSubmit={onInvite} className="flex gap-2">
+          <input
+            type="email"
+            autoComplete="off"
+            className={fieldCls}
+            placeholder="teammate@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={isPending}
+          />
+          <Button
+            type="submit"
+            variant="secondary"
+            disabled={isPending || !email.trim()}
+          >
+            {isPending ? "…" : "Invite"}
+          </Button>
+        </form>
+      )}
 
       {invites.length > 0 && (
         <div className="mt-3">
@@ -115,14 +123,16 @@ export function TeamPanel({
                 className="flex items-center justify-between gap-3 font-mono text-[12px] text-neutral-700"
               >
                 <span className="truncate">{i.email}</span>
-                <button
-                  type="button"
-                  onClick={() => onCancel(i.id)}
-                  disabled={isPending}
-                  className="-my-1.5 shrink-0 py-1.5 text-clay-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 disabled:opacity-50"
-                >
-                  cancel
-                </button>
+                {!demo && (
+                  <button
+                    type="button"
+                    onClick={() => onCancel(i.id)}
+                    disabled={isPending}
+                    className="-my-1.5 shrink-0 py-1.5 text-clay-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 disabled:opacity-50"
+                  >
+                    cancel
+                  </button>
+                )}
               </li>
             ))}
           </ul>

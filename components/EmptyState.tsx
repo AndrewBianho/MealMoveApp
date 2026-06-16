@@ -16,12 +16,12 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-dashed border-neutral-200 bg-card px-6 py-14 text-center shadow-card",
+        "rounded-2xl border border-dashed border-rescued-200/70 bg-gradient-to-b from-rescued-50/50 to-card px-6 py-14 text-center shadow-card",
         className
       )}
     >
       {icon && (
-        <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-neutral-100 text-neutral-700">
+        <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-2xl bg-rescued-100 text-rescued-800 shadow-card">
           {icon}
         </div>
       )}

@@ -245,9 +245,12 @@ type Panel = { kind: "rest" | "drop"; name: string; options: RouteOption[] } | n
 export function RescueMap({
   restaurants,
   dropOffs,
+  canClaim = true,
 }: {
   restaurants: MapRestaurant[];
   dropOffs: DropOffLocation[];
+  /** Org admins oversee but don't carry pickups — hide the claim affordance. */
+  canClaim?: boolean;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap>();
@@ -483,6 +486,8 @@ export function RescueMap({
   // Use the device's GPS/location (needs HTTPS + permission). `auto` is the
   // silent first-load attempt: on failure we keep the default and stay quiet;
   // a manual tap surfaces the reason so the user can fall back to an address.
+  // The silent attempt sets the routing origin but never moves the camera — see
+  // the success handler — so the map opens to the same frame every time.
   function detectLocation(auto = false) {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
       if (!auto) setGeoError("Location isn't available on this device.");
@@ -497,7 +502,11 @@ export function RescueMap({
         setMyLoc(c);
         setMyLabel("Your location");
         setMyInput("");
-        mapRef.current?.flyTo({ center: c, zoom: 13 });
+        // Only a deliberate "use my location" tap recenters the map. The silent
+        // first-load fix stays camera-quiet: it can't reframe a consistent
+        // opening view, trigger an extra round of tile loads, or snap the camera
+        // off a route the user is already reading after clicking a pin.
+        if (!auto) mapRef.current?.flyTo({ center: c, zoom: 13 });
       },
       (err) => {
         setGeoBusy(null);
@@ -667,7 +676,13 @@ export function RescueMap({
       rMarkers.clear();
       dMarkers.clear();
     };
-  }, [restaurants, dropOffs]);
+    // Build exactly once per mount. restaurants/drop-offs are fixed for the
+    // page's lifetime, so they're read from the initial closure — keeping them
+    // out of the deps means a re-render can never tear the map down and
+    // re-instantiate it (a billed map load + a visible reload). The map loads
+    // the same way on every login / app open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Swap the base style when the mode toggles. setStyle wipes custom sources, so
   // re-add the route layers once the new style loads, then bump styleVersion to
@@ -1068,8 +1083,10 @@ export function RescueMap({
     selected && activeRoute
       ? dropOffs.find((d) => d.id === (selected.kind === "rest" ? activeRoute : selected.id))
       : undefined;
-  // A pickup is claimable only while the restaurant has an OPEN listing.
-  const claimable = !!(activeRest?.listingId && activeRest.minutesLeft != null);
+  // A pickup is claimable only while the restaurant has an OPEN listing — and
+  // only for roles that carry pickups (org admins oversee, they don't claim).
+  const claimable =
+    canClaim && !!(activeRest?.listingId && activeRest.minutesLeft != null);
 
   // Deep-link the chosen journey (you → restaurant → drop-off → optional dest)
   // into Google Maps. The universal `?api=1` link opens the app on mobile and

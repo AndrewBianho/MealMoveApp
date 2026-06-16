@@ -83,8 +83,21 @@ export function RestaurantConsole({
     });
   }
 
+  // Live = open-now or claimed; exclude scheduled occurrences (those open in the
+  // future and belong under "Scheduled" so the restaurant sees what's actually
+  // claimable now separately from what's queued.
   const live = useMemo(
-    () => listings.filter((l) => l.status === "open" || l.status === "claimed"),
+    () =>
+      listings.filter(
+        (l) => (l.status === "open" && !l.scheduled) || l.status === "claimed"
+      ),
+    [listings]
+  );
+  const upcoming = useMemo(
+    () =>
+      listings
+        .filter((l) => l.status === "open" && l.scheduled)
+        .sort((a, b) => (a.availableAt ?? 0) - (b.availableAt ?? 0)),
     [listings]
   );
   const past = useMemo(
@@ -243,6 +256,24 @@ export function RestaurantConsole({
             </div>
           )}
         </section>
+
+        {upcoming.length > 0 && (
+          <section className="mb-8">
+            <div className="mb-1 flex items-center gap-2">
+              <h2 className="text-lg font-medium">Scheduled</h2>
+              <span className="font-mono text-xs text-neutral-700">{upcoming.length}</span>
+            </div>
+            <p className="mb-4 text-sm text-neutral-700">
+              From your recurring schedule — each opens to the volunteer feed at
+              its listed time.
+            </p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {upcoming.map((l) => (
+                <ListingCard key={l.id} listing={l} audience="restaurant" />
+              ))}
+            </div>
+          </section>
+        )}
 
         <section>
           <h2 className="mb-4 text-lg font-medium">History</h2>

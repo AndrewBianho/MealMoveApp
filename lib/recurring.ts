@@ -41,6 +41,19 @@ export function describeSchedule(daysOfWeek: number[], timeOfDay: number): strin
   return `${labels.join(", ")} at ${time}`;
 }
 
+/** Just the day cadence, no time — for compact card pills where the specific
+ * next occurrence is shown separately: "every day", "weekdays", or "Mon, Wed". */
+export function describeCadence(daysOfWeek: number[]): string {
+  const set = new Set(daysOfWeek);
+  if (set.size === 0) return "";
+  if (set.size === 7) return "every day";
+  if (set.size === 5 && WEEKDAYS.every((d) => set.has(d))) return "weekdays";
+  return Array.from(set)
+    .sort((a, b) => a - b)
+    .map((d) => WEEKDAY_LABELS[d])
+    .join(", ");
+}
+
 export interface ScheduleRule {
   daysOfWeek: number[];
   timeOfDay: number; // minutes from local midnight

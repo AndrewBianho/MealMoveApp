@@ -147,6 +147,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4825",
     title: "Pizza by the slice",
+    imageUrl: "/food-sandwiches.jpg",
     source: "Slice Co. — Quad",
     expiresAt: "6:30 PM",
     minutesLeft: 50,
@@ -160,8 +161,27 @@ export const LISTINGS: Listing[] = [
     perishable: true,
   },
   {
+    id: "PU-4831",
+    title: "Chicken & rice trays",
+    imageUrl: "/food-soup.jpg",
+    source: "Greenhouse Cafe",
+    expiresAt: "—",
+    minutesLeft: 0,
+    servings: 16,
+    weightLbs: 18,
+    distance: "0.6 mi",
+    status: "taken home",
+    claimedBy: "You",
+    dropOff: "Community Fridge — 4th & Elm",
+    category: "prepared",
+    perishable: true,
+    notes:
+      "Fridge was locked by the time I got there — keeping these chilled overnight and dropping them tomorrow.",
+  },
+  {
     id: "PU-4818",
     title: "Roasted veg & grain bowls",
+    imageUrl: "/food-soup.jpg",
     source: "Greenhouse Cafe",
     expiresAt: "5:55 PM",
     minutesLeft: 0,
@@ -177,6 +197,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4815",
     title: "Assorted deli sandwiches",
+    imageUrl: "/food-sandwiches.jpg",
     source: "Corner Market",
     expiresAt: "4:10 PM",
     minutesLeft: 0,
@@ -190,6 +211,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4811",
     title: "Pasta trays & garlic bread",
+    imageUrl: "/food-soup.jpg",
     source: "Tony's Kitchen",
     expiresAt: "3:30 PM",
     minutesLeft: 0,
@@ -205,6 +227,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4826",
     title: "Cold brew & iced lattes",
+    imageUrl: "/food-bagels.jpg",
     source: "Saxbys — Commons",
     expiresAt: "7:00 PM",
     minutesLeft: 52,
@@ -220,6 +243,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4809",
     title: "Breakfast sandwiches",
+    imageUrl: "/food-sandwiches.jpg",
     source: "Saxbys — Commons",
     expiresAt: "10:30 AM",
     minutesLeft: 0,
@@ -237,6 +261,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4827",
     title: "Garden salads & wraps",
+    imageUrl: "/food-wraps.jpg",
     source: "Greenhouse Cafe",
     expiresAt: "7:05 PM",
     minutesLeft: 22,
@@ -253,6 +278,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4828",
     title: "Fruit cups & yogurt parfaits",
+    imageUrl: "/food-bagels.jpg",
     source: "Dining Hall — North",
     expiresAt: "7:20 PM",
     minutesLeft: 44,
@@ -270,6 +296,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4829",
     title: "Veggie burrito bowls",
+    imageUrl: "/food-wraps.jpg",
     source: "Slice Co. — Quad",
     expiresAt: "6:45 PM",
     minutesLeft: 33,
@@ -285,6 +312,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4830",
     title: "Bottled juices & seltzers",
+    imageUrl: "/food-bagels.jpg",
     source: "Corner Market",
     expiresAt: "8:00 PM",
     minutesLeft: 70,
@@ -301,6 +329,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4808",
     title: "Muffins & scones",
+    imageUrl: "/food-bagels.jpg",
     source: "Bruegger's — Main St",
     expiresAt: "9:15 AM",
     minutesLeft: 0,
@@ -317,6 +346,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4812",
     title: "Garden vegetable soup",
+    imageUrl: "/food-soup.jpg",
     source: "Tony's Kitchen",
     expiresAt: "2:45 PM",
     minutesLeft: 0,
@@ -331,6 +361,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4810",
     title: "Taco bar trays",
+    imageUrl: "/food-wraps.jpg",
     source: "Conference Center",
     expiresAt: "3:10 PM",
     minutesLeft: 0,

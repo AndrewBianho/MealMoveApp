@@ -8,7 +8,13 @@ import { approveAccount, declineAccount } from "@/app/actions";
 // Approve / decline buttons for one pending account in the org-admin queue.
 // Approving materializes the partner's Restaurant/DropOff and activates the
 // account; declining deletes the request. Both refresh the server view.
-export function ApprovalActions({ userId }: { userId: string }) {
+export function ApprovalActions({
+  userId,
+  demo = false,
+}: {
+  userId: string;
+  demo?: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +29,14 @@ export function ApprovalActions({ userId }: { userId: string }) {
       }
       router.refresh();
     });
+  }
+
+  if (demo) {
+    return (
+      <span className="block text-right font-mono text-[11px] text-neutral-600">
+        demo — approvals disabled
+      </span>
+    );
   }
 
   return (

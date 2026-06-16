@@ -10,6 +10,7 @@ export type ListingStatus =
   | "open"
   | "claimed"
   | "in transit"
+  | "taken home"
   | "delivered"
   | "expired"
   | "failed";
@@ -72,6 +73,8 @@ export interface Listing {
   availableAt?: number;
   /** Human label for when a scheduled listing opens, e.g. "Thu, 8:00 PM". */
   availableLabel?: string;
+  /** How the parent schedule recurs, e.g. "every day" / "weekdays" / "Mon, Wed". */
+  recurrence?: string;
   servings: number;
   /** Actual weight in pounds, when the restaurant provides it. */
   weightLbs?: number;
@@ -97,6 +100,10 @@ export interface Listing {
   claimedAt?: number;
   /** Epoch ms of the 15-min auto-release deadline. */
   holdUntil?: number;
+  /** Epoch ms when the volunteer took the food home to deliver the next day. */
+  takenHomeAt?: number;
+  /** Epoch ms of the gentle next-day deadline for a taken-home pickup. */
+  deliverBy?: number;
   /** Epoch ms of the volunteer's last check-up confirmation, if any. */
   lastCheckInAt?: number;
   /** Proof photo captured at pickup (claimed → in transit). */
@@ -139,6 +146,19 @@ export interface ImpactStat {
   value: string;
 }
 
+export type DropOffNoticeKind = "hours" | "conditions" | "general";
+
+// A drop-off's temporary service notice, ready for display. `until` is an epoch
+// ms cutoff (omitted = no expiry); only active notices are ever serialized.
+export interface DropOffNoticeView {
+  id: string;
+  kind: DropOffNoticeKind;
+  body: string;
+  until?: number;
+  createdAt: number;
+  authorName?: string;
+}
+
 // One volunteer's lifetime numbers for their profile. Counts (no status hue);
 // completionRate is 0–100. Both seats are credited because delivered events are
 // written per-seat (primary and buddy).
@@ -147,6 +167,7 @@ export interface VolunteerImpact {
   lbsSaved: number;
   pickupsCompleted: number;
   restaurantsHelped: number;
+  hoursDriven: number; // time on completed rescues (claim → delivery), one decimal
   completionRate: number; // 0–100, integer
   attempts: number; // delivered + released + failed
 }

@@ -32,16 +32,21 @@ const DEFAULT_IMAGE = "/mealmovelogo.jpg";
 // left" legend — each card now carries its own labelled band.
 function urgency(listing: Listing) {
   if (SPENT.includes(listing.status)) {
-    return { fill: "bg-neutral-100 text-neutral-700", word: "closed", minutes: null, soon: false };
+    return { fill: "bg-neutral-100 text-neutral-700", word: "closed", minutes: null, soon: false, held: false };
+  }
+  // Held overnight to deliver the next day — a calm, non-punitive state with no
+  // live countdown (the original window no longer applies).
+  if (listing.status === "taken home") {
+    return { fill: "bg-transit-50 text-transit-800", word: "taken home", minutes: null, soon: false, held: true };
   }
   const m = listing.minutesLeft;
   if (m < 10) {
-    return { fill: "bg-failed-50 text-failed-800", word: "closing soon", minutes: m, soon: true };
+    return { fill: "bg-failed-50 text-failed-800", word: "closing soon", minutes: m, soon: true, held: false };
   }
   if (m < 35) {
-    return { fill: "bg-urgent-50 text-urgent-800", word: "soon", minutes: m, soon: false };
+    return { fill: "bg-urgent-50 text-urgent-800", word: "soon", minutes: m, soon: false, held: false };
   }
-  return { fill: "bg-rescued-50 text-rescued-800", word: "open", minutes: m, soon: false };
+  return { fill: "bg-rescued-50 text-rescued-800", word: "open", minutes: m, soon: false, held: false };
 }
 
 export function ListingCard({
@@ -65,6 +70,7 @@ export function ListingCard({
     imageUrl,
     minutesLeft,
     availableLabel,
+    recurrence,
   } = listing;
 
   // A future/scheduled listing reads calm — it's not claimable yet, so it gets
@@ -85,19 +91,27 @@ export function ListingCard({
   const sourceLabel = audience === "dropoff" ? `from ${source}` : source;
 
   // The single color pill that lives on the card. Scheduled listings get a calm
-  // clay "available <when>" pill; everything else gets its urgency band.
+  // clay pill stating how the schedule recurs ("every day" / "weekdays" / "Mon,
+  // Wed") — the specific next time lives in the footer's "opens <when>", so the
+  // pill no longer echoes it. Falls back to the open time if cadence is unknown.
   const pill = scheduled ? (
     <span
-      aria-label={`available ${availableLabel}`}
+      aria-label={recurrence ? `recurs ${recurrence}` : `available ${availableLabel}`}
       className="inline-flex items-center gap-1.5 rounded-full bg-clay-50 px-2.5 py-1 font-mono text-[11px] text-clay-800"
     >
       <Calendar className="text-[0.95em]" />
-      <span className="font-semibold">available</span>
-      <span className="tabular-nums">{availableLabel}</span>
+      {recurrence ? (
+        <span className="font-semibold">{recurrence}</span>
+      ) : (
+        <>
+          <span className="font-semibold">available</span>
+          <span className="tabular-nums">{availableLabel}</span>
+        </>
+      )}
     </span>
   ) : (
     <span
-      aria-label={spent ? "closed" : `${u.word}, ${minutesLeft} minutes left`}
+      aria-label={spent ? "closed" : u.held ? u.word : `${u.word}, ${minutesLeft} minutes left`}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[11px]",
         u.fill,
@@ -106,6 +120,8 @@ export function ListingCard({
     >
       {spent ? (
         <span className="inline-block h-1.5 w-1.5 rounded-full bg-neutral-400" aria-hidden="true" />
+      ) : u.held ? (
+        <Calendar className="text-[0.95em]" />
       ) : (
         <Clock className="text-[0.95em]" />
       )}
@@ -155,7 +171,7 @@ export function ListingCard({
           {/* Tier 3 — supporting context. */}
           <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1.5 font-sans text-[13px] text-neutral-700">
             {category && (
-              <span className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+              <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-600">
                 {category}
               </span>
             )}
@@ -220,7 +236,7 @@ export function ListingCard({
           {scheduled ? (
             // Locked until it goes live — a calm, non-actionable cue, not a
             // disabled claim button (which would read as "broken").
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-neutral-100 px-3 py-1 font-mono text-[11px] uppercase tracking-wide text-neutral-700">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-clay-50 px-3 py-1 font-mono text-[11px] uppercase tracking-wide text-clay-800">
               <Clock className="text-[0.95em]" />
               opens {availableLabel}
             </span>

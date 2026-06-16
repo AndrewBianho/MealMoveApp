@@ -36,7 +36,10 @@ const NAV_BY_ROLE: Record<Role, Item[]> = {
   volunteer: [FEED, MAP, PICKUPS, IMPACT],
   restaurant: [RESTAURANT, IMPACT],
   drop_off_admin: [DROPOFF, IMPACT],
-  org_admin: [FEED, MAP, PICKUPS, RESTAURANT, DROPOFF, IMPACT, MEMBERS],
+  // Org admins oversee — they don't claim, so no "My pickups". They keep the
+  // feed/map (visibility), the restaurant console (special posts), impact (the
+  // in-depth stats), and members.
+  org_admin: [FEED, MAP, RESTAURANT, DROPOFF, IMPACT, MEMBERS],
 };
 
 // Line icons for the mobile bottom bar / more-sheet, keyed by Item.icon.
@@ -169,7 +172,7 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
 
       {/* Desktop: user + sign out */}
       <div className="ml-auto hidden items-center gap-2.5 md:flex">
-        <span className="rounded-full bg-neutral-100 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+        <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-600">
           {roleLabel}
         </span>
         <Link

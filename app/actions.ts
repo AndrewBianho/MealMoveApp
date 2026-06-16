@@ -15,6 +15,7 @@ import { confirmCheckInFor, releaseClaimFor } from "@/lib/checkins";
 import {
   startDeliveryWithPhotoFor,
   markDeliveredWithPhotoFor,
+  takeHomeForTomorrowFor,
 } from "@/lib/photos";
 import {
   invitableVolunteers,
@@ -34,6 +35,20 @@ const HOLD_MINUTES = 15;
 type SignUpResult =
   | { ok: true; pending?: boolean }
   | { ok: false; error: string };
+
+// Seeded demo accounts (and anyone in demo mode) are showcase-only. They can
+// explore every flow against the curated, resettable demo world — but they must
+// never mutate the live chapter's real account/org graph. Approvals, role
+// changes, and team invites are never demo-scoped (they act on real users and
+// invites the admin pages surface alongside the demo world), so we block those
+// writes outright while in demo mode rather than let a demo session touch real
+// people's accounts.
+const DEMO_BLOCKED =
+  "This is a demo account — it can explore the app, but can't change live chapter data.";
+
+async function blockIfDemo(): Promise<{ ok: false; error: string } | null> {
+  return (await isDemo()) ? { ok: false, error: DEMO_BLOCKED } : null;
+}
 
 /**
  * Self-serve registration. Only volunteer and restaurant accounts can be
@@ -203,6 +218,8 @@ export async function inviteTeammate(emailInput: string): Promise<SignUpResult> 
   const role = session?.user?.role;
   const userId = session?.user?.id;
   if (!userId) return { ok: false, error: "Not authenticated." };
+  const demoInvite = await blockIfDemo();
+  if (demoInvite) return demoInvite;
   if (role !== "restaurant" && role !== "drop_off_admin" && role !== "org_admin") {
     return {
       ok: false,
@@ -261,6 +278,8 @@ export async function cancelTeammateInvite(
   const role = session?.user?.role;
   const userId = session?.user?.id;
   if (!userId) return { ok: false, error: "Not authenticated." };
+  const demoCancel = await blockIfDemo();
+  if (demoCancel) return demoCancel;
 
   const invite = await prisma.teamInvite.findUnique({ where: { id: inviteId } });
   if (!invite || invite.status !== "pending") {
@@ -443,7 +462,14 @@ function refreshViews(listingId?: string) {
  * the same listing, and stamps a 15-minute hold the expiry cron enforces.
  */
 export async function claimListing(listingId: string) {
-  const volunteerId = await currentUserId();
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Not authenticated.");
+  // Claiming is a volunteer action. Org admins oversee the operation (stats,
+  // approvals, special posts) and never carry pickups, so they can't claim.
+  if (session.user.role === "org_admin") {
+    throw new Error("Org admins oversee rescues — claiming is for volunteers.");
+  }
+  const volunteerId = session.user.id;
   await prisma.$transaction(async (tx) => {
     const listing = await tx.foodListing.findUnique({ where: { id: listingId } });
     if (!listing || listing.status !== "open") {
@@ -505,6 +531,18 @@ export async function markDelivered(listingId: string, photoUrl: string) {
   await markDeliveredWithPhotoFor(prisma, userId, listingId, photoUrl);
   refreshViews(listingId);
   return getVolunteerImpact(userId);
+}
+
+/**
+ * Keep the food overnight and deliver it the next day instead of letting the
+ * rescue fall through when the drop-off is closed or the day runs out. Advances
+ * the caller's in_transit pickup → taken_home; they complete it later with the
+ * normal delivery photo.
+ */
+export async function takeHomeForTomorrow(listingId: string) {
+  const userId = await currentUserId();
+  await takeHomeForTomorrowFor(prisma, userId, listingId);
+  refreshViews(listingId);
 }
 
 /** Volunteers the caller can invite to buddy this pickup. */
@@ -890,6 +928,76 @@ export async function updateDropOffNotes(
   return { ok: true };
 }
 
+const NOTICE_MAX = 280;
+const NOTICE_KINDS = ["hours", "conditions", "general"] as const;
+
+/**
+ * Post a temporary service notice for a drop-off — a change to its normal hours
+ * or conditions that volunteers should see (closing early, fridge down, side
+ * door, etc.). Drop-off admins and org admins only. `untilIso` is optional; when
+ * set, the notice auto-expires after it.
+ */
+export async function postDropOffNotice(input: {
+  dropOffId: string;
+  kind: "hours" | "conditions" | "general";
+  body: string;
+  untilIso?: string;
+}): Promise<SignUpResult> {
+  const session = await auth();
+  const role = session?.user?.role;
+  if (role !== "drop_off_admin" && role !== "org_admin") {
+    return { ok: false, error: "Only drop-off admins can post notices." };
+  }
+  const body = input.body?.trim();
+  if (!body) return { ok: false, error: "Add a short note about the change." };
+  const kind = NOTICE_KINDS.includes(input.kind) ? input.kind : "general";
+
+  let until: Date | null = null;
+  if (input.untilIso) {
+    const d = new Date(input.untilIso);
+    if (Number.isNaN(d.getTime())) {
+      return { ok: false, error: "That end time isn't valid." };
+    }
+    if (d.getTime() <= Date.now()) {
+      return { ok: false, error: "The end time must be in the future." };
+    }
+    until = d;
+  }
+
+  await prisma.dropOffNotice.create({
+    data: {
+      dropOffId: input.dropOffId,
+      authorId: session!.user!.id,
+      kind,
+      body: body.slice(0, NOTICE_MAX),
+      until,
+      demo: await isDemo(),
+    },
+  });
+  revalidatePath("/dropoff");
+  revalidatePath(`/dropoffs/${input.dropOffId}`);
+  revalidatePath("/");
+  revalidatePath("/map");
+  return { ok: true };
+}
+
+/** Remove a drop-off service notice. Drop-off admins and org admins only. */
+export async function removeDropOffNotice(id: string): Promise<SignUpResult> {
+  const session = await auth();
+  const role = session?.user?.role;
+  if (role !== "drop_off_admin" && role !== "org_admin") {
+    return { ok: false, error: "Only drop-off admins can remove notices." };
+  }
+  const notice = await prisma.dropOffNotice.findUnique({ where: { id } });
+  if (!notice) return { ok: true };
+  await prisma.dropOffNotice.delete({ where: { id } });
+  revalidatePath("/dropoff");
+  revalidatePath(`/dropoffs/${notice.dropOffId}`);
+  revalidatePath("/");
+  revalidatePath("/map");
+  return { ok: true };
+}
+
 /** A drop-off admin sets the structured food-retrieval hours for a location. */
 export async function updateRetrievalHours(
   dropOffId: string,
@@ -926,6 +1034,8 @@ export async function setRole(
   if (session?.user?.role !== "org_admin") {
     return { ok: false, error: "Only org admins can change roles." };
   }
+  const demoRole = await blockIfDemo();
+  if (demoRole) return demoRole;
   if (!["volunteer", "drop_off_admin", "org_admin"].includes(role)) {
     return { ok: false, error: "Invalid role." };
   }
@@ -987,6 +1097,8 @@ export async function approveAccount(userId: string): Promise<SignUpResult> {
   if (session?.user?.role !== "org_admin") {
     return { ok: false, error: "Only org admins can approve accounts." };
   }
+  const demoApprove = await blockIfDemo();
+  if (demoApprove) return demoApprove;
   const target = await prisma.user.findUnique({ where: { id: userId } });
   if (!target) return { ok: false, error: "Account not found." };
   if (target.status === "active") return { ok: true };
@@ -1058,6 +1170,8 @@ export async function declineAccount(userId: string): Promise<SignUpResult> {
   if (session?.user?.role !== "org_admin") {
     return { ok: false, error: "Only org admins can decline accounts." };
   }
+  const demoDecline = await blockIfDemo();
+  if (demoDecline) return demoDecline;
   const target = await prisma.user.findUnique({ where: { id: userId } });
   if (!target) return { ok: false, error: "Account not found." };
   if (target.status !== "pending") {

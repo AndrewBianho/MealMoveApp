@@ -12,6 +12,7 @@ import {
   claimListing,
   markDelivered,
   startDelivery,
+  takeHomeForTomorrow,
   cancelBuddyInvite,
   respondToBuddyInvite,
   releaseClaim,
@@ -22,9 +23,10 @@ import { Avatar } from "./Avatar";
 import { BuddyInvitePicker } from "./BuddyInvitePicker";
 import { ImageUploadField } from "./ImageUploadField";
 import { OpenNowBadge } from "./RetrievalHoursDisplay";
+import { DropOffNotices } from "./DropOffNotices";
 import { RescueCelebration } from "./RescueCelebration";
 import { currentDayKey, formatDay } from "@/lib/hours";
-import type { Listing, ListingStatus, VolunteerImpact } from "@/lib/types";
+import type { Listing, ListingStatus, VolunteerImpact, DropOffNoticeView } from "@/lib/types";
 
 // The happy-path journey. expired / failed are terminal off-ramps and render
 // their own banner rather than a step.
@@ -69,21 +71,28 @@ export function ListingDetail({
   listing,
   viewerId,
   canChat = false,
+  canClaim = true,
   incomingInvite = null,
   outgoingInvite = null,
+  dropOffNotices = [],
 }: {
   listing: Listing | null;
   viewerId?: string;
   canChat?: boolean;
+  /** Org admins oversee but don't carry pickups — hide the claim affordance. */
+  canClaim?: boolean;
   /** A pending buddy invite addressed to the current viewer, if any. */
   incomingInvite?: { id: string; inviterName: string } | null;
   /** The primary's outstanding buddy invite, if one is awaiting a response. */
   outgoingInvite?: { inviteeName: string } | null;
+  /** Active service notices for this listing's drop-off (closing early, etc.). */
+  dropOffNotices?: DropOffNoticeView[];
 }) {
   const { message, show } = useToast();
   const [isPending, startTransition] = useTransition();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmTakeHome, setConfirmTakeHome] = useState(false);
   // Set when this volunteer completes the delivery; renders the celebration.
   const [celebration, setCelebration] = useState<VolunteerImpact | null>(null);
 
@@ -105,8 +114,19 @@ export function ListingDetail({
   }
 
   const terminal = ["expired", "failed"].includes(listing.status);
-  const currentStep = JOURNEY.indexOf(listing.status);
+  // taken_home is a pause within the in-transit step (food in hand, delivery
+  // deferred to tomorrow), not its own journey stage — so the stepper still
+  // reads open → claimed → in transit → delivered.
+  const heldOvernight = listing.status === "taken home";
+  const currentStep = JOURNEY.indexOf(heldOvernight ? "in transit" : listing.status);
   const id = listing.id;
+  const deliverByLabel = listing.deliverBy
+    ? new Date(listing.deliverBy).toLocaleString([], {
+        weekday: "short",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : null;
 
   function onClaim() {
     startTransition(async () => {
@@ -126,6 +146,17 @@ export function ListingDetail({
     startTransition(async () => {
       const impact = await markDelivered(id, url);
       setCelebration(impact);
+    });
+  }
+  function onTakeHome() {
+    startTransition(async () => {
+      try {
+        await takeHomeForTomorrow(id);
+        setConfirmTakeHome(false);
+        show("Saved for tomorrow — thanks for keeping it safe. 🌙");
+      } catch {
+        show("This pickup is no longer active.");
+      }
     });
   }
   function onAcceptInvite() {
@@ -178,9 +209,12 @@ export function ListingDetail({
     });
   }
 
-  // Buddy UI only matters while the pickup is being worked.
+  // Buddy UI / coordination only matter while the pickup is being worked —
+  // including while it's held overnight for a next-day delivery.
   const onClaimActive =
-    listing.status === "claimed" || listing.status === "in transit";
+    listing.status === "claimed" ||
+    listing.status === "in transit" ||
+    listing.status === "taken home";
   const isPrimary = Boolean(listing.mine) && !listing.iAmBuddy;
 
   return (
@@ -290,6 +324,10 @@ export function ListingDetail({
               )}
             </div>
 
+            {dropOffNotices.length > 0 && (
+              <DropOffNotices notices={dropOffNotices} className="mt-4" />
+            )}
+
             {listing.notes && (
               <div className="mt-5 rounded-md bg-neutral-100 px-4 py-3 text-sm text-neutral-800">
                 <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-600">
@@ -374,6 +412,11 @@ export function ListingDetail({
                       )}
                     >
                       {STEP_LABEL[step]}
+                      {heldOvernight && step === "in transit" && (
+                        <span className="mt-0.5 block font-mono text-[11px] text-transit-800">
+                          held overnight{deliverByLabel ? ` · deliver by ${deliverByLabel}` : ""}
+                        </span>
+                      )}
                     </span>
                   </li>
                 );
@@ -386,16 +429,21 @@ export function ListingDetail({
               <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
                 Next step
               </p>
-              {listing.status === "open" && (
-                <Button
-                  variant="claim"
-                  className="w-full"
-                  onClick={onClaim}
-                  disabled={isPending}
-                >
-                  Claim pickup
-                </Button>
-              )}
+              {listing.status === "open" &&
+                (canClaim ? (
+                  <Button
+                    variant="claim"
+                    className="w-full"
+                    onClick={onClaim}
+                    disabled={isPending}
+                  >
+                    Claim pickup
+                  </Button>
+                ) : (
+                  <p className="rounded-xl bg-neutral-100 px-4 py-3 text-sm text-neutral-700">
+                    Org admins oversee rescues — claiming is for volunteers.
+                  </p>
+                ))}
               {listing.status === "claimed" &&
                 (listing.mine ? (
                   <>
@@ -438,14 +486,33 @@ export function ListingDetail({
                         </div>
                       </div>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => setConfirmCancel(true)}
-                        disabled={isPending}
-                        className="mt-3 w-full text-[13px] text-neutral-700 transition-colors hover:text-failed-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1 disabled:opacity-50"
-                      >
-                        Can&apos;t make it? Cancel pickup
-                      </button>
+                      <div className="mt-4 border-t border-neutral-200/50 pt-4">
+                        <p className="mb-2 text-[13px] text-neutral-700">
+                          Can&apos;t make it after all?
+                        </p>
+                        <Button
+                          variant="secondary"
+                          className="flex w-full items-center justify-center gap-2"
+                          onClick={() => setConfirmCancel(true)}
+                          disabled={isPending}
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            width="16"
+                            height="16"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={1.8}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <circle cx="12" cy="12" r="9" />
+                            <path d="m15 9-6 6M9 9l6 6" />
+                          </svg>
+                          Cancel pickup
+                        </Button>
+                      </div>
                     )}
                   </>
                 ) : (
@@ -456,17 +523,106 @@ export function ListingDetail({
                 ))}
               {listing.status === "in transit" &&
                 (listing.mine ? (
-                  <ImageUploadField
-                    label="Delivery photo"
-                    optional={false}
-                    hint="Snap the food at the drop-off — required to mark delivered."
-                    aspect="aspect-[4/3]"
-                    onChange={onDeliveryPhoto}
-                  />
+                  <>
+                    <ImageUploadField
+                      label="Delivery photo"
+                      optional={false}
+                      hint="Snap the food at the drop-off — required to mark delivered."
+                      aspect="aspect-[4/3]"
+                      onChange={onDeliveryPhoto}
+                    />
+                    {confirmTakeHome ? (
+                      <div className="mt-3 animate-fade-in rounded-md bg-transit-50 px-4 py-3">
+                        <p className="text-sm font-medium text-transit-800">
+                          Take it home for tonight?
+                        </p>
+                        <p className="mt-0.5 text-[13px] text-transit-800/80">
+                          Keep it chilled and deliver it tomorrow — the rescue
+                          still counts, and {listing.dropOff ?? "the drop-off"}{" "}
+                          will know it&apos;s coming.
+                        </p>
+                        <div className="mt-3 flex gap-2">
+                          <Button
+                            variant="secondary"
+                            className="flex-1"
+                            onClick={onTakeHome}
+                            disabled={isPending}
+                          >
+                            Take it home
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            className="flex-1"
+                            onClick={() => setConfirmTakeHome(false)}
+                            disabled={isPending}
+                          >
+                            Not yet
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-4 border-t border-neutral-200/50 pt-4">
+                        <p className="mb-2 text-[13px] text-neutral-700">
+                          Drop-off closed, or out of time today?
+                        </p>
+                        <Button
+                          variant="secondary"
+                          className="flex w-full items-center justify-center gap-2"
+                          onClick={() => setConfirmTakeHome(true)}
+                          disabled={isPending}
+                        >
+                          <svg
+                            viewBox="0 0 24 24"
+                            width="16"
+                            height="16"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={1.8}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            aria-hidden="true"
+                          >
+                            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+                          </svg>
+                          Take it home for tomorrow
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <p className="text-sm text-neutral-700">
                     {listing.claimedBy ?? "The volunteer"} is on the way to{" "}
                     {listing.dropOff ?? "the drop-off"}.
+                  </p>
+                ))}
+              {listing.status === "taken home" &&
+                (listing.mine ? (
+                  <>
+                    <div className="mb-4 rounded-md bg-transit-50 px-4 py-3">
+                      <p className="text-sm font-medium text-transit-800">
+                        You&apos;re holding this until tomorrow. 🌙
+                      </p>
+                      <p className="mt-0.5 text-[13px] text-transit-800/80">
+                        Keep it chilled.{" "}
+                        {deliverByLabel
+                          ? `Aim to drop it at ${listing.dropOff ?? "the drop-off"} by ${deliverByLabel}.`
+                          : `Drop it at ${listing.dropOff ?? "the drop-off"} tomorrow.`}
+                      </p>
+                    </div>
+                    <ImageUploadField
+                      label="Delivery photo"
+                      optional={false}
+                      hint="When you drop it off tomorrow, snap the food — required to mark delivered."
+                      aspect="aspect-[4/3]"
+                      onChange={onDeliveryPhoto}
+                    />
+                  </>
+                ) : (
+                  <p className="text-sm text-neutral-700">
+                    {listing.claimedBy ?? "The volunteer"} is holding this
+                    overnight and will deliver it to{" "}
+                    {listing.dropOff ?? "the drop-off"}{" "}
+                    {deliverByLabel ? `by ${deliverByLabel}` : "tomorrow"}.
                   </p>
                 ))}
               {listing.status === "delivered" && (

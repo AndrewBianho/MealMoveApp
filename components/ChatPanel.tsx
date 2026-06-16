@@ -49,7 +49,7 @@ export function ChatPanel({
   const [error, setError] = useState<string | null>(null);
 
   const sinceRef = useRef<string | undefined>(undefined);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const poll = useCallback(async () => {
     try {
@@ -95,8 +95,12 @@ export function ChatPanel({
     };
   }, [poll]);
 
+  // Keep the newest message in view by scrolling the thread's OWN container —
+  // never scrollIntoView, which also scrolls the page/window and yanks the whole
+  // pickup view down on mount and on every new message.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" });
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   async function send(e: React.FormEvent) {
@@ -130,7 +134,7 @@ export function ChatPanel({
         Coordination chat
       </p>
 
-      <div className="mb-3 max-h-72 space-y-3 overflow-y-auto">
+      <div ref={listRef} className="mb-3 max-h-72 space-y-3 overflow-y-auto">
         {messages.length === 0 ? (
           <p className="text-[13px] text-neutral-700">
             No messages yet. Say hello — the restaurant and drop-off can see this
@@ -166,7 +170,6 @@ export function ChatPanel({
             );
           })
         )}
-        <div ref={bottomRef} />
       </div>
 
       {active ? (

@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import { parseStoredHours } from "./hours";
+import { describeCadence } from "./recurring";
 import { isDemo } from "./mode";
 import type { Listing, ListingStatus } from "./types";
 
@@ -9,6 +10,7 @@ const listingInclude = {
   restaurant: true,
   dropOff: true,
   pickup: { include: { volunteer: true, buddy: true } },
+  recurringPost: true,
 } satisfies Prisma.FoodListingInclude;
 
 type DbListing = Prisma.FoodListingGetPayload<{ include: typeof listingInclude }>;
@@ -56,6 +58,11 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
           minute: "2-digit",
         })
       : undefined,
+    // How the parent schedule recurs ("every day" / "weekdays" / "Mon, Wed") —
+    // shown on the scheduled card's pill so the specific next time isn't echoed.
+    recurrence: l.recurringPost
+      ? describeCadence(l.recurringPost.daysOfWeek) || undefined
+      : undefined,
     servings: l.servings,
     weightLbs: l.weightLbs ?? undefined,
     distance: "—", // TODO: derive from volunteer location once geo is wired
@@ -72,6 +79,8 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
     imageUrl: l.imageUrl ?? l.restaurant.imageUrl ?? undefined,
     claimedAt: l.pickup?.claimedAt.getTime(),
     holdUntil: l.pickup?.holdUntil.getTime(),
+    takenHomeAt: l.pickup?.takenHomeAt?.getTime(),
+    deliverBy: l.pickup?.deliverBy?.getTime(),
     lastCheckInAt: l.pickup?.lastCheckInAt?.getTime(),
     photoAtPickupUrl: l.pickup?.photoAtPickupUrl ?? undefined,
     photoAtDeliveryUrl: l.pickup?.photoAtDeliveryUrl ?? undefined,

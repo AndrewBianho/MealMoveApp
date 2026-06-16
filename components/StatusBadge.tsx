@@ -11,6 +11,7 @@ const STYLES: Record<ListingStatus, string> = {
   open: "text-rescued-800",
   claimed: "text-urgent-800",
   "in transit": "text-transit-800",
+  "taken home": "text-transit-800",
   delivered: "text-rescued-800",
   expired: "text-neutral-800",
   failed: "text-failed-800",

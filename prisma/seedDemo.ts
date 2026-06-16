@@ -103,7 +103,7 @@ export async function seedDemo(prisma: PrismaClient) {
       dataMode: "demo",
     },
   });
-  await prisma.user.upsert({
+  const dropOffAdmin = await prisma.user.upsert({
     where: { email: "dropoff@campus.edu" },
     update: { passwordHash, role: "drop_off_admin", dataMode: "demo" },
     create: {
@@ -154,16 +154,35 @@ export async function seedDemo(prisma: PrismaClient) {
 
     if (l.claimedBy) {
       const actorId = volunteerId.get(l.claimedBy)!;
+      // Delivered pickups get a realistic claim → delivery span (25–54 min,
+      // deterministic) so the "hours driven" stat reads as real time on the
+      // road rather than ~0. Anchored like everything else so demo time is fixed.
+      const delivered = status === "delivered";
+      // A taken-home pickup was claimed yesterday and is still chilling overnight
+      // for a next-day drop — deliverBy is tomorrow at 8 PM (mirrors the action).
+      const takenHome = status === "taken_home";
+      const driveMin = 25 + (l.servings % 30);
+      const deliverBy = new Date(anchor);
+      deliverBy.setDate(deliverBy.getDate() + 1);
+      deliverBy.setHours(20, 0, 0, 0);
       await prisma.pickup.create({
         data: {
           listingId: listing.id,
           volunteerId: actorId,
-          holdUntil: new Date(Date.now() + 15 * 60_000),
-          deliveredAt: status === "delivered" ? new Date() : null,
+          claimedAt: delivered
+            ? new Date(anchor.getTime() - driveMin * 60_000)
+            : takenHome
+              ? new Date(anchor.getTime() - 18 * 60 * 60_000)
+              : anchor,
+          holdUntil: new Date(anchor.getTime() + 15 * 60_000),
+          deliveredAt: delivered ? anchor : null,
+          takenHomeAt: takenHome ? new Date(anchor.getTime() - 3 * 60 * 60_000) : null,
+          deliverBy: takenHome ? deliverBy : null,
+          photoAtPickupUrl: takenHome ? l.imageUrl ?? null : null,
         },
       });
       await prisma.listingEvent.create({ data: { listingId: listing.id, type: "claimed", actorId } });
-      if (status === "delivered" || status === "failed") {
+      if (status === "delivered" || status === "failed" || status === "taken_home") {
         await prisma.listingEvent.create({ data: { listingId: listing.id, type: status, actorId } });
       }
     }
@@ -194,6 +213,7 @@ export async function seedDemo(prisma: PrismaClient) {
         servings: schedule.servings,
         category: "bakery",
         notes: schedule.notes,
+        imageUrl: "/food-bagels.jpg",
         demo: true,
         status: "open",
         restaurantId: saxbysId,
@@ -206,6 +226,22 @@ export async function seedDemo(prisma: PrismaClient) {
     scheduledCount++;
   }
 
+  // A demo service notice so the showcase shows the "hours change" flow — the
+  // Community Fridge is closing early today (clears 5h after the anchor).
+  const firstDropOffId = dropOffId.get(DROP_OFFS[0].name);
+  if (firstDropOffId) {
+    await prisma.dropOffNotice.create({
+      data: {
+        dropOffId: firstDropOffId,
+        authorId: dropOffAdmin.id,
+        kind: "hours",
+        body: "Closing at 6 PM today for a building event — please arrive before then.",
+        until: new Date(anchor.getTime() + 5 * 60 * 60_000),
+        demo: true,
+      },
+    });
+  }
+
   return {
     restaurants: restaurantId.size,
     dropOffs: dropOffId.size,
@@ -213,6 +249,7 @@ export async function seedDemo(prisma: PrismaClient) {
     listings: LISTINGS.length,
     schedules: 1,
     scheduled: scheduledCount,
+    notices: firstDropOffId ? 1 : 0,
   };
 }
 
@@ -229,6 +266,7 @@ export async function resetDemoWorld(prisma: PrismaClient) {
   await prisma.pickup.deleteMany({ where: onDemoListing });
   await prisma.foodListing.deleteMany({ where: { demo: true } });
   await prisma.recurringPost.deleteMany({ where: { demo: true } });
+  await prisma.dropOffNotice.deleteMany({ where: { dropOff: { demo: true } } });
   await prisma.dropOff.deleteMany({ where: { demo: true } });
 
   // Detach any members from demo restaurants before deleting them (e.g. the

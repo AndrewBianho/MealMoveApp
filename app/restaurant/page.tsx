@@ -2,6 +2,7 @@ import { RestaurantConsole } from "@/components/RestaurantConsole";
 import { TeamPanel } from "@/components/TeamPanel";
 import { auth } from "@/auth";
 import { getListings } from "@/lib/listings";
+import { isDemo } from "@/lib/mode";
 import { prisma } from "@/lib/prisma";
 import { RESTAURANT } from "@/lib/mock";
 
@@ -20,6 +21,7 @@ export default async function RestaurantPage() {
 
   const all = await getListings();
   const mine = restaurant ? all.filter((l) => l.source === restaurant.name) : [];
+  const demo = await isDemo();
 
   // This restaurant's recurring schedules, newest first.
   const schedules = restaurant
@@ -79,6 +81,7 @@ export default async function RestaurantPage() {
               members={members}
               invites={invites}
               description="Everyone here manages this restaurant together — listings, photos, and pickups are shared."
+              demo={demo}
             />
           </div>
         </>
