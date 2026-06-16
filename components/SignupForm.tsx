@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Button } from "./Button";
 import { PasswordField } from "./PasswordField";
@@ -291,6 +292,17 @@ export function SignupForm() {
       >
         {loading ? "Creating account…" : "Create account"}
       </Button>
+
+      <p className="text-center text-xs leading-relaxed text-neutral-700">
+        By creating an account you agree to our{" "}
+        <Link
+          href="/privacy"
+          className="font-medium text-clay-800 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+        >
+          privacy policy
+        </Link>
+        .
+      </p>
     </form>
   );
 }
