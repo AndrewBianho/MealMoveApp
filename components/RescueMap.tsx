@@ -782,7 +782,7 @@ export function RescueMap({
         head.style.opacity = "";
       }
     };
-    const resetDropMarker = (m: MapboxMarker, id: string) => {
+    const resetDropMarker = (m: MapboxMarker) => {
       const el = m.getElement();
       const dot = el.firstElementChild as HTMLElement | null;
       el.style.display = "grid";
@@ -815,8 +815,8 @@ export function RescueMap({
           resetRestMarker(m);
           if (!showRest) m.getElement().style.display = "none";
         });
-        dropMarkers.current.forEach((m, id) => {
-          resetDropMarker(m, id);
+        dropMarkers.current.forEach((m) => {
+          resetDropMarker(m);
           if (!showDrop) m.getElement().style.display = "none";
         });
         clearRoutes();
@@ -847,7 +847,7 @@ export function RescueMap({
         // showing where it can go) — independent of the "show drop-offs" toggle.
         // Eligible shown full (candidate rings via paintRoutes), ineligible dimmed.
         dropMarkers.current.forEach((m, id) => {
-          resetDropMarker(m, id);
+          resetDropMarker(m);
           const el = m.getElement();
           const dot = el.firstElementChild as HTMLElement | null;
           const isEligible = ranked.find((x) => x.dropOff.id === id)?.eligible;

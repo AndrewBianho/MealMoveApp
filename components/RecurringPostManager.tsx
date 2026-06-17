@@ -53,7 +53,8 @@ export function RecurringPostManager({
   function toggleDay(d: number) {
     setDays((prev) => {
       const next = new Set(prev);
-      next.has(d) ? next.delete(d) : next.add(d);
+      if (next.has(d)) next.delete(d);
+      else next.add(d);
       return next;
     });
   }
