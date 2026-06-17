@@ -113,7 +113,9 @@ test("startDeliveryWithPhotoFor: posts a pickup update into the coordination thr
       dropOff: { id: "d1", name: "Shelter Kitchen" },
     },
   });
-  await startDeliveryWithPhotoFor(db, "vol1", "ls1", "https://x/p.jpg");
+  // Inject a no-op notify: this test covers thread-posting, not the drop-off
+  // notice, and the real dispatch would query the database (unavailable in CI).
+  await startDeliveryWithPhotoFor(db, "vol1", "ls1", "https://x/p.jpg", async () => {});
   assert.equal(calls.messages.length, 1);
   assert.equal(calls.messages[0].senderId, "vol1");
   assert.equal(calls.messages[0].listingId, "ls1");

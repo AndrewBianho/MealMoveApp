@@ -1,0 +1,11 @@
+{
+  "name": "Meal Move",
+  "short_name": "Meal Move",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7F3EA",
+  "theme_color": "#F7F3EA",
+  "icons": [
+    { "src": "/mealmovelogo.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

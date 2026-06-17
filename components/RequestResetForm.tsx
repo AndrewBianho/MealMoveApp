@@ -18,11 +18,11 @@ export function RequestResetForm() {
   }
 
   const fieldCls =
-    "w-full rounded-md border border-neutral-200/60 bg-white px-3 py-2 text-sm " +
-    "placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 " +
+    "w-full rounded-md border border-neutral-200/60 bg-card px-3 py-2 text-sm " +
+    "placeholder:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 " +
     "focus-visible:ring-transit-400 focus-visible:ring-offset-1";
   const labelCls =
-    "mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-600";
+    "mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-700";
 
   // The confirmation is intentionally the same whether or not the email exists,
   // so the page never reveals which addresses have accounts.

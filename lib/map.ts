@@ -1,18 +1,30 @@
 import { prisma } from "./prisma";
 import { parseStoredHours } from "./hours";
+import { isDemo } from "./mode";
 import type { DropOffLocation, FoodCategory, MapRestaurant } from "./types";
 
-// Restaurants (with active listings summarized) + all drop-offs, for the map.
+// Restaurants (with their currently-open listings summarized) + all drop-offs,
+// for the map. Pins are restricted to pickups a volunteer can act on right now:
+// status "open" AND already live — future/scheduled listings (availableAt in the
+// future) and claimed/in-transit ones are left off the map.
 export async function getMapData(): Promise<{
   restaurants: MapRestaurant[];
   dropOffs: DropOffLocation[];
 }> {
+  const demo = await isDemo(); // scope the whole map to the viewer's world
+  const now = new Date();
   const [restaurants, dropOffs] = await Promise.all([
     prisma.restaurant.findMany({
+      where: { demo },
       include: {
         listings: {
-          where: { status: { in: ["open", "claimed", "in_transit"] } },
+          where: {
+            demo,
+            status: "open",
+            OR: [{ availableAt: null }, { availableAt: { lte: now } }],
+          },
           select: {
+            id: true,
             servings: true,
             category: true,
             perishable: true,
@@ -22,21 +34,23 @@ export async function getMapData(): Promise<{
         },
       },
     }),
-    prisma.dropOff.findMany({ orderBy: { name: "asc" } }),
+    prisma.dropOff.findMany({ where: { demo }, orderBy: { name: "asc" } }),
   ]);
 
-  const now = Date.now();
+  const nowMs = now.getTime();
   const mapRestaurants: MapRestaurant[] = restaurants
     .filter((r) => r.listings.length > 0)
     .map((r) => {
-      // Urgency is about food still up for grabs — only open listings count.
-      const openExpiries = r.listings
-        .filter((l) => l.status === "open")
-        .map((l) => l.expiresAt.getTime());
-      const minutesLeft =
-        openExpiries.length > 0
-          ? Math.round((Math.min(...openExpiries) - now) / 60_000)
-          : undefined;
+      // Every listing here is currently open; the soonest-expiring one drives the
+      // pin's urgency and the popup deep-link.
+      const soonestOpen = r.listings.reduce<(typeof r.listings)[number] | null>(
+        (best, l) => (!best || l.expiresAt < best.expiresAt ? l : best),
+        null
+      );
+      const minutesLeft = soonestOpen
+        ? Math.round((soonestOpen.expiresAt.getTime() - nowMs) / 60_000)
+        : undefined;
+      const listingId = soonestOpen?.id ?? r.listings[0]?.id;
       return {
         id: r.id,
         name: r.name,
@@ -48,6 +62,7 @@ export async function getMapData(): Promise<{
         ) as FoodCategory[],
         perishable: r.listings.some((l) => l.perishable),
         count: r.listings.length,
+        listingId,
         minutesLeft,
       };
     });
@@ -68,7 +83,10 @@ export async function getMapData(): Promise<{
 }
 
 export async function getDropOffs(): Promise<DropOffLocation[]> {
-  const dropOffs = await prisma.dropOff.findMany({ orderBy: { name: "asc" } });
+  const dropOffs = await prisma.dropOff.findMany({
+    where: { demo: await isDemo() },
+    orderBy: { name: "asc" },
+  });
   return dropOffs.map((d) => ({
     id: d.id,
     name: d.name,

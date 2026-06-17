@@ -1,41 +1,122 @@
 "use client";
 
 import "mapbox-gl/dist/mapbox-gl.css";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type {
   Map as MapboxMap,
   Marker as MapboxMarker,
   GeoJSONSource,
 } from "mapbox-gl";
 import type { Feature, FeatureCollection } from "geojson";
+import Link from "next/link";
 import { rankDropOffs, rankRestaurantsForDropOff } from "@/lib/recommend";
+import { claimListing } from "@/app/actions";
 import { geocodeClient } from "@/lib/geocode-client";
-import { escapeHtml } from "@/lib/escapeHtml";
 import { RAMP } from "@/lib/rampColors";
+import { MAP_STYLES, createModeToggle, createHomeControl, type MapMode } from "@/lib/mapStyles";
 import { cn } from "./cn";
-import type { DropOffLocation, FoodCategory, MapRestaurant } from "@/lib/types";
+import type { DropOffLocation, MapRestaurant } from "@/lib/types";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 // Pin/line hex MUST mirror the ramp tokens — sourced from lib/rampColors so the
-// values live in one place (DESIGN.md). Restaurant pins are colored by urgency;
-// drop-offs are plum squares; clay is the route/accent.
-const DROP = RAMP.transit600; // drop-offs
-const REC = RAMP.clay600; // routes + recommended highlight
-const URG_SOON = RAMP.failed600; // <30 min
-const URG_MID = RAMP.urgent600; // <60 min
-const URG_OPEN = RAMP.rescued600; // open, plenty of time
-const URG_SPENT = RAMP.neutral400; // all claimed (nothing open)
-const ME = RAMP.ink; // "my location"
+// values live in one place (DESIGN.md). The map carries two pin hues only:
+// sage = pickup, plum = drop-off. Urgency is NEVER encoded in pin color (it
+// would shout across the whole map); it lives in the card/panel where it's
+// paired with a label. Clay is the route/accent.
+const PICKUP = RAMP.transit600; // restaurant pickup pins — plum, so they stand off the green satellite imagery (sage blended in); no urgency hue
+const DROP = RAMP.clay600; // drop-offs — terracotta (the destination hue), warm contrast vs the plum pickups
+const SEL = RAMP.ink; // selection / recommended halo — neutral ink, so it stays visible on BOTH the plum pickup and terracotta drop-off pins
+const ME = RAMP.route; // "my location" — the universally recognized blue location dot
 const DEST = RAMP.clay800; // final destination flag
+const ROUTE = RAMP.route; // the chosen/active route line (maps blue)
+const ROUTE_ALT = RAMP.routeAlt; // the muted alternative routes
+
+// --- Shared status-chip tokens for the in-panel "More information" tiles. ----
+// Color-blind-safe: every chip pairs its ramp tint with a dot and a mono label.
+type ChipTone = "rescued" | "urgent" | "failed" | "transit" | "neutral";
+const CHIP_FILL: Record<ChipTone, string> = {
+  rescued: "bg-rescued-50 text-rescued-800",
+  urgent: "bg-urgent-50 text-urgent-800",
+  failed: "bg-failed-50 text-failed-800",
+  transit: "bg-transit-50 text-transit-800",
+  neutral: "bg-neutral-100 text-neutral-700",
+};
+const CHIP_DOT: Record<ChipTone, string> = {
+  rescued: "bg-rescued-600",
+  urgent: "bg-urgent-600",
+  failed: "bg-failed-600",
+  transit: "bg-transit-600",
+  neutral: "bg-neutral-400",
+};
+function urgencyTone(minutesLeft?: number): ChipTone {
+  if (minutesLeft == null) return "neutral";
+  if (minutesLeft < 30) return "failed";
+  if (minutesLeft < 60) return "urgent";
+  return "rescued";
+}
+function InfoChip({ tone, children }: { tone: ChipTone; children: ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wide",
+        CHIP_FILL[tone]
+      )}
+    >
+      <span className={cn("h-1.5 w-1.5 rounded-full", CHIP_DOT[tone])} aria-hidden="true" />
+      {children}
+    </span>
+  );
+}
 
 // Default "sensed" location — Malvern Prep — overridable by address.
 const MY_DEFAULT: [number, number] = [-75.51239, 40.02724];
 
-// White glyphs that make each selectable pin instantly readable: utensils for a
-// restaurant (food source), a package for a drop-off (delivery point).
-const ICON_REST = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7a2 2 0 0 0 2 2 2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1 1 2 2 2h3Zm0 0v7"/></svg>`;
-const ICON_DROP = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg>`;
+// Google-style teardrop pin drawn as a SINGLE svg path, so its white outline is
+// one continuous stroke of even thickness around the whole silhouette (head +
+// point) — no seam where a tail meets a round head. A glyph (white) and an
+// optional selection halo (the inherited --sel custom property) layer on top of
+// that same shape.
+const PIN_PATH =
+  "M14 1.5C7.1 1.5 1.5 7.1 1.5 14c0 8.7 11 22.7 11.5 23.3a1.3 1.3 0 0 0 2 0C15.5 36.7 26.5 22.7 26.5 14 26.5 7.1 20.9 1.5 14 1.5Z";
+// Glyphs are path-only (no wrapper <svg>) so they drop into a nested, auto-scaling
+// <svg> centred on the head. Crossed fork & knife = restaurant pickup; flag =
+// drop-off destination — instantly distinguishable from each other.
+const GLYPH_REST = `<path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/><path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/><path d="m2.1 21.8 6.4-6.3"/><path d="m19 5-7 7"/>`;
+const GLYPH_DROP = `<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/>`;
+
+// A full pin: the selection halo (transparent until --sel is set), the coloured
+// body with its single continuous white outline, then the centred white glyph.
+function pinSVG(fill: string, glyph: string): string {
+  return (
+    `<svg width="28" height="38" viewBox="0 0 28 39" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;">` +
+    `<path class="mm-halo" d="${PIN_PATH}" fill="none" stroke-width="6" stroke-linejoin="round"/>` +
+    `<path d="${PIN_PATH}" fill="${fill}" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/>` +
+    `<svg x="7" y="6.5" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${glyph}</svg>` +
+    `</svg>`
+  );
+}
+
+// Miniature of the real map pin for the legend, so the key matches what's on
+// the map (same teardrop, same glyph, same hue) instead of a stand-in swatch.
+// The glyph is the static path string used by the markers, scaled to match
+// pinSVG's nested 24→14 glyph transform (translate 7,6.5 · scale 14/24).
+function LegendPin({ fill, glyph }: { fill: string; glyph: string }) {
+  return (
+    <svg width="15" height="20" viewBox="0 0 28 39" aria-hidden="true" className="shrink-0">
+      <path d={PIN_PATH} fill={fill} stroke="#fff" strokeWidth={2.4} strokeLinejoin="round" />
+      <g
+        transform="translate(7 6.5) scale(0.5833)"
+        fill="none"
+        stroke="#fff"
+        strokeWidth={2.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        dangerouslySetInnerHTML={{ __html: glyph }}
+      />
+    </svg>
+  );
+}
 
 // Hover-lift + smooth highlight for the clickable pins, injected once. The
 // outline (selection) and transform (hover) are separate properties, so they
@@ -49,29 +130,39 @@ function ensurePinStyles() {
   // pins pop as the map slides under a stationary cursor during scroll-zoom,
   // which reads as the pins shifting. Mapbox owns each pin's transform for
   // positioning; we never touch it, so pins stay locked to their coordinate.
+  // The resting shadow lives here (not inline) so the :hover rule can take over
+  // — an inline box-shadow would out-specify it and the lift would never fire.
+  // Double-shadow: a dark hairline ring for edge definition on bright/satellite
+  // imagery, plus a soft drop so the pin lifts off the map.
   s.textContent = `
     .mm-pin{cursor:pointer;}
-    .mm-pin-head{transition:box-shadow .12s ease, outline-color .12s ease, opacity .12s ease;}
-    .mm-pin:hover .mm-pin-head{box-shadow:0 6px 16px rgba(51,52,44,.55);}
-    @media (prefers-reduced-motion: reduce){.mm-pin-head{transition:none;}}
+    /* Google-style teardrop pin: the whole shape is one svg path, so the white
+       outline is a single continuous, even stroke. We do NOT drop-shadow the
+       silhouette — on a pin that tapers to a point that renders as a hard black
+       triangle below the tip. Instead a soft elliptical "ground shadow" sits at
+       the point (the ::before below), grounding the pin without the spike.
+       transform:translateZ(0) makes the head its own stacking context so the
+       z-index:-1 ground shadow tucks behind the pin body but above the map. */
+    .mm-pin-head{position:relative;transform:translateZ(0);transition:opacity .12s ease;}
+    .mm-pin-head svg{display:block;position:relative;}
+    .mm-pin-head::before{content:"";position:absolute;left:50%;bottom:-1px;z-index:-1;
+      width:14px;height:5px;transform:translateX(-50%);border-radius:50%;
+      background:rgba(51,52,44,.32);filter:blur(1.5px);
+      transition:width .14s ease, height .14s ease, background .14s ease;}
+    .mm-pin:hover .mm-pin-head::before{width:19px;height:6px;background:rgba(51,52,44,.24);}
+    /* Selection halo: the --sel custom property (set on the marker head in JS)
+       inherits into the svg; CSS resolves the var here, since var() can't be used
+       in a raw SVG presentation attribute. Transparent = not selected. */
+    .mm-halo{stroke:var(--sel,transparent);}
+    /* "You are here": a live, expanding accuracy ring behind the dot — the
+       universally recognized current-location cue. The pulse transforms only
+       this child, never the Mapbox-positioned root, so the pin stays put. */
+    .mm-me-pulse{position:absolute;width:40px;height:40px;border-radius:50%;background:${ME};
+      opacity:.22;animation:mm-me-ping 2.6s cubic-bezier(0,0,.2,1) infinite;}
+    @keyframes mm-me-ping{0%{transform:scale(.32);opacity:.4;}70%{opacity:0;}100%{transform:scale(1);opacity:0;}}
+    @media (prefers-reduced-motion: reduce){.mm-pin-head,.mm-pin-head::before{transition:none;}.mm-me-pulse{animation:none;opacity:.15;}}
   `;
   document.head.appendChild(s);
-}
-
-const ALL_CATEGORIES: FoodCategory[] = [
-  "prepared",
-  "produce",
-  "bakery",
-  "packaged",
-  "dairy",
-  "beverages",
-];
-
-function restColor(minutesLeft?: number): string {
-  if (minutesLeft === undefined) return URG_SPENT;
-  if (minutesLeft < 30) return URG_SOON; // under 30 min
-  if (minutesLeft < 60) return URG_MID; // under 1 hour
-  return URG_OPEN; // open (up to ~3 hours)
 }
 
 function boundsOf(pts: [number, number][]): [[number, number], [number, number]] {
@@ -85,6 +176,51 @@ function boundsOf(pts: [number, number][]): [[number, number], [number, number]]
 
 const EMPTY: FeatureCollection = { type: "FeatureCollection", features: [] };
 
+// Add the route line layers (Google-Maps style: one bold blue active route, the
+// rest muted behind it). All journeys live in one `routes` source; each feature
+// carries `active` so the same data drives every layer. Idempotent so it can run
+// on the first style load AND after a base-style swap (setStyle wipes sources).
+// Draw order (bottom→top): alternatives, white casing, active, transparent hit.
+function addRouteLayers(map: MapboxMap) {
+  if (map.getSource("routes")) return;
+  map.addSource("routes", { type: "geojson", data: EMPTY });
+  // Alternatives — muted warm grey, thin, sitting behind the active route.
+  map.addLayer({
+    id: "route-alt",
+    type: "line",
+    source: "routes",
+    filter: ["!", ["get", "active"]],
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": ROUTE_ALT, "line-width": 4, "line-opacity": 0.6 },
+  });
+  // White casing under the active route so the blue reads on satellite imagery.
+  map.addLayer({
+    id: "route-casing",
+    type: "line",
+    source: "routes",
+    filter: ["get", "active"],
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": "#ffffff", "line-width": 9, "line-opacity": 0.9 },
+  });
+  // The chosen route — maps blue, bold.
+  map.addLayer({
+    id: "route-active",
+    type: "line",
+    source: "routes",
+    filter: ["get", "active"],
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": ROUTE, "line-width": 5.5, "line-opacity": 0.98 },
+  });
+  // Wide, fully transparent hit target so any route is easy to click/tap.
+  map.addLayer({
+    id: "route-hit",
+    type: "line",
+    source: "routes",
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": "#000000", "line-width": 22, "line-opacity": 0 },
+  });
+}
+
 interface RouteInfo {
   coords: [number, number][];
   minutes: number;
@@ -93,37 +229,63 @@ interface RouteInfo {
 
 type Selection = { kind: "rest" | "drop"; id: string } | null;
 
+// One selectable journey (you → restaurant → drop-off → optional destination).
+// `id` is the varying waypoint's id: the drop-off (rest mode) or the restaurant
+// (drop mode). Whether it's the active route is derived from `activeRoute` state
+// at render, so picking one re-highlights without rebuilding the panel.
 interface RouteOption {
+  id: string;
   name: string;
-  miles: number; // great-circle, shown immediately
-  minutes?: number; // drive time, filled when the route resolves
-  short: boolean; // the shortest drive of the set
+  miles: number; // great-circle, shown immediately; replaced by drive distance
+  minutes?: number; // full-journey drive time, filled when the route resolves
+  recommended: boolean; // the shortest drive of the set
 }
-type Panel =
-  | { kind: "rest"; name: string; options: RouteOption[]; journeyMin?: number; journeyMi?: number }
-  | { kind: "drop"; name: string; options: RouteOption[] }
-  | null;
+type Panel = { kind: "rest" | "drop"; name: string; options: RouteOption[] } | null;
 
 export function RescueMap({
   restaurants,
   dropOffs,
+  canClaim = true,
 }: {
   restaurants: MapRestaurant[];
   dropOffs: DropOffLocation[];
+  /** Org admins oversee but don't carry pickups — hide the claim affordance. */
+  canClaim?: boolean;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap>();
+  const roRef = useRef<ResizeObserver>();
   const restMarkers = useRef(new Map<string, MapboxMarker>());
   const dropMarkers = useRef(new Map<string, MapboxMarker>());
-  const dropBaseHTML = useRef(new Map<string, string>());
   const meMarkerRef = useRef<MapboxMarker>();
   const destMarkerRef = useRef<MapboxMarker>();
   const routeCache = useRef(new Map<string, RouteInfo | null>());
+  const panelRef = useRef<HTMLDivElement>(null);
+  // Tracks which selection we've already scrolled the panel into view for, so we
+  // do it once per selection (not on every panel re-render as routes resolve).
+  const scrolledForRef = useRef<string | null>(null);
 
   const [selected, setSelected] = useState<Selection>(null);
   const [panel, setPanel] = useState<Panel>(null);
-  const [cats, setCats] = useState<Set<FoodCategory>>(new Set());
-  const [fridgeOnly, setFridgeOnly] = useState(false);
+  // Which journey is the chosen (blue) route. Keyed by the varying waypoint's id
+  // (drop-off in rest mode, restaurant in drop mode). null = nothing drawn.
+  const [activeRoute, setActiveRoute] = useState<string | null>(null);
+  // Layer visibility — let people declutter the map by hiding either marker type.
+  const [showRest, setShowRest] = useState(true);
+  // Drop-offs start hidden so the first view is calm and pickup-focused; selecting
+  // a pickup still reveals its candidate drop-offs (the selection flow ignores this).
+  const [showDrop, setShowDrop] = useState(false);
+  const [mode, setMode] = useState<MapMode>("satellite");
+  const [infoOpen, setInfoOpen] = useState(false);
+  // The search/controls card hides on its own when a pin is selected (the panel
+  // below needs the room) and returns when the selection is cleared; the X / the
+  // collapsed "search" pill let the user override either way.
+  const [searchOpen, setSearchOpen] = useState(true);
+  const [claimState, setClaimState] = useState<"idle" | "claiming" | "done" | "error">("idle");
+  const [claimMsg, setClaimMsg] = useState<string | null>(null);
+  // Bumped after a base-style swap finishes, so the line-drawing effect re-runs
+  // and repaints routes onto the freshly re-added sources.
+  const [styleVersion, setStyleVersion] = useState(0);
 
   const [myLoc, setMyLoc] = useState<[number, number]>(MY_DEFAULT);
   const [myLabel, setMyLabel] = useState("Malvern Prep");
@@ -138,14 +300,56 @@ export function RescueMap({
   // values without being in the dependency array.
   const selectedRef = useRef<Selection>(null);
   selectedRef.current = selected;
+  const activeRouteRef = useRef<string | null>(null);
+  activeRouteRef.current = activeRoute;
+  // Resolved journey geometries for the current selection, keyed by option id,
+  // plus which markers carry the candidate endpoints. paintRoutes reads these so
+  // switching the active route only repaints — no refetch, no refit.
+  const routeGeomsRef = useRef(new Map<string, [number, number][]>());
+  const candidateEndpointsRef = useRef<{ kind: "rest" | "drop"; ids: string[] } | null>(null);
   const myLocRef = useRef(myLoc);
   myLocRef.current = myLoc;
   const destRef = useRef(dest);
   destRef.current = dest;
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const toggleRef = useRef<ReturnType<typeof createModeToggle>>();
+
+  // Repaint the route lines + endpoint rings from the resolved geometries,
+  // marking whichever id is active. Reads refs so it's stable and can run from
+  // either the fetch effect or the lightweight active-route effect.
+  const paintRoutes = useCallback(() => {
+    const map = mapRef.current;
+    const src = map?.getSource("routes") as GeoJSONSource | undefined;
+    if (!map || !src) return;
+    const activeId = activeRouteRef.current;
+    const feats: Feature[] = [];
+    routeGeomsRef.current.forEach((coords, id) => {
+      feats.push({
+        type: "Feature",
+        properties: { id, active: id === activeId },
+        geometry: { type: "LineString", coordinates: coords },
+      });
+    });
+    src.setData({ type: "FeatureCollection", features: feats });
+
+    // Ring the candidate endpoints: blue for the active route's endpoint, clay
+    // for the alternatives, so the map and panel agree at a glance.
+    const ep = candidateEndpointsRef.current;
+    if (ep) {
+      const markers = ep.kind === "rest" ? dropMarkers.current : restMarkers.current;
+      ep.ids.forEach((id) => {
+        const head = markers.get(id)?.getElement().firstElementChild as HTMLElement | null;
+        if (!head) return;
+        head.style.setProperty("--sel", id === activeId ? ROUTE : SEL);
+      });
+    }
+  }, []);
 
   // --- localStorage hydration + persistence --------------------------------
   const hydrated = useRef(false);
   useEffect(() => {
+    let hadSaved = false;
     try {
       const ml = localStorage.getItem("mm.myLoc");
       if (ml) {
@@ -153,6 +357,7 @@ export function RescueMap({
         if (Array.isArray(p) && p.length === 2) {
           setMyLoc([p[0], p[1]]);
           setMyLabel(localStorage.getItem("mm.myLabel") || "Saved location");
+          hadSaved = true;
         }
       }
       const d = localStorage.getItem("mm.dest");
@@ -167,6 +372,9 @@ export function RescueMap({
       /* ignore corrupt storage */
     }
     hydrated.current = true;
+    // First visit (no saved spot) → quietly ask the device for its location.
+    if (!hadSaved) detectLocation(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     if (!hydrated.current) return;
@@ -192,13 +400,37 @@ export function RescueMap({
     }
   }, [dest, destLabel]);
 
-  function toggleCat(c: FoodCategory) {
-    setCats((prev) => {
-      const next = new Set(prev);
-      if (next.has(c)) next.delete(c);
-      else next.add(c);
-      return next;
-    });
+  // Hiding a layer also drops a selection of that kind, so the panel/route never
+  // points at markers that are no longer on the map.
+  function toggleLayer(kind: "rest" | "drop") {
+    if (kind === "rest") {
+      setShowRest((v) => !v);
+      if (showRest) setSelected((s) => (s?.kind === "rest" ? null : s));
+    } else {
+      setShowDrop((v) => !v);
+      if (showDrop) setSelected((s) => (s?.kind === "drop" ? null : s));
+    }
+  }
+
+  // Claim the restaurant's soonest-expiring open listing (the pickup). The map's
+  // data is a per-load snapshot, so on success we surface a link into My pickups
+  // rather than mutate the markers in place.
+  // Returns whether the claim succeeded, so the raw-DOM popup button (which can't
+  // read React state) can give its own inline feedback on the error path. On
+  // success the server action refreshes the route, which usually rebuilds the
+  // map and closes the popup — but the panel keeps the durable "claimed" state.
+  async function onClaim(listingId: string): Promise<boolean> {
+    setClaimState("claiming");
+    setClaimMsg(null);
+    try {
+      await claimListing(listingId);
+      setClaimState("done");
+      return true;
+    } catch (e) {
+      setClaimState("error");
+      setClaimMsg(e instanceof Error ? e.message : "Couldn't claim this pickup.");
+      return false;
+    }
   }
 
   async function fetchRouteMulti(points: [number, number][]): Promise<RouteInfo | null> {
@@ -251,6 +483,45 @@ export function RescueMap({
     mapRef.current?.flyTo({ center: hit.center, zoom: 13 });
   }
 
+  // Use the device's GPS/location (needs HTTPS + permission). `auto` is the
+  // silent first-load attempt: on failure we keep the default and stay quiet;
+  // a manual tap surfaces the reason so the user can fall back to an address.
+  // The silent attempt sets the routing origin but never moves the camera — see
+  // the success handler — so the map opens to the same frame every time.
+  function detectLocation(auto = false) {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      if (!auto) setGeoError("Location isn't available on this device.");
+      return;
+    }
+    setGeoError(null);
+    setGeoBusy("me");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGeoBusy(null);
+        const c: [number, number] = [pos.coords.longitude, pos.coords.latitude];
+        setMyLoc(c);
+        setMyLabel("Your location");
+        setMyInput("");
+        // Only a deliberate "use my location" tap recenters the map. The silent
+        // first-load fix stays camera-quiet: it can't reframe a consistent
+        // opening view, trigger an extra round of tile loads, or snap the camera
+        // off a route the user is already reading after clicking a pin.
+        if (!auto) mapRef.current?.flyTo({ center: c, zoom: 13 });
+      },
+      (err) => {
+        setGeoBusy(null);
+        if (!auto) {
+          setGeoError(
+            err.code === err.PERMISSION_DENIED
+              ? "Location permission was denied — enter an address instead."
+              : "Couldn't get your location — enter an address instead."
+          );
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  }
+
   // Build the map once (restaurants + drop-offs are stable per page load).
   useEffect(() => {
     if (!TOKEN || !container.current) return;
@@ -266,33 +537,71 @@ export function RescueMap({
 
       const map = new mapboxgl.Map({
         container: container.current,
-        style: "mapbox://styles/mapbox/light-v11",
+        style: MAP_STYLES[modeRef.current],
         center: myLocRef.current,
         zoom: 12,
+        // Default attribution sits bottom-right; we move it to bottom-left (below)
+        // so the bottom-right corner is free for the compass/home/toggle stack.
+        attributionControl: false,
       });
       mapRef.current = map;
-      map.addControl(new mapboxgl.NavigationControl(), "top-right");
 
-      // "My location" — ink dot in a soft halo (repositioned by an effect).
+      // Keep the canvas matched to its container. With the full-bleed layout the
+      // map can initialize before the box has its final size (→ a grey gutter),
+      // and the box also changes on rotate/resize. A ResizeObserver calls
+      // resize() on every change; we also nudge once on load below.
+      const ro = new ResizeObserver(() => mapRef.current?.resize());
+      ro.observe(container.current);
+      roRef.current = ro;
+
+      // Frame the map to fit everyone (the "good zoom"); used on load and by the
+      // home button.
+      const resetView = () => {
+        const pts = [
+          myLocRef.current,
+          ...(destRef.current ? [destRef.current] : []),
+          ...restaurants.map((r) => [r.lng, r.lat]),
+          ...dropOffs.map((d) => [d.lng, d.lat]),
+        ] as [number, number][];
+        if (pts.length > 1)
+          map.fitBounds(boundsOf(pts), { padding: 64, maxZoom: 14, bearing: 0, pitch: 0 });
+        else map.flyTo({ center: myLocRef.current, zoom: 12, bearing: 0, pitch: 0 });
+      };
+
+      // Map controls live bottom-right so they never collide with the top-left
+      // search card (which grows to ~340px wide / 45% tall on phones and would
+      // otherwise overlap a top-right stack). Compass only — zoom +/- is handled
+      // by pinch/scroll; the home button restores the framed view. They stack
+      // upward in add order: compass (lowest), home, then mode toggle.
+      map.addControl(
+        new mapboxgl.AttributionControl({ compact: true }),
+        "bottom-left"
+      );
+      map.addControl(
+        new mapboxgl.NavigationControl({ showZoom: false, showCompass: true }),
+        "bottom-right"
+      );
+      map.addControl(createHomeControl({ onClick: resetView }), "bottom-right");
+      const toggle = createModeToggle({ initial: modeRef.current, onChange: setMode });
+      toggleRef.current = toggle;
+      map.addControl(toggle, "bottom-right");
+
+      // "My location" — a bold ink dot with a thick white ring and a live,
+      // pulsing accuracy ring behind it (repositioned by an effect).
       const meEl = document.createElement("div");
-      meEl.style.cssText = `width:28px;height:28px;display:grid;place-items:center;`;
-      const meHalo = document.createElement("div");
-      meHalo.style.cssText = `position:absolute;width:28px;height:28px;border-radius:50%;background:${ME};opacity:.15;`;
+      meEl.style.cssText = `width:44px;height:44px;display:grid;place-items:center;`;
+      const mePulse = document.createElement("div");
+      mePulse.className = "mm-me-pulse";
       const meDot = document.createElement("div");
-      meDot.style.cssText = `position:relative;width:14px;height:14px;border-radius:50%;background:${ME};border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25);`;
-      meEl.appendChild(meHalo);
+      meDot.style.cssText = `position:relative;width:20px;height:20px;border-radius:50%;background:${ME};border:3px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.22),0 3px 9px rgba(51,52,44,.5);`;
+      meEl.appendChild(mePulse);
       meEl.appendChild(meDot);
       meMarkerRef.current = new mapboxgl.Marker(meEl)
         .setLngLat(myLocRef.current)
-        .setPopup(
-          new mapboxgl.Popup({ offset: 16, closeButton: false }).setHTML(
-            `<div style="font-family:var(--font-sans),system-ui,sans-serif;font-size:12px;color:#33342C;">You are here</div>`
-          )
-        )
         .addTo(map);
 
-      // Restaurant markers — round pin with a utensils glyph, colored by
-      // urgency; clicking isolates. Root is Mapbox-positioned; the inner head
+      // Restaurant markers — plum pickup pin with a utensils glyph (one flat
+      // color, never urgency); clicking isolates. Root is Mapbox-positioned; the inner head
       // carries hover/scale/outline so the pin never lags the map.
       // The root MUST NOT set `position`: Mapbox's `.mapboxgl-marker` sets
       // `position:absolute` and places each pin via a transform from the
@@ -302,11 +611,11 @@ export function RescueMap({
       for (const r of restaurants) {
         const el = document.createElement("div");
         el.className = "mm-pin";
-        el.style.cssText = `width:34px;height:34px;display:grid;place-items:center;`;
+        el.style.cssText = `width:28px;height:38px;display:grid;place-items:center;`;
         const head = document.createElement("div");
         head.className = "mm-pin-head";
-        head.style.cssText = `width:30px;height:30px;border-radius:50%;background:${restColor(r.minutesLeft)};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(51,52,44,.35);outline:0 solid ${REC};display:grid;place-items:center;`;
-        head.innerHTML = ICON_REST;
+        head.style.cssText = `line-height:0;`;
+        head.innerHTML = pinSVG(PICKUP, GLYPH_REST);
         el.appendChild(head);
         el.addEventListener("click", (ev) => {
           ev.stopPropagation();
@@ -314,32 +623,23 @@ export function RescueMap({
             cur?.kind === "rest" && cur.id === r.id ? null : { kind: "rest", id: r.id }
           );
         });
-        const popup = new mapboxgl.Popup({ offset: 14, closeButton: false }).setHTML(
-          `<div style="font-family:var(--font-sans),system-ui,sans-serif;">
-             <div style="font-family:var(--font-display),Georgia,serif;font-size:17px;font-weight:600;color:#33342C;">${escapeHtml(r.name)}</div>
-             <div style="color:#6F6F62;font-family:var(--font-sans),system-ui,sans-serif;font-size:11px;margin:2px 0;">${r.count} listing${r.count > 1 ? "s" : ""} · ${r.servings} servings</div>
-             <div style="color:#6F6F62;font-size:12px;">${escapeHtml(r.categories.join(", "))}${r.perishable ? " · perishable" : ""}</div>
-             <a href="/restaurants/${r.id}" style="display:inline-block;margin-top:6px;color:#C06D40;font-size:13px;font-weight:500;text-decoration:none;">View details →</a>
-             <div style="color:#A89E8B;font-size:11px;margin-top:2px;">Click pin for drop-off routes</div>
-           </div>`
-        );
         restMarkers.current.set(
           r.id,
-          new mapboxgl.Marker(el).setLngLat([r.lng, r.lat]).setPopup(popup).addTo(map)
+          new mapboxgl.Marker({ element: el, anchor: "bottom" }).setLngLat([r.lng, r.lat]).addTo(map)
         );
       }
 
-      // Drop-off markers — rounded-square pin with a package glyph (a clearly
-      // different silhouette from the round restaurant pins); clicking isolates
-      // and finds the closest restaurants.
+      // Drop-off markers — terracotta teardrop pin with a flag glyph (the flag +
+      // warm hue read clearly apart from the sage fork-&-knife pickup pins);
+      // clicking isolates and finds the closest restaurants.
       for (const d of dropOffs) {
         const el = document.createElement("div");
         el.className = "mm-pin";
-        el.style.cssText = `width:32px;height:32px;display:grid;place-items:center;`;
+        el.style.cssText = `width:28px;height:38px;display:grid;place-items:center;`;
         const dot = document.createElement("div");
         dot.className = "mm-pin-head";
-        dot.style.cssText = `width:28px;height:28px;border-radius:8px;background:${DROP};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(51,52,44,.35);outline:0 solid ${REC};display:grid;place-items:center;`;
-        dot.innerHTML = ICON_DROP;
+        dot.style.cssText = `line-height:0;`;
+        dot.innerHTML = pinSVG(DROP, GLYPH_DROP);
         el.appendChild(dot);
         el.addEventListener("click", (ev) => {
           ev.stopPropagation();
@@ -347,74 +647,80 @@ export function RescueMap({
             cur?.kind === "drop" && cur.id === d.id ? null : { kind: "drop", id: d.id }
           );
         });
-        const baseHTML = `<div style="font-family:var(--font-sans),system-ui,sans-serif;">
-             <div style="font-family:var(--font-display),Georgia,serif;font-size:17px;font-weight:600;color:#33342C;">${escapeHtml(d.name)}</div>
-             <div style="color:#6F6F62;font-family:var(--font-sans),system-ui,sans-serif;font-size:11px;margin:2px 0;">accepts: ${escapeHtml(d.acceptedCategories.join(", "))}</div>
-             <div style="color:#6F6F62;font-size:12px;">${d.refrigerated ? "❄ refrigerated" : "not refrigerated"} · holds ${d.capacity}</div>
-             ${d.notes ? `<div style="color:#6F6F62;font-size:12px;margin-top:4px;">${escapeHtml(d.notes)}</div>` : ""}
-             <a href="/dropoffs/${d.id}" style="display:inline-block;margin-top:6px;color:#C06D40;font-size:13px;font-weight:500;text-decoration:none;">View details →</a>`;
-        dropBaseHTML.current.set(d.id, baseHTML);
-        const popup = new mapboxgl.Popup({ offset: 14, closeButton: false }).setHTML(
-          baseHTML + "</div>"
-        );
         dropMarkers.current.set(
           d.id,
-          new mapboxgl.Marker(el).setLngLat([d.lng, d.lat]).setPopup(popup).addTo(map)
+          new mapboxgl.Marker({ element: el, anchor: "bottom" }).setLngLat([d.lng, d.lat]).addTo(map)
         );
       }
 
-      map.on("click", () => setSelected(null)); // click empty space to reset
+      // Clicking empty map space deliberately does NOT dismiss the route panel —
+      // it stays until "Show all" or re-clicking the selected pin, so a chosen
+      // route (and its Open-in-Google-Maps link) survives a stray map click.
+
+      // Click any route (alternative or active) to make it the chosen route.
+      map.on("click", "route-hit", (e) => {
+        const id = e.features?.[0]?.properties?.id;
+        if (typeof id === "string") setActiveRoute(id);
+      });
+      map.on("mouseenter", "route-hit", () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mouseleave", "route-hit", () => {
+        map.getCanvas().style.cursor = "";
+      });
 
       map.on("load", () => {
-        map.addSource("candidate-lines", { type: "geojson", data: EMPTY });
-        map.addLayer({
-          id: "candidate-lines",
-          type: "line",
-          source: "candidate-lines",
-          layout: { "line-cap": "round" },
-          paint: {
-            "line-color": REC,
-            "line-width": ["match", ["get", "rank"], "short", 4, 2],
-            "line-opacity": ["match", ["get", "rank"], "short", 0.85, 0.4],
-            "line-dasharray": [1.5, 1],
-          },
-        });
-        map.addSource("journey-line", { type: "geojson", data: EMPTY });
-        map.addLayer({
-          id: "journey-line",
-          type: "line",
-          source: "journey-line",
-          layout: { "line-cap": "round", "line-join": "round" },
-          paint: { "line-color": REC, "line-width": 5, "line-opacity": 0.95 },
-        });
-        const pts = [
-          myLocRef.current,
-          ...(destRef.current ? [destRef.current] : []),
-          ...restaurants.map((r) => [r.lng, r.lat]),
-          ...dropOffs.map((d) => [d.lng, d.lat]),
-        ] as [number, number][];
-        if (pts.length > 1) map.fitBounds(boundsOf(pts), { padding: 64, maxZoom: 14 });
+        addRouteLayers(map);
+        map.resize();
+        resetView();
       });
     })();
 
     return () => {
       cancelled = true;
+      roRef.current?.disconnect();
+      roRef.current = undefined;
       mapRef.current?.remove();
       mapRef.current = undefined;
+      toggleRef.current = undefined;
       rMarkers.clear();
       dMarkers.clear();
     };
-  }, [restaurants, dropOffs]);
+    // Build exactly once per mount. restaurants/drop-offs are fixed for the
+    // page's lifetime, so they're read from the initial closure — keeping them
+    // out of the deps means a re-render can never tear the map down and
+    // re-instantiate it (a billed map load + a visible reload). The map loads
+    // the same way on every login / app open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  // Reposition the "you" marker + popup when myLoc / label changes.
+  // Swap the base style when the mode toggles. setStyle wipes custom sources, so
+  // re-add the route layers once the new style loads, then bump styleVersion to
+  // repaint any active routes. Markers are DOM and persist automatically.
+  const appliedMode = useRef<MapMode>(mode);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    toggleRef.current?.setMode(mode);
+    if (mode === appliedMode.current) return;
+    appliedMode.current = mode;
+    map.setStyle(MAP_STYLES[mode]);
+    const onStyle = () => {
+      addRouteLayers(map);
+      setStyleVersion((v) => v + 1);
+    };
+    map.once("style.load", onStyle);
+    return () => {
+      map.off("style.load", onStyle);
+    };
+  }, [mode]);
+
+  // Reposition the "you" marker when myLoc changes.
   useEffect(() => {
     const m = meMarkerRef.current;
     if (!m) return;
     m.setLngLat(myLoc);
-    m.getPopup()?.setHTML(
-      `<div style="font-family:var(--font-sans),system-ui,sans-serif;font-size:12px;color:#33342C;">You are here · ${escapeHtml(myLabel)}</div>`
-    );
-  }, [myLoc, myLabel]);
+  }, [myLoc]);
 
   // Create / move / remove the destination flag marker.
   useEffect(() => {
@@ -437,25 +743,15 @@ export function RescueMap({
         el.appendChild(dot);
         destMarkerRef.current = new mapboxgl.Marker(el)
           .setLngLat(dest)
-          .setPopup(
-            new mapboxgl.Popup({ offset: 16, closeButton: false }).setHTML(
-              `<div style="font-family:var(--font-sans),system-ui,sans-serif;font-size:12px;color:#33342C;">Destination</div>`
-            )
-          )
           .addTo(map);
       } else {
         destMarkerRef.current.setLngLat(dest);
       }
-      destMarkerRef.current
-        .getPopup()
-        ?.setHTML(
-          `<div style="font-family:var(--font-sans),system-ui,sans-serif;font-size:12px;color:#33342C;">Destination · ${escapeHtml(destLabel)}</div>`
-        );
     })();
     return () => {
       cancelled = true;
     };
-  }, [dest, destLabel]);
+  }, [dest]);
 
   // The core: marker visibility/highlight + route drawing, on any input change.
   useEffect(() => {
@@ -463,17 +759,17 @@ export function RescueMap({
     if (!map || restMarkers.current.size === 0) return;
     let cancelled = false;
 
-    const candidateSrc = () => map.getSource("candidate-lines") as GeoJSONSource | undefined;
-    const journeySrc = () => map.getSource("journey-line") as GeoJSONSource | undefined;
-    const lineFeature = (coords: [number, number][], rank: "short" | "other"): Feature => ({
-      type: "Feature",
-      properties: { rank },
-      geometry: { type: "LineString", coordinates: coords },
-    });
-
-    const passesCat = (r: MapRestaurant) =>
-      cats.size === 0 || r.categories.some((c) => cats.has(c));
-    const passesFridge = (d: DropOffLocation) => !fridgeOnly || d.refrigerated;
+    const routesSrc = () => map.getSource("routes") as GeoJSONSource | undefined;
+    // Full journey for one candidate: you → restaurant → drop-off → optional dest.
+    const journeyPoints = (
+      rest: MapRestaurant,
+      drop: DropOffLocation
+    ): [number, number][] => [
+      myLocRef.current,
+      [rest.lng, rest.lat],
+      [drop.lng, drop.lat],
+      ...(destRef.current ? [destRef.current] : []),
+    ];
 
     const resetRestMarker = (m: MapboxMarker) => {
       const el = m.getElement();
@@ -482,45 +778,50 @@ export function RescueMap({
       // drop the inline display:grid and let the head fall off-centre.
       el.style.display = "grid";
       if (head) {
-        head.style.outline = `0 solid ${REC}`;
-        head.style.outlineOffset = "";
+        head.style.removeProperty("--sel");
         head.style.opacity = "";
       }
     };
-    const resetDropMarker = (m: MapboxMarker, id: string) => {
+    const resetDropMarker = (m: MapboxMarker) => {
       const el = m.getElement();
       const dot = el.firstElementChild as HTMLElement | null;
       el.style.display = "grid";
       if (dot) {
-        dot.style.outline = "";
-        dot.style.outlineOffset = "";
-        dot.style.transform = "";
+        dot.style.removeProperty("--sel");
         dot.style.opacity = "";
       }
-      m.getPopup()?.setHTML((dropBaseHTML.current.get(id) ?? "") + "</div>");
     };
 
-    const clearLines = () => {
-      candidateSrc()?.setData(EMPTY);
-      journeySrc()?.setData(EMPTY);
+    const clearRoutes = () => {
+      routeGeomsRef.current.clear();
+      candidateEndpointsRef.current = null;
+      routesSrc()?.setData(EMPTY);
+    };
+    // Default the chosen route to the shortest, but keep the user's current pick
+    // when it's still one of the candidates (e.g. after a base-style swap).
+    const settleActive = (ids: string[], shortId: string) => {
+      const keep = activeRouteRef.current && ids.includes(activeRouteRef.current);
+      const next = keep ? activeRouteRef.current! : shortId;
+      activeRouteRef.current = next;
+      setActiveRoute(next);
     };
 
     const apply = async () => {
       const sel = selected;
 
-      // --- nothing selected: show everything (respecting filters), no lines ---
+      // --- nothing selected: show each layer that's toggled on, no lines ---
       if (!sel) {
-        restMarkers.current.forEach((m, id) => {
+        restMarkers.current.forEach((m) => {
           resetRestMarker(m);
-          const r = restaurants.find((x) => x.id === id);
-          if (r && !passesCat(r)) m.getElement().style.display = "none";
+          if (!showRest) m.getElement().style.display = "none";
         });
-        dropMarkers.current.forEach((m, id) => {
-          resetDropMarker(m, id);
-          const d = dropOffs.find((x) => x.id === id);
-          if (d && !passesFridge(d)) m.getElement().style.display = "none";
+        dropMarkers.current.forEach((m) => {
+          resetDropMarker(m);
+          if (!showDrop) m.getElement().style.display = "none";
         });
-        clearLines();
+        clearRoutes();
+        activeRouteRef.current = null;
+        setActiveRoute(null);
         setPanel(null);
         return;
       }
@@ -530,122 +831,98 @@ export function RescueMap({
         const rest = restaurants.find((r) => r.id === sel.id);
         if (!rest) return;
         const ranked = rankDropOffs(rest, dropOffs);
-        const eligible = ranked.filter((x) => x.eligible);
-        const top3 = eligible.slice(0, 3);
-        const top3Ids = new Set(top3.map((x) => x.dropOff.id));
-        const reasons = new Map(ranked.map((x) => [x.dropOff.id, x.reason]));
+        const top3 = ranked.filter((x) => x.eligible).slice(0, 3);
 
-        // Isolate restaurants to the selected one (and ring it).
+        // Isolate restaurants to the selected one (and ring it as the anchor).
         restMarkers.current.forEach((m, id) => {
           resetRestMarker(m);
           const el = m.getElement();
           el.style.display = id === sel.id ? "grid" : "none";
           if (id === sel.id) {
             const head = el.firstElementChild as HTMLElement | null;
-            if (head) {
-              head.style.outline = `3px solid ${REC}`;
-              head.style.outlineOffset = "2px";
-            }
+            if (head) head.style.setProperty("--sel", SEL);
           }
         });
-        // Drop-offs: candidates highlighted, eligible shown, ineligible dimmed.
+        // Drop-offs: always revealed for the selected pickup (the whole point is
+        // showing where it can go) — independent of the "show drop-offs" toggle.
+        // Eligible shown full (candidate rings via paintRoutes), ineligible dimmed.
         dropMarkers.current.forEach((m, id) => {
-          resetDropMarker(m, id);
-          const d = dropOffs.find((x) => x.id === id);
+          resetDropMarker(m);
           const el = m.getElement();
           const dot = el.firstElementChild as HTMLElement | null;
-          if (d && !passesFridge(d)) {
-            el.style.display = "none";
-            return;
-          }
           const isEligible = ranked.find((x) => x.dropOff.id === id)?.eligible;
-          if (!isEligible) {
-            if (dot) dot.style.opacity = "0.35";
-            const why = reasons.get(id);
-            if (why)
-              m.getPopup()?.setHTML(
-                (dropBaseHTML.current.get(id) ?? "") +
-                  `<div style="color:#A8412E;font-size:12px;margin-top:6px;">Can't take this load: ${escapeHtml(why)}</div></div>`
-              );
-          } else if (top3Ids.has(id) && dot) {
-            dot.style.outline = `3px solid ${REC}`;
-            dot.style.outlineOffset = "2px";
-          }
+          if (!isEligible && dot) dot.style.opacity = "0.35";
         });
-
-        // Immediate panel (great-circle miles), routes fill in after fetch.
-        setPanel({
-          kind: "rest",
-          name: rest.name,
-          options: top3.map((x) => ({ name: x.dropOff.name, miles: x.miles, short: false })),
-        });
-        clearLines();
 
         if (top3.length === 0) {
+          clearRoutes();
+          activeRouteRef.current = null;
+          setActiveRoute(null);
           const nearMiss = ranked[0];
           setPanel({
             kind: "rest",
             name: rest.name,
             options: nearMiss
-              ? [{ name: `${nearMiss.dropOff.name} (${nearMiss.reason ?? "ineligible"})`, miles: nearMiss.miles, short: false }]
+              ? [{ id: nearMiss.dropOff.id, name: `${nearMiss.dropOff.name} (${nearMiss.reason ?? "ineligible"})`, miles: nearMiss.miles, recommended: false }]
               : [],
           });
           return;
         }
 
-        // Fetch the 3 candidate routes (restaurant → drop-off).
+        // Immediate panel (great-circle miles); drive times fill in after fetch.
+        setPanel({
+          kind: "rest",
+          name: rest.name,
+          options: top3.map((x) => ({ id: x.dropOff.id, name: x.dropOff.name, miles: x.miles, recommended: false })),
+        });
+
+        // Fetch one full journey per candidate drop-off.
         const routes = await Promise.all(
-          top3.map((x) => fetchRouteMulti([[rest.lng, rest.lat], [x.dropOff.lng, x.dropOff.lat]]))
+          top3.map((x) => fetchRouteMulti(journeyPoints(rest, x.dropOff)))
         );
         if (cancelled || selectedRef.current?.id !== sel.id) return;
 
+        routeGeomsRef.current.clear();
+        const ids: string[] = [];
         let shortIdx = -1;
         let shortMin = Infinity;
         routes.forEach((rt, i) => {
-          if (rt && rt.minutes < shortMin) {
-            shortMin = rt.minutes;
-            shortIdx = i;
+          const id = top3[i].dropOff.id;
+          ids.push(id);
+          if (rt) {
+            routeGeomsRef.current.set(id, rt.coords);
+            if (rt.minutes < shortMin) {
+              shortMin = rt.minutes;
+              shortIdx = i;
+            }
           }
         });
-
-        const feats: Feature[] = [];
-        routes.forEach((rt, i) => {
-          if (rt) feats.push(lineFeature(rt.coords, i === shortIdx ? "short" : "other"));
-        });
-        candidateSrc()?.setData({ type: "FeatureCollection", features: feats });
-
-        // Journey through the shortest eligible drop-off (auto-picked).
-        const shortDrop = shortIdx >= 0 ? top3[shortIdx].dropOff : top3[0].dropOff;
-        const waypoints: [number, number][] = [
-          myLocRef.current,
-          [rest.lng, rest.lat],
-          [shortDrop.lng, shortDrop.lat],
-          ...(destRef.current ? [destRef.current] : []),
-        ];
-        const journey = await fetchRouteMulti(waypoints);
-        if (cancelled || selectedRef.current?.id !== sel.id) return;
-        if (journey) journeySrc()?.setData({ type: "FeatureCollection", features: [lineFeature(journey.coords, "short")] });
+        candidateEndpointsRef.current = { kind: "rest", ids };
+        settleActive(ids, shortIdx >= 0 ? top3[shortIdx].dropOff.id : ids[0]);
+        paintRoutes();
 
         setPanel({
           kind: "rest",
           name: rest.name,
           options: top3.map((x, i) => ({
+            id: x.dropOff.id,
             name: x.dropOff.name,
             miles: routes[i]?.miles ?? x.miles,
             minutes: routes[i]?.minutes,
-            short: i === shortIdx,
+            recommended: i === shortIdx,
           })),
-          journeyMin: journey?.minutes,
-          journeyMi: journey?.miles,
         });
 
-        // Fit to the trip.
+        // Fit to every candidate journey.
         const pts: [number, number][] = [
           myLocRef.current,
           [rest.lng, rest.lat],
           ...top3.map((x) => [x.dropOff.lng, x.dropOff.lat] as [number, number]),
           ...(destRef.current ? [destRef.current] : []),
         ];
+        // Sync the canvas to the (now panel-shrunk) map area before framing, so
+        // the route fits the visible map rather than the old full-height box.
+        map.resize();
         if (pts.length > 1) map.fitBounds(boundsOf(pts), { padding: 80, maxZoom: 14 });
         return;
       }
@@ -657,68 +934,82 @@ export function RescueMap({
       const top3 = rankedR.filter((x) => x.eligible).slice(0, 3);
       const top3Ids = new Set(top3.map((x) => x.restaurant.id));
 
-      // Isolate drop-offs to the selected one.
+      // Isolate drop-offs to the selected one (ring it as the anchor). The
+      // selected drop-off always shows, regardless of the "show drop-offs" toggle.
       dropMarkers.current.forEach((m, id) => {
-        resetDropMarker(m, id);
-        m.getElement().style.display = id === sel.id ? "grid" : "none";
+        resetDropMarker(m);
+        const el = m.getElement();
+        el.style.display = id === sel.id ? "grid" : "none";
+        if (id === sel.id) {
+          const dot = el.firstElementChild as HTMLElement | null;
+          if (dot) dot.style.setProperty("--sel", SEL);
+        }
       });
-      // Restaurants: show the 3 closest eligible (ringed), hide the rest.
+      // Restaurants: show the 3 closest eligible (candidate rings via paintRoutes),
+      // hide the rest — always revealed so the drop-off's sources are visible.
       restMarkers.current.forEach((m, id) => {
         resetRestMarker(m);
-        const el = m.getElement();
-        const head = el.firstElementChild as HTMLElement | null;
-        if (top3Ids.has(id)) {
-          if (head) {
-            head.style.outline = `3px solid ${REC}`;
-            head.style.outlineOffset = "2px";
-          }
-        } else {
-          el.style.display = "none";
-        }
+        if (!top3Ids.has(id)) m.getElement().style.display = "none";
       });
 
       setPanel({
         kind: "drop",
         name: drop.name,
-        options: top3.map((x) => ({ name: x.restaurant.name, miles: x.miles, short: false })),
+        options: top3.map((x) => ({ id: x.restaurant.id, name: x.restaurant.name, miles: x.miles, recommended: false })),
       });
-      clearLines();
-      if (top3.length === 0) return;
 
+      if (top3.length === 0) {
+        clearRoutes();
+        activeRouteRef.current = null;
+        setActiveRoute(null);
+        return;
+      }
+
+      // Fetch one full journey per candidate restaurant.
       const routes = await Promise.all(
-        top3.map((x) => fetchRouteMulti([[x.restaurant.lng, x.restaurant.lat], [drop.lng, drop.lat]]))
+        top3.map((x) => fetchRouteMulti(journeyPoints(x.restaurant, drop)))
       );
       if (cancelled || selectedRef.current?.id !== sel.id) return;
 
+      routeGeomsRef.current.clear();
+      const ids: string[] = [];
       let shortIdx = -1;
       let shortMin = Infinity;
       routes.forEach((rt, i) => {
-        if (rt && rt.minutes < shortMin) {
-          shortMin = rt.minutes;
-          shortIdx = i;
+        const id = top3[i].restaurant.id;
+        ids.push(id);
+        if (rt) {
+          routeGeomsRef.current.set(id, rt.coords);
+          if (rt.minutes < shortMin) {
+            shortMin = rt.minutes;
+            shortIdx = i;
+          }
         }
       });
-      const feats: Feature[] = [];
-      routes.forEach((rt, i) => {
-        if (rt) feats.push(lineFeature(rt.coords, i === shortIdx ? "short" : "other"));
-      });
-      candidateSrc()?.setData({ type: "FeatureCollection", features: feats });
+      candidateEndpointsRef.current = { kind: "drop", ids };
+      settleActive(ids, shortIdx >= 0 ? top3[shortIdx].restaurant.id : ids[0]);
+      paintRoutes();
 
       setPanel({
         kind: "drop",
         name: drop.name,
         options: top3.map((x, i) => ({
+          id: x.restaurant.id,
           name: x.restaurant.name,
           miles: routes[i]?.miles ?? x.miles,
           minutes: routes[i]?.minutes,
-          short: i === shortIdx,
+          recommended: i === shortIdx,
         })),
       });
 
       const pts: [number, number][] = [
+        myLocRef.current,
         [drop.lng, drop.lat],
         ...top3.map((x) => [x.restaurant.lng, x.restaurant.lat] as [number, number]),
+        ...(destRef.current ? [destRef.current] : []),
       ];
+      // Sync the canvas to the (now panel-shrunk) map area before framing.
+      map.resize();
       if (pts.length > 1) map.fitBounds(boundsOf(pts), { padding: 80, maxZoom: 14 });
     };
 
@@ -727,14 +1018,50 @@ export function RescueMap({
     return () => {
       cancelled = true;
     };
-  }, [selected, cats, fridgeOnly, myLoc, dest, restaurants, dropOffs]);
+  }, [selected, showRest, showDrop, myLoc, dest, restaurants, dropOffs, styleVersion, paintRoutes]);
+
+  // Picking a different route (map click or panel row) only repaints — the
+  // resolved geometries are already cached, so no refetch and no refit.
+  useEffect(() => {
+    paintRoutes();
+  }, [activeRoute, paintRoutes]);
+
+  // When a selection first opens the panel (which renders below the map), nudge
+  // the page so the panel is in view without scrolling the map out — a minimal
+  // ("nearest") scroll keeps as much of the map visible as possible. Runs once
+  // per selection, after the panel has rendered.
+  useEffect(() => {
+    if (!selected) {
+      scrolledForRef.current = null;
+      return;
+    }
+    const key = `${selected.kind}:${selected.id}`;
+    if (scrolledForRef.current === key || !panel || !panelRef.current) return;
+    scrolledForRef.current = key;
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    panelRef.current.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "nearest" });
+  }, [selected, panel]);
+
+  // Auto-hide the search/controls card while a pin is selected (the docked panel
+  // needs the space); restore it when the selection clears.
+  useEffect(() => {
+    setSearchOpen(!selected);
+  }, [selected]);
+
+  // Reset the claim button whenever the chosen pickup changes.
+  useEffect(() => {
+    setClaimState("idle");
+    setClaimMsg(null);
+  }, [selected, activeRoute]);
 
   if (!TOKEN) {
     return (
-      <div className="grid h-[60vh] place-items-center rounded-xl border border-dashed border-neutral-200 bg-white text-center">
+      <div className="grid h-[60vh] place-items-center rounded-2xl border border-dashed border-neutral-200 bg-card text-center">
         <div>
-          <p className="text-sm text-neutral-600">The map needs a Mapbox token.</p>
-          <p className="mt-1 font-mono text-xs text-neutral-400">
+          <p className="text-sm text-neutral-700">The map needs a Mapbox token.</p>
+          <p className="mt-1 font-mono text-xs text-neutral-700">
             Add NEXT_PUBLIC_MAPBOX_TOKEN to Code/.env, then restart the dev server.
           </p>
         </div>
@@ -743,16 +1070,92 @@ export function RescueMap({
   }
 
   const fieldCls =
-    "w-full rounded-md border border-neutral-200/60 bg-white px-3 py-1.5 text-sm " +
-    "placeholder:text-neutral-400 focus-visible:outline-none focus-visible:ring-2 " +
+    "w-full rounded-xl border border-neutral-900/10 bg-card px-3 py-1.5 text-sm " +
+    "placeholder:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 " +
     "focus-visible:ring-transit-400 focus-visible:ring-offset-1";
 
+  const setBtnCls =
+    "shrink-0 rounded-xl bg-neutral-900 px-3 py-1.5 text-sm font-medium text-neutral-50 " +
+    "transition-colors hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 " +
+    "focus-visible:ring-rescued-400 focus-visible:ring-offset-1 disabled:opacity-40";
+
+  // The currently chosen route, for the trip summary line in the panel.
+  const activeOpt = panel?.options.find((o) => o.id === activeRoute) ?? null;
+
+  // The restaurant + drop-off the chosen route runs between — one is the selected
+  // anchor, the other is the active option. Shared by the info section, the claim
+  // button and the Google Maps link.
+  const activeRest =
+    selected && activeRoute
+      ? restaurants.find((r) => r.id === (selected.kind === "rest" ? selected.id : activeRoute))
+      : undefined;
+  const activeDrop =
+    selected && activeRoute
+      ? dropOffs.find((d) => d.id === (selected.kind === "rest" ? activeRoute : selected.id))
+      : undefined;
+  // A pickup is claimable only while the restaurant has an OPEN listing — and
+  // only for roles that carry pickups (org admins oversee, they don't claim).
+  const claimable =
+    canClaim && !!(activeRest?.listingId && activeRest.minutesLeft != null);
+
+  // Deep-link the chosen journey (you → restaurant → drop-off → optional dest)
+  // into Google Maps. The universal `?api=1` link opens the app on mobile and
+  // the site on desktop. Google expects lat,lng; our points are [lng, lat].
+  const gmapsUrl = (() => {
+    if (!activeRest || !activeDrop) return null;
+    const stops: [number, number][] = [
+      myLoc,
+      [activeRest.lng, activeRest.lat],
+      [activeDrop.lng, activeDrop.lat],
+      ...(dest ? [dest] : []),
+    ];
+    const fmt = (p: [number, number]) => `${p[1]},${p[0]}`;
+    const waypoints = stops.slice(1, -1).map(fmt).join("|");
+    return (
+      "https://www.google.com/maps/dir/?api=1" +
+      `&origin=${fmt(stops[0])}` +
+      `&destination=${fmt(stops[stops.length - 1])}` +
+      (waypoints ? `&waypoints=${encodeURIComponent(waypoints)}` : "") +
+      "&travelmode=driving"
+    );
+  })();
+
   return (
-    <div className="space-y-3">
-      {/* Address inputs */}
-      <div className="grid gap-2 sm:grid-cols-2">
+    <div className="flex h-full w-full flex-col">
+      {/* MAP AREA — grows to fill; shrinks (flex-1) when the selection panel docks
+          below it, so the map and its routes stay fully on screen instead of
+          hiding under an overlay. */}
+      <div className="relative min-h-0 flex-1">
+        {/* Sized with h/w-full (not inset-0): mapbox-gl.css forces the map element
+            to position:relative, on which inset offsets wouldn't size it. */}
+        <div ref={container} className="h-full w-full" />
+
+        {/* Overlay is click-through (pointer-events-none) so map drag/zoom works in
+            the gaps; the controls card re-enables events with pointer-events-auto. */}
+        <div className="pointer-events-none absolute inset-0 z-[1]">
+          {searchOpen ? (
+            // Controls (top-left): title + hide, address inputs, layer toggles,
+            // map key. Scrolls internally if it outgrows a short viewport.
+            <div className="pointer-events-auto absolute left-3 top-3 flex max-h-[45%] w-[min(92vw,340px)] flex-col gap-3 overflow-y-auto rounded-2xl border border-neutral-900/10 bg-neutral-50/95 p-3.5 shadow-card backdrop-blur-sm md:max-h-[calc(100%_-_1.5rem)]">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="font-display text-lg font-semibold leading-none tracking-tight text-neutral-900">
+              Rescue map
+            </h1>
+            <button
+              type="button"
+              onClick={() => setSearchOpen(false)}
+              aria-label="Hide search"
+              className="-mr-1 shrink-0 rounded-full p-1 text-neutral-700 transition-colors hover:bg-neutral-900/5 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M18 6 6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          {/* Address inputs */}
+          <div className="grid gap-2">
         <div>
-          <label className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+          <label className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-neutral-700">
             Your location
           </label>
           <div className="flex gap-2">
@@ -767,15 +1170,30 @@ export function RescueMap({
               type="button"
               onClick={() => onGeocode("me")}
               disabled={geoBusy === "me" || !myInput.trim()}
-              className="shrink-0 rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-neutral-50 disabled:opacity-40"
+              className={setBtnCls}
             >
               {geoBusy === "me" ? "…" : "Set"}
             </button>
           </div>
+          <button
+            type="button"
+            onClick={() => detectLocation(false)}
+            disabled={geoBusy === "me"}
+            className="mt-1.5 inline-flex items-center gap-1 font-mono text-[11px] text-clay-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 disabled:opacity-50"
+          >
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="2" x2="12" y2="5" />
+              <line x1="12" y1="19" x2="12" y2="22" />
+              <line x1="2" y1="12" x2="5" y2="12" />
+              <line x1="19" y1="12" x2="22" y2="12" />
+              <circle cx="12" cy="12" r="6" />
+            </svg>
+            {geoBusy === "me" ? "Locating…" : "Use my location"}
+          </button>
         </div>
         <div>
-          <label className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-neutral-600">
-            Final destination <span className="text-neutral-400">(optional)</span>
+          <label className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+            Final destination <span className="text-neutral-600">(optional)</span>
           </label>
           <div className="flex gap-2">
             <input
@@ -789,7 +1207,7 @@ export function RescueMap({
               type="button"
               onClick={() => onGeocode("dest")}
               disabled={geoBusy === "dest" || !destInput.trim()}
-              className="shrink-0 rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-neutral-50 disabled:opacity-40"
+              className={setBtnCls}
             >
               {geoBusy === "dest" ? "…" : "Set"}
             </button>
@@ -800,7 +1218,7 @@ export function RescueMap({
                   setDest(null);
                   setDestLabel("");
                 }}
-                className="shrink-0 font-mono text-[11px] text-clay-600 hover:underline"
+                className="shrink-0 font-mono text-[11px] text-clay-800 hover:underline -my-1.5 py-1.5"
               >
                 clear
               </button>
@@ -810,145 +1228,373 @@ export function RescueMap({
       </div>
       {geoError && <p className="font-mono text-[11px] text-failed-600">{geoError}</p>}
 
-      {/* Filter bar */}
+      {/* Map layers — show / hide the two pin kinds. Pickups are on by default;
+          drop-offs start hidden so the first view stays calm and pickup-focused
+          (selecting a pickup still reveals its candidate drop-offs). Each control
+          carries a miniature of its real map pin, so it's self-explanatory: full
+          color on a raised chip = shown; greyed pin + dashed outline + struck
+          label = hidden. */}
       <div className="flex flex-wrap items-center gap-2">
-        {ALL_CATEGORIES.map((c) => {
-          const on = cats.has(c);
-          return (
-            <button
-              key={c}
-              type="button"
-              onClick={() => toggleCat(c)}
-              className={cn(
-                "rounded-full px-3 py-1 font-mono text-[11px] capitalize transition-colors",
-                on
-                  ? "bg-neutral-900 text-neutral-50"
-                  : "border border-neutral-200/60 text-neutral-600 hover:text-neutral-900"
-              )}
-            >
-              {c}
-            </button>
-          );
-        })}
-        <span className="mx-1 h-4 w-px bg-neutral-200/60" />
-        <button
-          type="button"
-          onClick={() => setFridgeOnly((v) => !v)}
-          className={cn(
-            "rounded-full px-3 py-1 font-mono text-[11px] transition-colors",
-            fridgeOnly
-              ? "bg-transit-600 text-neutral-50"
-              : "border border-neutral-200/60 text-neutral-600 hover:text-neutral-900"
-          )}
-        >
-          ❄ refrigerated only
-        </button>
-        {(cats.size > 0 || fridgeOnly) && (
+        <span className="font-mono text-[10px] text-neutral-700">show on map</span>
+        {(
+          [
+            { kind: "rest", label: "Pickups", on: showRest, color: PICKUP, glyph: GLYPH_REST },
+            { kind: "drop", label: "Drop-offs", on: showDrop, color: DROP, glyph: GLYPH_DROP },
+          ] as const
+        ).map((L) => (
           <button
+            key={L.kind}
             type="button"
-            onClick={() => {
-              setCats(new Set());
-              setFridgeOnly(false);
-            }}
-            className="font-mono text-[11px] text-clay-600 hover:underline"
+            onClick={() => toggleLayer(L.kind)}
+            aria-pressed={L.on}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 font-mono text-[12px] transition-all",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1",
+              L.on
+                ? "border-neutral-900/10 bg-card text-neutral-900 shadow-card"
+                : "border-dashed border-neutral-900/25 text-neutral-700 line-through decoration-1 hover:border-neutral-900/40 hover:text-neutral-900"
+            )}
           >
-            clear
+            <LegendPin fill={L.on ? L.color : RAMP.neutral400} glyph={L.glyph} />
+            {L.label}
           </button>
-        )}
+        ))}
+      </div>
+            </div>
+          ) : (
+            // Collapsed: a small pill (top-left) brings the search card back.
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="pointer-events-auto absolute left-3 top-3 flex items-center gap-1.5 rounded-full border border-neutral-900/10 bg-neutral-50/95 px-3 py-1.5 font-mono text-[11px] text-neutral-700 shadow-card backdrop-blur-sm transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1"
+            >
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+              search
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="relative">
+      {/* Selection panel — docks BELOW the map (a flex sibling, not an overlay):
+          the map area above shrinks (flex-1) so the routes stay fully visible, and
+          the panel scrolls internally. Persists until "Show all" / re-clicking. */}
+      {panel && (
         <div
-          ref={container}
-          className="h-[60vh] w-full overflow-hidden rounded-xl border border-neutral-200/40"
-        />
-
-        {/* Legend */}
-        <div className="absolute left-3 top-3 space-y-1 rounded-md border border-neutral-200/60 bg-white/95 px-3 py-2 text-xs text-neutral-700">
-          <div className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
-            Restaurant urgency
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-3 w-3 rounded-full" style={{ background: URG_SOON }} />
-            Under 30 min
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-3 w-3 rounded-full" style={{ background: URG_MID }} />
-            Under 1 hour
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-3 w-3 rounded-full" style={{ background: URG_OPEN }} />
-            Under 3 hours
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-3 w-3 rounded-full" style={{ background: URG_SPENT }} />
-            All claimed
-          </div>
-          <div className="my-1 h-px bg-neutral-200/60" />
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-3 w-3 rounded-[3px]" style={{ background: DROP }} />
-            Drop-off
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-3 w-3 rounded-full" style={{ background: ME }} />
-            You
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-block h-3 w-3 rounded-[3px]" style={{ background: DEST }} />
-            Destination
-          </div>
-        </div>
-
-        {/* Selection panel */}
-        {panel && (
-          <div className="absolute bottom-3 left-3 right-3 rounded-md border border-neutral-200/60 bg-white/95 px-4 py-3">
+          ref={panelRef}
+          className="max-h-[45vh] shrink-0 overflow-y-auto border-t border-neutral-900/10 bg-card px-4 py-3 shadow-[0_-6px_20px_rgba(51,52,44,0.12)] animate-fade-in"
+        >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="truncate text-sm font-medium">{panel.name}</div>
-                <div className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
-                  {panel.kind === "rest" ? "nearest drop-offs" : "closest restaurants"}
+                <div className="text-[11px] font-medium text-neutral-700">
+                  {panel.kind === "rest" ? "Selected restaurant" : "Selected drop-off"}
                 </div>
+                <div className="truncate font-display text-base font-semibold text-neutral-900">
+                  {panel.name}
+                </div>
+                {/* The detail link lives here on the card now (moved off the map
+                    popup): a quiet clay text link to the full listing / location. */}
+                {panel.kind === "rest" && activeRest && (
+                  <Link
+                    href={
+                      activeRest.listingId
+                        ? `/listings/${activeRest.listingId}`
+                        : `/restaurants/${activeRest.id}`
+                    }
+                    className="mt-1 inline-block rounded-sm text-[13px] font-medium text-clay-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+                  >
+                    {activeRest.listingId ? "View listing" : "View restaurant"} →
+                  </Link>
+                )}
+                {panel.kind === "drop" && activeDrop && (
+                  <Link
+                    href={`/dropoffs/${activeDrop.id}`}
+                    className="mt-1 inline-block rounded-sm text-[13px] font-medium text-clay-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+                  >
+                    View drop-off →
+                  </Link>
+                )}
               </div>
               <button
+                type="button"
                 onClick={() => setSelected(null)}
-                className="shrink-0 text-sm font-medium text-rescued-600 hover:underline"
+                className="-mr-1 -mt-1 shrink-0 rounded-full px-3 py-1 text-xs font-medium text-neutral-700 transition-colors hover:bg-neutral-900/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
               >
                 Show all
               </button>
             </div>
 
+            {panel.options.length > 1 && (
+              <p className="mt-2 text-xs text-neutral-700">
+                {panel.kind === "rest"
+                  ? "Tap a route to choose which drop-off to deliver to."
+                  : "Tap a route to choose which restaurant to pick up from."}
+              </p>
+            )}
+
             {panel.options.length === 0 ? (
-              <p className="mt-2 font-mono text-xs text-neutral-600">
-                {panel.kind === "rest" ? "no eligible drop-off" : "no eligible restaurant"}
+              <p className="mt-3 rounded-xl border border-dashed border-neutral-900/15 px-3 py-3 text-center text-xs text-neutral-700">
+                {panel.kind === "rest"
+                  ? "No drop-off can take this load right now."
+                  : "No restaurant nearby has food for this drop-off."}
               </p>
             ) : (
-              <ul className="mt-2 space-y-0.5">
-                {panel.options.map((o, i) => (
-                  <li key={i} className="flex items-baseline justify-between gap-3 font-mono text-xs">
-                    <span className="truncate text-neutral-700">
-                      {o.short && <span className="text-clay-600">★ </span>}
-                      {o.name}
-                    </span>
-                    <span className="shrink-0 text-neutral-500">
-                      {o.minutes != null ? `${o.minutes} min · ` : ""}
-                      {o.miles.toFixed(1)} mi
-                    </span>
-                  </li>
-                ))}
+              <ul className="mt-3 space-y-1.5">
+                {panel.options.map((o) => {
+                  const isActive = o.id === activeRoute;
+                  return (
+                    <li key={o.id}>
+                      <button
+                        type="button"
+                        onClick={() => setActiveRoute(o.id)}
+                        aria-pressed={isActive}
+                        className={cn(
+                          "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-route focus-visible:ring-offset-1",
+                          isActive
+                            ? "border-route bg-route/[0.07] ring-1 ring-route"
+                            : "border-neutral-900/10 hover:border-neutral-900/25 hover:bg-neutral-900/[0.02]"
+                        )}
+                      >
+                        {/* line swatch — same blue / grey as this route on the map */}
+                        <span
+                          className={cn(
+                            "h-1.5 w-6 shrink-0 rounded-full transition-colors",
+                            isActive ? "bg-route" : "bg-route-alt"
+                          )}
+                          aria-hidden="true"
+                        />
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span
+                            className={cn(
+                              "truncate text-sm",
+                              isActive ? "font-semibold text-route" : "font-medium text-neutral-900"
+                            )}
+                          >
+                            {o.name}
+                          </span>
+                          {o.recommended && (
+                            <span className="mt-1 inline-flex w-fit items-center rounded-full bg-clay-50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-clay-800">
+                              fastest
+                            </span>
+                          )}
+                        </span>
+                        <span className="shrink-0 text-right">
+                          {o.minutes != null ? (
+                            <>
+                              <span className={cn("block font-mono text-sm font-bold tabular-nums", isActive ? "text-route" : "text-neutral-900")}>
+                                {o.minutes} min
+                              </span>
+                              <span className="block font-mono text-[11px] tabular-nums text-neutral-700">
+                                {o.miles.toFixed(1)} mi
+                              </span>
+                            </>
+                          ) : (
+                            <span className={cn("block font-mono text-sm font-bold tabular-nums", isActive ? "text-route" : "text-neutral-900")}>
+                              {o.miles.toFixed(1)} mi
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
               </ul>
             )}
 
-            {panel.kind === "rest" && panel.journeyMin != null && (
-              <p className="mt-2 border-t border-neutral-200/60 pt-2 font-mono text-xs text-neutral-700">
-                trip: you → {panel.name} → drop-off{dest ? " → destination" : ""} ·{" "}
-                <span className="text-clay-600">
-                  {panel.journeyMin} min · {panel.journeyMi?.toFixed(1)} mi
+            {activeOpt && (
+              <div className="mt-3 flex items-center gap-2 border-t border-neutral-900/10 pt-3">
+                <span className="min-w-0 flex-1 truncate font-sans text-[13px] text-neutral-700">
+                  you → {panel.kind === "rest" ? panel.name : activeOpt.name} →{" "}
+                  {panel.kind === "rest" ? activeOpt.name : panel.name}
+                  {dest ? " → destination" : ""}
                 </span>
-              </p>
+                {activeOpt.minutes != null && (
+                  <span className="shrink-0 rounded-full bg-route/10 px-2 py-0.5 font-mono text-[11px] font-bold tabular-nums text-route">
+                    {activeOpt.minutes} min · {activeOpt.miles.toFixed(1)} mi
+                  </span>
+                )}
+              </div>
+            )}
+
+            {(activeRest || activeDrop) && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setInfoOpen((v) => !v)}
+                  aria-expanded={infoOpen}
+                  className="mt-3 flex w-full items-center justify-between gap-2 rounded-xl border border-neutral-900/10 bg-neutral-900/[0.03] px-3 py-2 text-left text-sm font-semibold text-neutral-800 transition-colors hover:bg-neutral-900/[0.06] hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1"
+                >
+                  <span className="flex items-center gap-2">
+                    {/* info glyph (clay) so the disclosure reads as tappable */}
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="16"
+                      height="16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      className="text-clay-600"
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 16v-4" />
+                      <path d="M12 8h.01" />
+                    </svg>
+                    {infoOpen ? "Hide details" : "Pickup & drop-off details"}
+                  </span>
+                  <svg
+                    viewBox="0 0 24 24"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                    className={cn("shrink-0 text-neutral-700 transition-transform", infoOpen && "rotate-180")}
+                  >
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </button>
+
+                {infoOpen && (
+                  <div className="mt-3 grid gap-x-4 gap-y-4 sm:grid-cols-2">
+                    {/* Pickup — header dot mirrors the sage pickup pin */}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-white"
+                          style={{ background: PICKUP }}
+                        >
+                          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M3 2v7a2 2 0 0 0 2 2 2 2 0 0 0 2-2V2" />
+                            <path d="M7 2v20" />
+                            <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1 1 2 2 2h3Zm0 0v7" />
+                          </svg>
+                        </span>
+                        <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+                          Pickup
+                        </span>
+                      </div>
+                      <div className="mt-1.5 truncate font-display text-sm font-semibold text-neutral-900">
+                        {activeRest?.name ?? "—"}
+                      </div>
+                      {activeRest && (
+                        <>
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <InfoChip tone={urgencyTone(activeRest.minutesLeft)}>
+                              {activeRest.minutesLeft != null
+                                ? `${activeRest.minutesLeft} min left`
+                                : "all claimed"}
+                            </InfoChip>
+                            <span className="font-mono text-[11px] text-neutral-700">
+                              ~{activeRest.servings} servings · {activeRest.count} listing
+                              {activeRest.count === 1 ? "" : "s"}
+                            </span>
+                          </div>
+                          {activeRest.categories.length > 0 && (
+                            <div className="mt-1 truncate font-mono text-[11px] text-neutral-700">
+                              {activeRest.categories.join(", ")}
+                              {activeRest.perishable ? " · perishable" : ""}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    {/* Drop-off — header square mirrors the terracotta drop-off pin */}
+                    <div className="sm:border-l sm:border-neutral-900/10 sm:pl-4">
+                      <div className="flex items-center gap-2">
+                        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-[6px] bg-clay-600 text-white">
+                          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                            <path d="M3.3 7 12 12l8.7-5" />
+                            <path d="M12 22V12" />
+                          </svg>
+                        </span>
+                        <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+                          Drop-off
+                        </span>
+                      </div>
+                      <div className="mt-1.5 truncate font-display text-sm font-semibold text-neutral-900">
+                        {activeDrop?.name ?? "—"}
+                      </div>
+                      {activeDrop && (
+                        <>
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            <InfoChip tone={activeDrop.refrigerated ? "transit" : "neutral"}>
+                              {activeDrop.refrigerated ? "❄ refrigerated" : "ambient"}
+                            </InfoChip>
+                            <span className="font-mono text-[11px] text-neutral-700">
+                              holds {activeDrop.capacity}
+                            </span>
+                          </div>
+                          <div className="mt-1 truncate font-mono text-[11px] text-neutral-700">
+                            accepts {activeDrop.acceptedCategories.join(", ")}
+                          </div>
+                          {activeDrop.notes && (
+                            <div className="mt-1 truncate font-mono text-[11px] text-neutral-700">
+                              {activeDrop.notes}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {(claimable || gmapsUrl) && (
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                {claimable && (
+                  <button
+                    type="button"
+                    onClick={() => activeRest?.listingId && onClaim(activeRest.listingId)}
+                    disabled={claimState === "claiming" || claimState === "done"}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-2.5 text-sm font-bold text-neutral-50 shadow-card transition hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 disabled:opacity-60 disabled:hover:translate-y-0"
+                  >
+                    {claimState === "claiming"
+                      ? "Claiming…"
+                      : claimState === "done"
+                        ? "Claimed ✓"
+                        : "Claim pickup"}
+                  </button>
+                )}
+                {gmapsUrl && (
+                  <a
+                    href={gmapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-route/70 bg-card px-4 py-2 text-sm font-bold text-route transition-colors hover:bg-route/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-route focus-visible:ring-offset-1"
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polygon points="3 11 22 2 13 21 11 13 3 11" />
+                    </svg>
+                    Open in Google Maps
+                  </a>
+                )}
+              </div>
+            )}
+
+            {claimState === "done" && (
+              <Link
+                href="/pickups"
+                className="mt-2 block text-center font-mono text-[11px] text-rescued-600 hover:underline"
+              >
+                View in my pickups →
+              </Link>
+            )}
+            {claimState === "error" && (
+              <p className="mt-2 text-center font-mono text-[11px] text-failed-600">{claimMsg}</p>
             )}
           </div>
         )}
-      </div>
     </div>
   );
 }

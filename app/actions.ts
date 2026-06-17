@@ -15,6 +15,7 @@ import { confirmCheckInFor, releaseClaimFor } from "@/lib/checkins";
 import {
   startDeliveryWithPhotoFor,
   markDeliveredWithPhotoFor,
+  takeHomeForTomorrowFor,
 } from "@/lib/photos";
 import {
   invitableVolunteers,
@@ -23,10 +24,31 @@ import {
   cancelInviteFor,
 } from "@/lib/buddies";
 import { validateRetrievalHours } from "@/lib/hours";
+import { getVolunteerImpact } from "@/lib/stats";
+import { isDemo } from "@/lib/mode";
+import { resetDemoWorld } from "@/prisma/seedDemo";
+import { materializeSchedules } from "@/lib/sweep";
+import { normalizeDaysOfWeek } from "@/lib/recurring";
 
 const HOLD_MINUTES = 15;
 
-type SignUpResult = { ok: true } | { ok: false; error: string };
+type SignUpResult =
+  | { ok: true; pending?: boolean }
+  | { ok: false; error: string };
+
+// Seeded demo accounts (and anyone in demo mode) are showcase-only. They can
+// explore every flow against the curated, resettable demo world — but they must
+// never mutate the live chapter's real account/org graph. Approvals, role
+// changes, and team invites are never demo-scoped (they act on real users and
+// invites the admin pages surface alongside the demo world), so we block those
+// writes outright while in demo mode rather than let a demo session touch real
+// people's accounts.
+const DEMO_BLOCKED =
+  "This is a demo account — it can explore the app, but can't change live chapter data.";
+
+async function blockIfDemo(): Promise<{ ok: false; error: string } | null> {
+  return (await isDemo()) ? { ok: false, error: DEMO_BLOCKED } : null;
+}
 
 /**
  * Self-serve registration. Only volunteer and restaurant accounts can be
@@ -37,9 +59,11 @@ export async function registerUser(input: {
   email: string;
   phone: string;
   password: string;
-  role: "volunteer" | "restaurant";
+  role: "volunteer" | "restaurant" | "drop_off_admin";
   restaurantName?: string;
   restaurantAddress?: string;
+  dropOffName?: string;
+  dropOffAddress?: string;
 }): Promise<SignUpResult> {
   // Throttle sign-ups per IP — registration runs bcrypt, so it's a cheap DoS
   // and spam vector if left open. Fails open if the limiter is unavailable.
@@ -64,8 +88,57 @@ export async function registerUser(input: {
   if (!passwordValid(password)) {
     return { ok: false, error: "Password must be at least 8 characters." };
   }
+
+  // If this email was invited to an existing organization, the invite governs
+  // the account: join the existing org instead of creating a new one, and ignore
+  // any client-sent role / new-org fields (defense in depth).
+  const invite = await prisma.teamInvite.findFirst({
+    where: { email, status: "pending" },
+    orderBy: { createdAt: "desc" },
+  });
+  if (invite) {
+    if (invite.role === "restaurant") {
+      const restaurant = invite.restaurantId
+        ? await prisma.restaurant.findUnique({ where: { id: invite.restaurantId } })
+        : null;
+      if (!restaurant) {
+        return { ok: false, error: "That invitation is no longer valid." };
+      }
+    }
+    const passwordHash = await bcrypt.hash(password, 10);
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.user.create({
+          data: {
+            name,
+            email,
+            phone,
+            passwordHash,
+            role: invite.role,
+            restaurantId: invite.role === "restaurant" ? invite.restaurantId : null,
+          },
+        });
+        await tx.teamInvite.update({
+          where: { id: invite.id },
+          data: { status: "accepted", respondedAt: new Date() },
+        });
+      });
+      await resetLimit(`register:${ip}`);
+      return { ok: true };
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+        return { ok: false, error: "An account with that email already exists." };
+      }
+      return { ok: false, error: "Something went wrong. Please try again." };
+    }
+  }
+
   // Guard the role server-side — never trust the client to send a safe value.
-  if (input.role !== "volunteer" && input.role !== "restaurant") {
+  if (
+    input.role !== "volunteer" &&
+    input.role !== "restaurant" &&
+    input.role !== "drop_off_admin"
+  ) {
     return { ok: false, error: "Invalid account type." };
   }
   if (input.role === "restaurant" && !input.restaurantName?.trim()) {
@@ -74,33 +147,54 @@ export async function registerUser(input: {
   if (input.role === "restaurant" && !input.restaurantAddress?.trim()) {
     return { ok: false, error: "Please enter your restaurant's address." };
   }
+  if (input.role === "drop_off_admin" && !input.dropOffName?.trim()) {
+    return { ok: false, error: "Please enter the drop-off location's name." };
+  }
+  if (input.role === "drop_off_admin" && !input.dropOffAddress?.trim()) {
+    return { ok: false, error: "Please enter the drop-off location's address." };
+  }
 
   const passwordHash = await bcrypt.hash(password, 10);
 
   try {
-    if (input.role === "restaurant") {
-      const address = input.restaurantAddress!.trim();
-      // Locate the address so the restaurant lands a real pin on the map;
-      // fall back to campus center if geocoding can't place it.
-      const geo = await geocodeAddress(address);
-      await prisma.$transaction(async (tx) => {
-        const restaurant = await tx.restaurant.create({
-          data: {
-            name: input.restaurantName!.trim(),
-            address,
-            lat: geo?.lat ?? 40.04,
-            lng: geo?.lng ?? -75.34,
-          },
-        });
-        await tx.user.create({
-          data: { name, email, phone, passwordHash, role: "restaurant", restaurantId: restaurant.id },
-        });
-      });
-    } else {
+    if (input.role === "restaurant" || input.role === "drop_off_admin") {
+      // Self-serve partner sign-ups need an org admin's confirmation before the
+      // account is usable. We create the account as `pending` (it can't sign in
+      // — see auth.ts) and stash the org/location details in `pendingOrg`. The
+      // real Restaurant/DropOff row isn't created until approval, so an
+      // unapproved partner has nothing operational on the map or feed.
+      const pendingOrg =
+        input.role === "restaurant"
+          ? {
+              kind: "restaurant" as const,
+              name: input.restaurantName!.trim(),
+              address: input.restaurantAddress!.trim(),
+            }
+          : {
+              kind: "drop_off" as const,
+              name: input.dropOffName!.trim(),
+              address: input.dropOffAddress!.trim(),
+            };
       await prisma.user.create({
-        data: { name, email, phone, passwordHash, role: "volunteer" },
+        data: {
+          name,
+          email,
+          phone,
+          passwordHash,
+          role: input.role,
+          status: "pending",
+          pendingOrg,
+        },
       });
+      await resetLimit(`register:${ip}`);
+      return { ok: true, pending: true };
     }
+
+    // Volunteers are active immediately — low-stakes, and the whole point is a
+    // first-timer claiming a pickup without friction.
+    await prisma.user.create({
+      data: { name, email, phone, passwordHash, role: "volunteer" },
+    });
     await resetLimit(`register:${ip}`);
     return { ok: true };
   } catch (e) {
@@ -109,6 +203,135 @@ export async function registerUser(input: {
     }
     return { ok: false, error: "Something went wrong. Please try again." };
   }
+}
+
+// ---- Team invites: multiple accounts per organization --------------------
+
+/**
+ * Invite a teammate (by email) to the caller's organization. Restaurant members
+ * invite into their own restaurant; drop-off admins invite chapter-wide (they
+ * aren't tied to a specific DropOff). The invite is consumed when the invitee
+ * signs up with that email (see registerUser).
+ */
+export async function inviteTeammate(emailInput: string): Promise<SignUpResult> {
+  const session = await auth();
+  const role = session?.user?.role;
+  const userId = session?.user?.id;
+  if (!userId) return { ok: false, error: "Not authenticated." };
+  const demoInvite = await blockIfDemo();
+  if (demoInvite) return demoInvite;
+  if (role !== "restaurant" && role !== "drop_off_admin" && role !== "org_admin") {
+    return {
+      ok: false,
+      error: "Only restaurant and drop-off accounts can invite teammates.",
+    };
+  }
+
+  const email = (emailInput ?? "").trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return { ok: false, error: "Please enter a valid email address." };
+  }
+
+  // Resolve the org + invite role from the caller, never from the client.
+  let inviteRole: "restaurant" | "drop_off_admin";
+  let restaurantId: string | null;
+  if (role === "drop_off_admin") {
+    inviteRole = "drop_off_admin";
+    restaurantId = null;
+  } else {
+    const me = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { restaurantId: true },
+    });
+    if (!me?.restaurantId) {
+      return { ok: false, error: "Your account isn't linked to a restaurant." };
+    }
+    inviteRole = "restaurant";
+    restaurantId = me.restaurantId;
+  }
+
+  const existing = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+  if (existing) {
+    return { ok: false, error: "That email already has an account." };
+  }
+  const dupe = await prisma.teamInvite.findFirst({
+    where: { email, status: "pending", role: inviteRole, restaurantId },
+    select: { id: true },
+  });
+  if (dupe) return { ok: false, error: "That email already has a pending invite." };
+
+  await prisma.teamInvite.create({
+    data: { email, role: inviteRole, restaurantId, invitedById: userId },
+  });
+  revalidatePath(role === "drop_off_admin" ? "/dropoff" : "/restaurant");
+  return { ok: true };
+}
+
+/** Cancel a pending invite — only a member of the same org may cancel it. */
+export async function cancelTeammateInvite(
+  inviteId: string
+): Promise<SignUpResult> {
+  const session = await auth();
+  const role = session?.user?.role;
+  const userId = session?.user?.id;
+  if (!userId) return { ok: false, error: "Not authenticated." };
+  const demoCancel = await blockIfDemo();
+  if (demoCancel) return demoCancel;
+
+  const invite = await prisma.teamInvite.findUnique({ where: { id: inviteId } });
+  if (!invite || invite.status !== "pending") {
+    return { ok: false, error: "That invite is no longer pending." };
+  }
+
+  let authorized = role === "org_admin";
+  if (!authorized && role === "drop_off_admin" && invite.role === "drop_off_admin") {
+    authorized = true;
+  }
+  if (!authorized && role === "restaurant" && invite.role === "restaurant") {
+    const me = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { restaurantId: true },
+    });
+    authorized = !!me?.restaurantId && me.restaurantId === invite.restaurantId;
+  }
+  if (!authorized) return { ok: false, error: "You can't cancel that invite." };
+
+  await prisma.teamInvite.update({
+    where: { id: inviteId },
+    data: { status: "cancelled", respondedAt: new Date() },
+  });
+  revalidatePath(invite.role === "drop_off_admin" ? "/dropoff" : "/restaurant");
+  return { ok: true };
+}
+
+/**
+ * Look up a pending invite for an email — used by the sign-up form to show a
+ * "you've been invited" banner and skip the new-org fields. Minimal info only.
+ */
+export async function findPendingInvite(
+  emailInput: string
+): Promise<{ orgName: string; role: "restaurant" | "drop_off_admin" } | null> {
+  const email = (emailInput ?? "").trim().toLowerCase();
+  if (!email) return null;
+  const invite = await prisma.teamInvite.findFirst({
+    where: { email, status: "pending" },
+    orderBy: { createdAt: "desc" },
+  });
+  if (!invite) return null;
+  if (invite.role === "restaurant") {
+    const r = invite.restaurantId
+      ? await prisma.restaurant.findUnique({
+          where: { id: invite.restaurantId },
+          select: { name: true },
+        })
+      : null;
+    if (!r) return null;
+    return { orgName: r.name, role: "restaurant" };
+  }
+  return { orgName: "the drop-off team", role: "drop_off_admin" };
 }
 
 // Password reset is single-use and time-boxed. We store only the sha256 of the
@@ -239,11 +462,22 @@ function refreshViews(listingId?: string) {
  * the same listing, and stamps a 15-minute hold the expiry cron enforces.
  */
 export async function claimListing(listingId: string) {
-  const volunteerId = await currentUserId();
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Not authenticated.");
+  // Claiming is a volunteer action. Org admins oversee the operation (stats,
+  // approvals, special posts) and never carry pickups, so they can't claim.
+  if (session.user.role === "org_admin") {
+    throw new Error("Org admins oversee rescues — claiming is for volunteers.");
+  }
+  const volunteerId = session.user.id;
   await prisma.$transaction(async (tx) => {
     const listing = await tx.foodListing.findUnique({ where: { id: listingId } });
     if (!listing || listing.status !== "open") {
       throw new Error("This listing is no longer available.");
+    }
+    // Scheduled/future listings are visible but locked until they go live.
+    if (listing.availableAt && listing.availableAt > new Date()) {
+      throw new Error("This pickup isn't open yet.");
     }
     await tx.pickup.create({
       data: {
@@ -287,10 +521,27 @@ export async function startDelivery(listingId: string, photoUrl: string) {
   refreshViews(listingId);
 }
 
-/** Capture the delivery photo and complete in_transit → delivered. */
+/**
+ * Capture the delivery photo and complete in_transit → delivered. Returns the
+ * volunteer's fresh lifetime impact so the client can celebrate the rescue
+ * with up-to-date totals (positive reinforcement against flaking).
+ */
 export async function markDelivered(listingId: string, photoUrl: string) {
   const userId = await currentUserId();
   await markDeliveredWithPhotoFor(prisma, userId, listingId, photoUrl);
+  refreshViews(listingId);
+  return getVolunteerImpact(userId);
+}
+
+/**
+ * Keep the food overnight and deliver it the next day instead of letting the
+ * rescue fall through when the drop-off is closed or the day runs out. Advances
+ * the caller's in_transit pickup → taken_home; they complete it later with the
+ * normal delivery photo.
+ */
+export async function takeHomeForTomorrow(listingId: string) {
+  const userId = await currentUserId();
+  await takeHomeForTomorrowFor(prisma, userId, listingId);
   refreshViews(listingId);
 }
 
@@ -404,12 +655,227 @@ export async function postListing(input: {
       imageUrl,
       status: "open",
       restaurantId,
+      // Post into the poster's current world so it surfaces in their feed/map.
+      demo: await isDemo(),
       expiresAt: new Date(Date.now() + minutes * 60_000),
       events: { create: { type: "posted" } },
     },
   });
   refreshViews(listing.id);
   return listing.id;
+}
+
+// Resolve the restaurant a posting action acts on, from the session — a
+// restaurant member posts for their own restaurant; an org_admin may target an
+// arbitrary one. Never trusts a client-sent id for a plain restaurant account.
+async function resolvePostingRestaurantId(
+  inputRestaurantId?: string
+): Promise<string> {
+  const session = await auth();
+  const role = session?.user?.role;
+  if (!session?.user?.id) throw new Error("Not authenticated.");
+  if (role === "org_admin") {
+    if (!inputRestaurantId?.trim()) throw new Error("Pick a restaurant.");
+    return inputRestaurantId.trim();
+  }
+  if (role === "restaurant") {
+    const me = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { restaurantId: true },
+    });
+    if (!me?.restaurantId) throw new Error("Your account has no restaurant.");
+    return me.restaurantId;
+  }
+  throw new Error("Only restaurants can post listings.");
+}
+
+const DAY_MINUTES = 24 * 60;
+
+/**
+ * Create a recurring surplus schedule for the caller's restaurant. The schedule
+ * is a template (title/servings/window) plus a recurrence (weekdays + time of
+ * day); a generator materializes upcoming FoodListings from it so volunteers see
+ * future pickups. We materialize immediately so the schedule's listings appear
+ * without waiting for the next cron sweep.
+ */
+export async function createRecurringPost(input: {
+  restaurantId?: string;
+  title: string;
+  servings: number;
+  weightLbs?: number;
+  notes?: string;
+  daysOfWeek: number[];
+  timeOfDay: number;
+  windowMinutes: number;
+}): Promise<SignUpResult> {
+  let restaurantId: string;
+  try {
+    restaurantId = await resolvePostingRestaurantId(input.restaurantId);
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+
+  const title = input.title?.trim();
+  if (!title) return { ok: false, error: "Please enter what you're sharing." };
+  if (title.length > TITLE_MAX) return { ok: false, error: "Title is too long." };
+
+  const servings = boundedInt(input.servings, 1, SERVINGS_MAX);
+  if (servings === null) {
+    return { ok: false, error: "Enter a valid number of servings." };
+  }
+
+  const days = normalizeDaysOfWeek(input.daysOfWeek);
+  if (!days) return { ok: false, error: "Pick at least one day." };
+
+  const timeOfDay = boundedInt(input.timeOfDay, 0, DAY_MINUTES - 1);
+  if (timeOfDay === null) return { ok: false, error: "Pick a valid time." };
+
+  const windowMinutes = boundedInt(input.windowMinutes, 1, MINUTES_MAX);
+  if (windowMinutes === null) {
+    return { ok: false, error: "Enter a valid pickup window." };
+  }
+
+  let weightLbs: number | null = null;
+  if (input.weightLbs != null) {
+    const w = boundedInt(input.weightLbs, 1, WEIGHT_MAX);
+    if (w === null) return { ok: false, error: "Enter a valid weight." };
+    weightLbs = w;
+  }
+
+  const notes = input.notes?.trim().slice(0, NOTES_MAX) || null;
+
+  await prisma.recurringPost.create({
+    data: {
+      restaurantId,
+      title,
+      servings,
+      weightLbs,
+      notes,
+      daysOfWeek: days,
+      timeOfDay,
+      windowMinutes,
+      demo: await isDemo(),
+    },
+  });
+  // Generate the upcoming listings now so the feed shows them right away.
+  await materializeSchedules();
+  refreshViews();
+  revalidatePath("/map");
+  return { ok: true };
+}
+
+/** Verify a recurring post exists and the caller owns it (or is org_admin). */
+async function authorizeSchedule(id: string): Promise<
+  { ok: true; demo: boolean } | { ok: false; error: string }
+> {
+  const session = await auth();
+  const role = session?.user?.role;
+  if (!session?.user?.id) return { ok: false, error: "Not authenticated." };
+  const schedule = await prisma.recurringPost.findUnique({ where: { id } });
+  if (!schedule) return { ok: false, error: "That schedule no longer exists." };
+  if (role === "org_admin") return { ok: true, demo: schedule.demo };
+  if (role === "restaurant") {
+    const me = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { restaurantId: true },
+    });
+    if (me?.restaurantId !== schedule.restaurantId) {
+      return { ok: false, error: "That isn't your restaurant's schedule." };
+    }
+    return { ok: true, demo: schedule.demo };
+  }
+  return { ok: false, error: "Only restaurants can manage schedules." };
+}
+
+// Remove a schedule's not-yet-live, unclaimed listings (and their events) so
+// pausing/deleting it clears upcoming pickups from the feed. Live or claimed
+// listings are left alone — the food still needs rescuing.
+async function clearFutureListings(recurringPostId: string) {
+  const future = await prisma.foodListing.findMany({
+    where: {
+      recurringPostId,
+      status: "open",
+      availableAt: { gt: new Date() },
+    },
+    select: { id: true },
+  });
+  const ids = future.map((f) => f.id);
+  if (ids.length === 0) return;
+  await prisma.listingEvent.deleteMany({ where: { listingId: { in: ids } } });
+  await prisma.foodListing.deleteMany({ where: { id: { in: ids } } });
+}
+
+/** Pause or resume a schedule. Pausing clears its upcoming (locked) listings. */
+export async function setRecurringPostActive(
+  id: string,
+  active: boolean
+): Promise<SignUpResult> {
+  const gate = await authorizeSchedule(id);
+  if (!gate.ok) return gate;
+  await prisma.recurringPost.update({ where: { id }, data: { active } });
+  if (active) {
+    await materializeSchedules();
+  } else {
+    await clearFutureListings(id);
+  }
+  refreshViews();
+  revalidatePath("/map");
+  return { ok: true };
+}
+
+/** Delete a schedule and its upcoming (unclaimed) listings. */
+export async function deleteRecurringPost(id: string): Promise<SignUpResult> {
+  const gate = await authorizeSchedule(id);
+  if (!gate.ok) return gate;
+  await clearFutureListings(id);
+  // Any remaining listings (live/claimed/past) keep their history; just detach
+  // them from the schedule so the FK delete succeeds.
+  await prisma.foodListing.updateMany({
+    where: { recurringPostId: id },
+    data: { recurringPostId: null },
+  });
+  await prisma.recurringPost.delete({ where: { id } });
+  refreshViews();
+  revalidatePath("/map");
+  return { ok: true };
+}
+
+/**
+ * Switch the caller's world between demo (curated sample) and real (live data).
+ * Saved on the account so it follows the user across devices.
+ */
+export async function setDataMode(
+  mode: "real" | "demo"
+): Promise<SignUpResult> {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false, error: "Not authenticated." };
+  if (mode !== "real" && mode !== "demo") {
+    return { ok: false, error: "Invalid mode." };
+  }
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { dataMode: mode },
+  });
+  // Every data view reads the mode, so refresh them all.
+  refreshViews();
+  revalidatePath("/map");
+  revalidatePath("/settings");
+  return { ok: true };
+}
+
+/**
+ * Reset the curated demo world to its pristine showcase state. Called by the
+ * client right before sign-out (see NavBar) so the demo always starts clean for
+ * the next person — claims, deliveries, and posts made while exploring are
+ * wiped and reseeded. No-op for real-mode users (nothing demo to reset), so a
+ * normal account logging out pays nothing. Returns whether a reset ran.
+ */
+export async function resetDemoOnLogout(): Promise<{ reset: boolean }> {
+  if (!(await isDemo())) return { reset: false };
+  await resetDemoWorld(prisma);
+  refreshViews();
+  revalidatePath("/map");
+  return { reset: true };
 }
 
 /**
@@ -462,6 +928,76 @@ export async function updateDropOffNotes(
   return { ok: true };
 }
 
+const NOTICE_MAX = 280;
+const NOTICE_KINDS = ["hours", "conditions", "general"] as const;
+
+/**
+ * Post a temporary service notice for a drop-off — a change to its normal hours
+ * or conditions that volunteers should see (closing early, fridge down, side
+ * door, etc.). Drop-off admins and org admins only. `untilIso` is optional; when
+ * set, the notice auto-expires after it.
+ */
+export async function postDropOffNotice(input: {
+  dropOffId: string;
+  kind: "hours" | "conditions" | "general";
+  body: string;
+  untilIso?: string;
+}): Promise<SignUpResult> {
+  const session = await auth();
+  const role = session?.user?.role;
+  if (role !== "drop_off_admin" && role !== "org_admin") {
+    return { ok: false, error: "Only drop-off admins can post notices." };
+  }
+  const body = input.body?.trim();
+  if (!body) return { ok: false, error: "Add a short note about the change." };
+  const kind = NOTICE_KINDS.includes(input.kind) ? input.kind : "general";
+
+  let until: Date | null = null;
+  if (input.untilIso) {
+    const d = new Date(input.untilIso);
+    if (Number.isNaN(d.getTime())) {
+      return { ok: false, error: "That end time isn't valid." };
+    }
+    if (d.getTime() <= Date.now()) {
+      return { ok: false, error: "The end time must be in the future." };
+    }
+    until = d;
+  }
+
+  await prisma.dropOffNotice.create({
+    data: {
+      dropOffId: input.dropOffId,
+      authorId: session!.user!.id,
+      kind,
+      body: body.slice(0, NOTICE_MAX),
+      until,
+      demo: await isDemo(),
+    },
+  });
+  revalidatePath("/dropoff");
+  revalidatePath(`/dropoffs/${input.dropOffId}`);
+  revalidatePath("/");
+  revalidatePath("/map");
+  return { ok: true };
+}
+
+/** Remove a drop-off service notice. Drop-off admins and org admins only. */
+export async function removeDropOffNotice(id: string): Promise<SignUpResult> {
+  const session = await auth();
+  const role = session?.user?.role;
+  if (role !== "drop_off_admin" && role !== "org_admin") {
+    return { ok: false, error: "Only drop-off admins can remove notices." };
+  }
+  const notice = await prisma.dropOffNotice.findUnique({ where: { id } });
+  if (!notice) return { ok: true };
+  await prisma.dropOffNotice.delete({ where: { id } });
+  revalidatePath("/dropoff");
+  revalidatePath(`/dropoffs/${notice.dropOffId}`);
+  revalidatePath("/");
+  revalidatePath("/map");
+  return { ok: true };
+}
+
 /** A drop-off admin sets the structured food-retrieval hours for a location. */
 export async function updateRetrievalHours(
   dropOffId: string,
@@ -498,6 +1034,8 @@ export async function setRole(
   if (session?.user?.role !== "org_admin") {
     return { ok: false, error: "Only org admins can change roles." };
   }
+  const demoRole = await blockIfDemo();
+  if (demoRole) return demoRole;
   if (!["volunteer", "drop_off_admin", "org_admin"].includes(role)) {
     return { ok: false, error: "Invalid role." };
   }
@@ -528,6 +1066,118 @@ export async function setRole(
       },
     }),
   ]);
+  revalidatePath("/admin/users");
+  return { ok: true };
+}
+
+// The org/location details a pending partner submitted at sign-up.
+type PendingOrg = {
+  kind: "restaurant" | "drop_off";
+  name: string;
+  address: string;
+};
+
+function readPendingOrg(value: Prisma.JsonValue | null): PendingOrg | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const o = value as Record<string, unknown>;
+  if ((o.kind !== "restaurant" && o.kind !== "drop_off") || typeof o.name !== "string" || typeof o.address !== "string") {
+    return null;
+  }
+  return { kind: o.kind, name: o.name, address: o.address };
+}
+
+/**
+ * Approve a pending restaurant/drop-off account: create its real
+ * Restaurant/DropOff (geocoded so it lands a pin), link/activate the account,
+ * and clear the held details. Org-admin only. Idempotent — approving an
+ * already-active account is a no-op.
+ */
+export async function approveAccount(userId: string): Promise<SignUpResult> {
+  const session = await auth();
+  if (session?.user?.role !== "org_admin") {
+    return { ok: false, error: "Only org admins can approve accounts." };
+  }
+  const demoApprove = await blockIfDemo();
+  if (demoApprove) return demoApprove;
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target) return { ok: false, error: "Account not found." };
+  if (target.status === "active") return { ok: true };
+
+  const pending = readPendingOrg(target.pendingOrg);
+  if (!pending) {
+    // No org details to materialize — just activate (shouldn't normally happen).
+    await prisma.user.update({
+      where: { id: userId },
+      data: { status: "active", pendingOrg: Prisma.DbNull },
+    });
+    revalidatePath("/admin/users");
+    return { ok: true };
+  }
+
+  // Geocode outside the transaction (network call); fall back to campus center.
+  const geo = await geocodeAddress(pending.address);
+  const lat = geo?.lat ?? 40.04;
+  const lng = geo?.lng ?? -75.34;
+
+  await prisma.$transaction(async (tx) => {
+    let restaurantId: string | null = null;
+    if (pending.kind === "restaurant") {
+      const restaurant = await tx.restaurant.create({
+        data: { name: pending.name, address: pending.address, lat, lng },
+      });
+      restaurantId = restaurant.id;
+    } else {
+      await tx.dropOff.create({
+        data: {
+          name: pending.name,
+          address: pending.address,
+          lat,
+          lng,
+          // Accept everything by default; the admin can narrow it later.
+          acceptedCategories: ["prepared", "produce", "bakery", "packaged", "dairy", "beverages"],
+        },
+      });
+    }
+    await tx.user.update({
+      where: { id: userId },
+      data: { status: "active", restaurantId, pendingOrg: Prisma.DbNull },
+    });
+    await tx.adminEvent.create({
+      data: {
+        type: "account_approved",
+        actorId: session.user!.id,
+        targetId: userId,
+        meta: { kind: pending.kind, name: pending.name },
+      },
+    });
+  });
+
+  revalidatePath("/admin/users");
+  revalidatePath("/");
+  revalidatePath("/map");
+  revalidatePath("/dropoff");
+  revalidatePath("/restaurant");
+  return { ok: true };
+}
+
+/**
+ * Decline a pending account: delete it (no org row was ever created, so there's
+ * nothing else to clean up). Org-admin only; only pending accounts can be
+ * declined, so an active member can never be removed through this path.
+ */
+export async function declineAccount(userId: string): Promise<SignUpResult> {
+  const session = await auth();
+  if (session?.user?.role !== "org_admin") {
+    return { ok: false, error: "Only org admins can decline accounts." };
+  }
+  const demoDecline = await blockIfDemo();
+  if (demoDecline) return demoDecline;
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target) return { ok: false, error: "Account not found." };
+  if (target.status !== "pending") {
+    return { ok: false, error: "Only pending accounts can be declined." };
+  }
+  await prisma.user.delete({ where: { id: userId } });
   revalidatePath("/admin/users");
   return { ok: true };
 }

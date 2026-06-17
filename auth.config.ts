@@ -36,8 +36,9 @@ export const authConfig = {
       const user = auth?.user;
       const path = nextUrl.pathname;
       const isAuthPage = ["/login", "/signup", "/forgot-password", "/reset-password"].includes(path);
-      // Public design reference — viewable without signing in.
-      const isPublic = path === "/styleguide";
+      // Public pages — viewable without signing in (design reference, and the
+      // privacy policy, which must be reachable before anyone creates an account).
+      const isPublic = path === "/styleguide" || path === "/privacy";
 
       if (!user) return isAuthPage || isPublic; // signed out: auth pages + public
 

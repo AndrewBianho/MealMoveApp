@@ -136,16 +136,16 @@ export function ImageUploadField({
 
   return (
     <div>
-      <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+      <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-700">
         {label}{" "}
-        {optional && <span className="text-neutral-400">(optional)</span>}
+        {optional && <span className="text-neutral-600">(optional)</span>}
       </span>
 
       {preview ? (
         <div className={cn("relative w-full overflow-hidden rounded-xl", aspect)}>
           <Image
             src={preview}
-            alt=""
+            alt="Photo preview"
             fill
             sizes="360px"
             className="object-cover"
@@ -154,7 +154,7 @@ export function ImageUploadField({
             type="button"
             onClick={clear}
             aria-label="Remove photo"
-            className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-neutral-900/70 text-white backdrop-blur transition hover:bg-neutral-900"
+            className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-black/60 text-white backdrop-blur transition hover:bg-black/80"
           >
             <X />
           </button>
@@ -167,7 +167,7 @@ export function ImageUploadField({
           )}
         >
           {busy ? (
-            <span className="text-[13px] text-neutral-600">Uploading…</span>
+            <span className="text-[13px] text-neutral-700">Uploading…</span>
           ) : (
             <div className="flex gap-2">
               <button
@@ -185,7 +185,7 @@ export function ImageUploadField({
                 onClick={() => fileInput.current?.click()}
                 className={cn(
                   btn,
-                  "bg-white text-neutral-900 shadow-[inset_0_0_0_2px_rgba(51,52,44,0.12)] hover:-translate-y-0.5"
+                  "bg-card text-neutral-900 shadow-[inset_0_0_0_2px_rgb(var(--n-900)_/_0.14)] hover:-translate-y-0.5"
                 )}
               >
                 <Upload /> Upload
@@ -196,7 +196,7 @@ export function ImageUploadField({
       )}
 
       {hint && !error && (
-        <p className="mt-1.5 text-[12px] text-neutral-600">{hint}</p>
+        <p className="mt-1.5 text-[12px] text-neutral-700">{hint}</p>
       )}
       {error && <p className="mt-1.5 text-[12px] text-failed-600">{error}</p>}
 
@@ -219,9 +219,9 @@ export function ImageUploadField({
 
       {/* In-app camera modal */}
       {cameraOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-neutral-900/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-lift">
-            <div className="relative aspect-[3/4] bg-neutral-900">
+        <div className="fixed inset-0 z-modal grid animate-fade-in place-items-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md animate-scale-in overflow-hidden rounded-3xl bg-card shadow-lift">
+            <div className="relative aspect-[3/4] bg-black">
               <video
                 ref={videoRef}
                 playsInline
@@ -233,7 +233,7 @@ export function ImageUploadField({
               <button
                 type="button"
                 onClick={() => setCameraOpen(false)}
-                className={cn(btn, "text-neutral-600 hover:bg-neutral-100")}
+                className={cn(btn, "text-neutral-700 hover:bg-neutral-100")}
               >
                 Cancel
               </button>

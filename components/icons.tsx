@@ -77,6 +77,15 @@ export function ArrowRight(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function Calendar(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <rect x="3" y="4.5" width="18" height="16" rx="2" />
+      <path d="M3 9h18M8 2.5v4M16 2.5v4" />
+    </Base>
+  );
+}
+
 export function X(props: SVGProps<SVGSVGElement>) {
   return (
     <Base {...props}>

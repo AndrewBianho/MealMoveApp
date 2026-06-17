@@ -37,6 +37,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) return null;
 
+        // A self-serve restaurant/drop-off account stays `pending` until an org
+        // admin approves it — never issue a session before then. Checked after
+        // the password so a wrong guess can't probe for pending accounts.
+        if (user.status !== "active") return null;
+
         await resetLimit(limitKey);
         return { id: user.id, email: user.email, name: user.name, role: user.role };
       },

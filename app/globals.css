@@ -2,9 +2,111 @@
 @tailwind components;
 @tailwind utilities;
 
-/* "Soft Harvest" — warm, organic food-rescue theme. Light only. */
+/* Two themes share one token set (RGB channels consumed by tailwind.config).
+   :root = "Arctic Blue" (light): cool off-white surface, navy ink, white cards.
+   .dark = "Deep Forest": near-black green surface, lifted charcoal cards, light
+   text, brightened status hues. The neutral scale flips direction in dark so
+   bg-neutral-50 is always the app background and text-neutral-900 the ink. */
 :root {
   color-scheme: light;
+  --n-50: 237 241 246;
+  --n-100: 226 232 240;
+  --n-200: 211 220 232;
+  --n-300: 186 198 214;
+  --n-400: 147 161 180;
+  --n-500: 102 115 138;
+  --n-600: 86 98 115;
+  --n-700: 58 69 85;
+  --n-800: 40 48 60;
+  --n-900: 27 36 48;
+  --card: 255 255 255;
+  --chrome: 244 246 248; /* frosted map chrome surface */
+
+  --rescued-50: 238 243 233;
+  --rescued-100: 213 226 200;
+  --rescued-200: 179 201 160;
+  --rescued-400: 127 156 111;
+  --rescued-600: 95 126 80;
+  --rescued-800: 52 69 42;
+  --urgent-50: 251 241 220;
+  --urgent-100: 246 223 169;
+  --urgent-200: 239 200 119;
+  --urgent-400: 231 180 84;
+  --urgent-600: 181 134 44;
+  --urgent-800: 110 79 18;
+  --failed-50: 251 232 226;
+  --failed-100: 243 195 182;
+  --failed-200: 232 156 137;
+  --failed-400: 212 101 79;
+  --failed-600: 168 65 46;
+  --failed-800: 100 35 24;
+  --transit-50: 242 236 245;
+  --transit-100: 220 203 230;
+  --transit-200: 192 166 208;
+  --transit-400: 154 127 176;
+  --transit-600: 110 86 132;
+  --transit-800: 62 43 78;
+  --clay-50: 250 237 227;
+  --clay-100: 240 205 179;
+  --clay-200: 227 168 127;
+  --clay-400: 217 138 95;
+  --clay-600: 192 109 64;
+  --clay-800: 122 63 32;
+
+  /* Wayfinding (not status): the active map route + its muted alternatives. */
+  --route: 37 99 176; /* maps blue — active/selected route */
+  --route-alt: 154 147 133; /* warm grey — alternative routes */
+}
+
+.dark {
+  color-scheme: dark;
+  --n-50: 22 26 23;
+  --n-100: 27 32 28;
+  --n-200: 46 53 47;
+  --n-300: 58 66 59;
+  --n-400: 107 117 104;
+  --n-500: 155 166 151;
+  --n-600: 174 184 170;
+  --n-700: 198 206 194;
+  --n-800: 220 225 216;
+  --n-900: 233 236 230;
+  --card: 31 36 31;
+  --chrome: 31 36 31;
+
+  --rescued-50: 31 42 26;
+  --rescued-100: 44 59 36;
+  --rescued-200: 61 82 50;
+  --rescued-400: 127 156 111;
+  --rescued-600: 110 145 89;
+  --rescued-800: 169 199 154;
+  --urgent-50: 42 36 18;
+  --urgent-100: 61 52 23;
+  --urgent-200: 90 77 34;
+  --urgent-400: 231 180 84;
+  --urgent-600: 199 154 69;
+  --urgent-800: 231 193 115;
+  --failed-50: 42 24 18;
+  --failed-100: 61 33 26;
+  --failed-200: 90 49 40;
+  --failed-400: 212 101 79;
+  --failed-600: 196 90 68;
+  --failed-800: 231 154 134;
+  --transit-50: 34 26 42;
+  --transit-100: 47 37 64;
+  --transit-200: 69 55 90;
+  --transit-400: 154 127 176;
+  --transit-600: 138 111 166;
+  --transit-800: 195 169 220;
+  --clay-50: 42 29 18;
+  --clay-100: 61 42 26;
+  --clay-200: 90 61 40;
+  --clay-400: 217 138 95;
+  --clay-600: 206 123 69;
+  --clay-800: 226 160 106;
+
+  /* Brightened for the dark surface; alt warms slightly to stay legible. */
+  --route: 78 143 214; /* maps blue — active/selected route */
+  --route-alt: 124 134 120; /* muted grey — alternative routes */
 }
 
 /* Headlines use the display serif by default (Fraunces). The soft aesthetic
@@ -16,14 +118,29 @@ h3 {
   letter-spacing: -0.02em;
 }
 
-/* Two soft, blurred color washes give the cream surface depth and warmth
-   instead of a flat fill — sage from the top-left, clay from the top-right. */
+/* Two soft, blurred washes give the surface depth instead of a flat fill.
+   Light: cool blue + sage. Dark: sage + plum glow on near-black. */
 body {
-  background-color: #f7f3ea;
+  background-color: rgb(var(--n-50));
+  /* A faint dot-grid for texture, plus two soft color washes for depth. */
   background-image:
-    radial-gradient(620px 340px at 12% -8%, rgba(127, 156, 111, 0.16), transparent 70%),
-    radial-gradient(560px 320px at 96% 2%, rgba(217, 138, 95, 0.13), transparent 72%);
+    radial-gradient(rgb(var(--n-900) / 0.035) 1px, transparent 1.7px),
+    radial-gradient(620px 340px at 12% -8%, rgba(70, 120, 175, 0.1), transparent 70%),
+    radial-gradient(560px 320px at 96% 2%, rgba(95, 126, 80, 0.08), transparent 72%);
+  background-size: 22px 22px, 100% 100%, 100% 100%;
   background-attachment: fixed;
+}
+.dark body {
+  background-image:
+    radial-gradient(rgb(var(--n-900) / 0.05) 1px, transparent 1.7px),
+    radial-gradient(620px 340px at 12% -8%, rgba(95, 126, 80, 0.12), transparent 70%),
+    radial-gradient(560px 320px at 96% 2%, rgba(110, 86, 132, 0.1), transparent 72%);
+  background-size: 22px 22px, 100% 100%, 100% 100%;
+}
+.dark body {
+  background-image:
+    radial-gradient(620px 340px at 12% -8%, rgba(95, 126, 80, 0.12), transparent 70%),
+    radial-gradient(560px 320px at 96% 2%, rgba(110, 86, 132, 0.1), transparent 72%);
 }
 
 /* Map popups: a frosted, rounded "Soft Harvest" card that sits in front of the
@@ -36,23 +153,96 @@ body {
 }
 .mapboxgl-popup-content {
   pointer-events: auto;
-  background: rgba(247, 243, 234, 0.7); /* cream, translucent */
+  background: rgb(var(--chrome) / 0.72); /* themed, translucent */
   -webkit-backdrop-filter: blur(12px) saturate(1.15);
   backdrop-filter: blur(12px) saturate(1.15);
-  border: 1px solid rgba(51, 52, 44, 0.1);
+  border: 1px solid rgb(var(--n-900) / 0.12);
   border-radius: 20px;
   box-shadow: 0 18px 40px -18px rgba(80, 70, 40, 0.5);
   padding: 14px 16px;
-  color: #44423a;
+  color: rgb(var(--n-800));
 }
 .mapboxgl-popup-close-button {
-  color: #6f6f62;
+  color: rgb(var(--n-600));
   font-size: 18px;
   padding-right: 6px;
+}
+/* The popup's "Claim pickup" button is raw DOM (inline styles can't carry a
+   :focus state), so brand its keyboard focus ring here — sage, not the UA blue,
+   to match the rest of the system. */
+.mapboxgl-popup-content button[data-claim]:focus-visible {
+  outline: 2px solid rgb(var(--rescued-600));
+  outline-offset: 2px;
 }
 /* Floating-card look: drop the little tip triangle so the glass reads clean. */
 .mapboxgl-popup-tip {
   display: none;
+}
+
+/* Map controls: re-skin Mapbox's default sharp white squares into the same
+   soft, frosted "Soft Harvest" card the popups use. */
+.mapboxgl-ctrl-group {
+  background: rgb(var(--chrome) / 0.85); /* themed, translucent */
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  backdrop-filter: blur(10px) saturate(1.1);
+  border: 1px solid rgb(var(--n-900) / 0.12);
+  border-radius: 16px;
+  box-shadow: 0 14px 34px -20px rgba(80, 70, 40, 0.45);
+  overflow: hidden;
+}
+.mapboxgl-ctrl-group button {
+  width: 44px;
+  height: 44px;
+  background-color: transparent;
+}
+.mapboxgl-ctrl-group button + button {
+  border-top: 1px solid rgb(var(--n-900) / 0.08);
+}
+.mapboxgl-ctrl-group button:hover {
+  background-color: rgb(var(--n-900) / 0.06);
+}
+.mapboxgl-ctrl-group button:focus-visible {
+  outline: 2px solid #7f9c6f; /* rescued-400 */
+  outline-offset: -2px;
+  box-shadow: none;
+}
+
+/* Map / Satellite mode toggle: a horizontal segmented control built on the
+   frosted ctrl-group above. Text buttons sit side by side; the active mode
+   gets the ink fill used by the app's nav pills. */
+.mm-mode-toggle {
+  display: flex;
+}
+.mm-mode-toggle button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: rgb(var(--n-800));
+}
+.mm-mode-toggle button + button {
+  border-top: 0;
+  border-left: 1px solid rgb(var(--n-900) / 0.08);
+}
+.mm-mode-toggle button[aria-pressed="true"] {
+  background-color: rgb(var(--n-900)); /* ink */
+  color: rgb(var(--n-50)); /* surface */
+}
+.mm-mode-toggle button[aria-pressed="true"]:hover {
+  background-color: rgb(var(--n-900));
+}
+
+/* Home / reset-view button: centre the glyph and tone it to the ink palette. */
+.mm-home-btn {
+  display: grid;
+  place-items: center;
+  color: rgb(var(--n-800));
+}
+
+/* Attribution: tone into the warm surface instead of stark white. */
+.mapboxgl-ctrl-attrib.mapboxgl-compact {
+  background: rgb(var(--chrome) / 0.78);
+  border-radius: 12px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -61,5 +251,7 @@ body {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

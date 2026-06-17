@@ -6,7 +6,9 @@ import { prisma } from "./prisma";
 type Db = Pick<typeof prisma, "message">;
 
 const MAX_BODY = 2000;
-const ACTIVE_STATUSES = ["claimed", "in_transit"];
+// taken_home stays active: the volunteer and drop-off still coordinate the
+// next-day delivery.
+const ACTIVE_STATUSES = ["claimed", "in_transit", "taken_home"];
 
 /** The fields of the acting user that decide chat access. */
 export interface ChatUser {

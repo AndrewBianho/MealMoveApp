@@ -1,5 +1,6 @@
 import { ListingDetail } from "@/components/ListingDetail";
 import { getListing } from "@/lib/listings";
+import { getActiveDropOffNotices } from "@/lib/dropoffNotices";
 import { canAccessChat } from "@/lib/chat";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
@@ -13,7 +14,18 @@ export default async function ListingDetailPage({
 }) {
   const session = await auth();
   const viewerId = session?.user?.id;
+  const canClaim = session?.user?.role !== "org_admin";
   const listing = await getListing(params.id, viewerId);
+
+  // Any active service notices for this listing's drop-off — a volunteer
+  // heading there should see "closing early / fridge down" up front.
+  const listingRow = await prisma.foodListing.findUnique({
+    where: { id: params.id },
+    select: { dropOffId: true },
+  });
+  const dropOffNotices = listingRow?.dropOffId
+    ? await getActiveDropOffNotices(listingRow.dropOffId)
+    : [];
 
   // Decide chat access server-side: it depends on the user's role + restaurantId
   // (not carried in the JWT session) and the claim's parties.
@@ -22,11 +34,19 @@ export default async function ListingDetailPage({
   // outstanding invite — both drive the buddy UI.
   let incomingInvite: { id: string; inviterName: string } | null = null;
   let outgoingInvite: { inviteeName: string } | null = null;
+  // Whether to offer the one-time post-claim notification prime to this viewer.
+  let canPrimeNotifications = false;
   if (viewerId) {
     const [user, ctx, mine, pending] = await Promise.all([
       prisma.user.findUnique({
         where: { id: viewerId },
-        select: { id: true, role: true, restaurantId: true },
+        select: {
+          id: true,
+          role: true,
+          restaurantId: true,
+          notificationsEnabled: true,
+          notifyPrimedAt: true,
+        },
       }),
       prisma.foodListing.findUnique({
         where: { id: params.id },
@@ -48,6 +68,10 @@ export default async function ListingDetailPage({
       }),
     ]);
     canChat = Boolean(user && ctx && canAccessChat(user, ctx));
+    // Volunteers only, and only if they haven't already opted in or been asked.
+    canPrimeNotifications = Boolean(
+      canClaim && user && !user.notificationsEnabled && !user.notifyPrimedAt
+    );
     if (mine) incomingInvite = { id: mine.id, inviterName: mine.inviter.name };
     // Only the primary should see the outgoing-invite state.
     if (pending && ctx?.pickup?.volunteerId === viewerId) {
@@ -56,13 +80,16 @@ export default async function ListingDetailPage({
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-[1760px] px-6 py-8">
       <ListingDetail
         listing={listing}
         viewerId={viewerId}
         canChat={canChat}
+        canClaim={canClaim}
         incomingInvite={incomingInvite}
         outgoingInvite={outgoingInvite}
+        dropOffNotices={dropOffNotices}
+        canPrimeNotifications={canPrimeNotifications}
       />
     </main>
   );

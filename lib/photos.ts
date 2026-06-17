@@ -17,16 +17,30 @@ async function loadClaimInStatus(
   db: Db,
   userId: string,
   listingId: string,
-  status: "claimed" | "in_transit"
+  statuses: readonly ("claimed" | "in_transit" | "taken_home")[]
 ) {
   const pickup = await db.pickup.findUnique({
     where: { listingId },
     include: { listing: { include: { dropOff: true } } },
   });
-  if (!pickup || !isOnClaim(pickup, userId) || pickup.listing.status !== status) {
+  if (
+    !pickup ||
+    !isOnClaim(pickup, userId) ||
+    !(statuses as readonly string[]).includes(pickup.listing.status)
+  ) {
     throw new Error("This pickup is no longer active.");
   }
   return pickup;
+}
+
+// "Deliver by tomorrow evening." A taken-home pickup gets a calm next-day
+// deadline (the following day at 8 PM local) — used for display and a possible
+// gentle nudge, never to auto-fail the pickup.
+function nextEveningDeadline(now: number): Date {
+  const d = new Date(now);
+  d.setDate(d.getDate() + 1);
+  d.setHours(20, 0, 0, 0);
+  return d;
 }
 
 /**
@@ -43,7 +57,7 @@ export async function startDeliveryWithPhotoFor(
 ): Promise<void> {
   const url = photoUrl?.trim();
   if (!url) throw new Error("A pickup photo is required to start delivery.");
-  const pickup = await loadClaimInStatus(db, userId, listingId, "claimed");
+  const pickup = await loadClaimInStatus(db, userId, listingId, ["claimed"]);
   const dropOff = pickup.listing.dropOff;
 
   // A durable "it's picked up" line in the coordination thread, posted from the
@@ -105,7 +119,12 @@ export async function markDeliveredWithPhotoFor(
 ): Promise<void> {
   const url = photoUrl?.trim();
   if (!url) throw new Error("A delivery photo is required to mark delivered.");
-  const pickup = await loadClaimInStatus(db, userId, listingId, "in_transit");
+  // Completes the rescue whether the food went straight there (in_transit) or
+  // was kept overnight and delivered the next day (taken_home).
+  const pickup = await loadClaimInStatus(db, userId, listingId, [
+    "in_transit",
+    "taken_home",
+  ]);
 
   // Credit every seat that showed up: a delivered event per volunteer (and the
   // buddy, if any) so reliability — which tallies delivered events per actor —
@@ -136,5 +155,52 @@ export async function markDeliveredWithPhotoFor(
         data: { listingId, type: "delivered", actorId: id },
       })
     ),
+  ]);
+}
+
+/**
+ * "Take it home for tomorrow." When a volunteer has the food (in_transit) but
+ * can't complete the delivery today — the drop-off closed, they ran out of time
+ * — they keep it overnight and deliver the next day instead of the rescue
+ * failing. Advances in_transit → taken_home, stamps a gentle next-day deadline,
+ * and posts a line to the coordination thread so the drop-off knows it's
+ * delayed, not lost. The volunteer completes it later with the normal delivery
+ * photo (markDeliveredWithPhotoFor accepts taken_home). Non-punitive: the sweep
+ * never touches in-flight pickups, so a taken-home listing is never auto-failed.
+ */
+export async function takeHomeForTomorrowFor(
+  db: Db,
+  userId: string,
+  listingId: string,
+  now: number = Date.now()
+): Promise<void> {
+  const pickup = await loadClaimInStatus(db, userId, listingId, ["in_transit"]);
+  const dropOff = pickup.listing.dropOff;
+  const deliverBy = nextEveningDeadline(now);
+
+  const body = dropOff
+    ? `Couldn't deliver today — keeping it safe overnight and dropping at ${dropOff.name} tomorrow.`
+    : "Couldn't deliver today — keeping it safe overnight and delivering tomorrow.";
+
+  await db.$transaction([
+    db.pickup.update({
+      where: { listingId },
+      data: { takenHomeAt: new Date(now), deliverBy },
+    }),
+    db.foodListing.update({
+      where: { id: listingId },
+      data: { status: "taken_home" },
+    }),
+    db.listingEvent.create({
+      data: {
+        listingId,
+        type: "taken_home",
+        actorId: userId,
+        meta: { deliverBy: deliverBy.toISOString() },
+      },
+    }),
+    db.message.create({
+      data: { listingId, senderId: userId, body },
+    }),
   ]);
 }

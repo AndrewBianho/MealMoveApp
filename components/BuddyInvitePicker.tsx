@@ -59,13 +59,13 @@ export function BuddyInvitePicker({
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+        <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
           Invite a buddy
         </p>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-full px-2 py-1 text-[13px] text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+          className="rounded-full px-2 py-1 text-[13px] text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
         >
           Cancel
         </button>
@@ -96,7 +96,7 @@ export function BuddyInvitePicker({
       )}
 
       {state.kind === "ready" && state.volunteers.length === 0 && (
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-neutral-700">
           No volunteers to invite right now.
         </p>
       )}

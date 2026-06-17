@@ -24,7 +24,7 @@ export function Toast({ message }: { message: string | null }) {
   return (
     <div
       role="status"
-      className="fixed bottom-6 left-1/2 z-20 -translate-x-1/2 rounded-md border border-rescued-200 bg-white px-4 py-2.5 text-sm text-neutral-900 shadow-none"
+      className="fixed bottom-6 left-1/2 z-toast -translate-x-1/2 animate-toast-in rounded-md border border-rescued-200 bg-card px-4 py-2.5 text-sm text-neutral-900 shadow-card"
     >
       {message}
     </div>

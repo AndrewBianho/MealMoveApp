@@ -49,7 +49,7 @@ export function ChatPanel({
   const [error, setError] = useState<string | null>(null);
 
   const sinceRef = useRef<string | undefined>(undefined);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const poll = useCallback(async () => {
     try {
@@ -95,8 +95,12 @@ export function ChatPanel({
     };
   }, [poll]);
 
+  // Keep the newest message in view by scrolling the thread's OWN container —
+  // never scrollIntoView, which also scrolls the page/window and yanks the whole
+  // pickup view down on mount and on every new message.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" });
+    const el = listRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   async function send(e: React.FormEvent) {
@@ -125,14 +129,14 @@ export function ChatPanel({
   }
 
   return (
-    <div className="rounded-2xl border border-neutral-200/40 bg-white p-5 shadow-card">
-      <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+    <div className="rounded-2xl border border-neutral-200/40 bg-card p-5 shadow-card">
+      <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
         Coordination chat
       </p>
 
-      <div className="mb-3 max-h-72 space-y-3 overflow-y-auto">
+      <div ref={listRef} className="mb-3 max-h-72 space-y-3 overflow-y-auto">
         {messages.length === 0 ? (
-          <p className="text-[13px] text-neutral-600">
+          <p className="text-[13px] text-neutral-700">
             No messages yet. Say hello — the restaurant and drop-off can see this
             too.
           </p>
@@ -148,7 +152,7 @@ export function ChatPanel({
                   <span className="text-[13px] font-semibold text-neutral-900">
                     {mine ? "You" : m.senderName}
                   </span>
-                  <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-400">
+                  <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
                     {ROLE_LABEL[m.senderRole]} · {clock(m.createdAt)}
                   </span>
                 </div>
@@ -166,7 +170,6 @@ export function ChatPanel({
             );
           })
         )}
-        <div ref={bottomRef} />
       </div>
 
       {active ? (
@@ -175,7 +178,7 @@ export function ChatPanel({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Message the restaurant and drop-off…"
-            className="min-w-0 flex-1 rounded-full border border-neutral-200 bg-white px-4 py-2 text-[13px] outline-none focus:border-rescued-400 focus:ring-2 focus:ring-rescued-200"
+            className="min-w-0 flex-1 rounded-full border border-neutral-200 bg-card px-4 py-2 text-[13px] outline-none focus:border-rescued-400 focus:ring-2 focus:ring-rescued-200"
           />
           <button
             type="submit"
@@ -189,7 +192,7 @@ export function ChatPanel({
           </button>
         </form>
       ) : (
-        <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-400">
+        <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
           Conversation closed
         </p>
       )}

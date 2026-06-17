@@ -19,6 +19,53 @@ function smtpConfigured(): boolean {
   return Boolean(SMTP_HOST && SMTP_PORT && SMTP_FROM);
 }
 
+// Encodes the three characters that break out of an HTML text node. Safe for
+// text content (the only use here, building email bodies); NOT sufficient for
+// attribute values, which would also need quote escaping.
+export function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+export function absoluteUrl(path: string): string {
+  const base = (process.env.APP_URL ?? "").replace(/\/$/, "");
+  // Without APP_URL the result is only root-relative, which produces dead links
+  // in emails (they open in no browser context). Warn so the misconfiguration is
+  // visible at send time rather than when a recipient clicks a broken link.
+  if (!base) {
+    console.warn("[email] APP_URL is not set — email links will be relative and may not work.");
+  }
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+// Send one opt-in nudge email. Mirrors sendPasswordResetEmail: lazy nodemailer,
+// never throws, logs in dev when SMTP is unconfigured.
+export async function sendNudgeEmail(
+  to: string,
+  subject: string,
+  html: string
+): Promise<void> {
+  if (!smtpConfigured()) {
+    console.log(`[nudge] would email ${to}: ${subject}`);
+    return;
+  }
+  try {
+    const nodemailer = await import("nodemailer");
+    const port = Number(SMTP_PORT);
+    const transport = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port,
+      secure: port === 465,
+      auth: SMTP_USER && SMTP_PASS ? { user: SMTP_USER, pass: SMTP_PASS } : undefined,
+    });
+    await transport.sendMail({ from: SMTP_FROM, to, subject, html });
+  } catch (e) {
+    console.error("[nudge] email send failed:", e);
+  }
+}
+
 /**
  * Send the password-reset email. Never throws — a mail outage must not surface
  * to the caller, because that would leak whether an account exists.

@@ -1,4 +1,64 @@
 import { prisma } from "./prisma";
+import { occurrencesWithin } from "./recurring";
+
+// How far ahead we materialize scheduled listings. Volunteers see roughly a week
+// and a half of upcoming pickups; the sweep tops this up on every run.
+const HORIZON_DAYS = 10;
+
+/**
+ * Turn active recurring schedules into real, future FoodListing rows so
+ * volunteers can see upcoming pickups. Idempotent: one listing per
+ * (schedule, availableAt), so re-running only fills gaps. Each row carries a
+ * future `availableAt` — it's visible but locked until then (see claimListing).
+ * Can be called standalone (on create / activate) or from the sweep cron.
+ */
+export async function materializeSchedules(
+  now: Date = new Date()
+): Promise<{ scheduled: number }> {
+  const schedules = await prisma.recurringPost.findMany({
+    where: { active: true },
+  });
+  let scheduled = 0;
+  for (const s of schedules) {
+    const occurrences = occurrencesWithin(
+      {
+        daysOfWeek: s.daysOfWeek,
+        timeOfDay: s.timeOfDay,
+        windowMinutes: s.windowMinutes,
+      },
+      HORIZON_DAYS,
+      now
+    );
+    for (const o of occurrences) {
+      const exists = await prisma.foodListing.findFirst({
+        where: { recurringPostId: s.id, availableAt: o.availableAt },
+        select: { id: true },
+      });
+      if (exists) continue;
+      await prisma.foodListing.create({
+        data: {
+          title: s.title,
+          servings: s.servings,
+          weightLbs: s.weightLbs,
+          category: s.category,
+          perishable: s.perishable,
+          notes: s.notes,
+          imageUrl: s.imageUrl,
+          demo: s.demo,
+          status: "open",
+          restaurantId: s.restaurantId,
+          recurringPostId: s.id,
+          availableAt: o.availableAt,
+          postedAt: now,
+          expiresAt: o.expiresAt,
+          events: { create: { type: "posted", meta: { scheduled: true } } },
+        },
+      });
+      scheduled++;
+    }
+  }
+  return { scheduled };
+}
 
 // The anti-flaking engine. Run on a schedule, it:
 //   1. Releases claims whose 15-min hold lapsed without the volunteer starting
