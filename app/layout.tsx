@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Nunito_Sans, JetBrains_Mono } from "next/font/google";
 import { Header } from "@/components/Header";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 // Display: soft characterful serif. Body: warm humanist sans. Data: mono.
@@ -51,6 +52,7 @@ export default function RootLayout({
         />
         <Header />
         {children}
+        <Analytics />
       </body>
     </html>
   );
