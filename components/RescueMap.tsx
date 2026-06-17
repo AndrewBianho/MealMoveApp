@@ -937,7 +937,7 @@ export function RescueMap({
       // Isolate drop-offs to the selected one (ring it as the anchor). The
       // selected drop-off always shows, regardless of the "show drop-offs" toggle.
       dropMarkers.current.forEach((m, id) => {
-        resetDropMarker(m, id);
+        resetDropMarker(m);
         const el = m.getElement();
         el.style.display = id === sel.id ? "grid" : "none";
         if (id === sel.id) {
