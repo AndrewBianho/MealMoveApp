@@ -26,9 +26,11 @@ export async function POST(req: Request) {
       create: { userId, token, userAgent },
     });
   }
+  // Enabling counts as being primed too, so the one-time prime card never
+  // reappears after a claim even if the user later turns notifications off.
   await prisma.user.update({
     where: { id: userId },
-    data: { notificationsEnabled: true },
+    data: { notificationsEnabled: true, notifyPrimedAt: new Date() },
   });
 
   return NextResponse.json({ ok: true });

@@ -18,6 +18,7 @@ import {
   releaseClaim,
 } from "@/app/actions";
 import { CheckInPrompt } from "./CheckInPrompt";
+import { NotificationPrimeCard } from "./NotificationPrimeCard";
 import { ChatPanel } from "./ChatPanel";
 import { Avatar } from "./Avatar";
 import { BuddyInvitePicker } from "./BuddyInvitePicker";
@@ -75,12 +76,16 @@ export function ListingDetail({
   incomingInvite = null,
   outgoingInvite = null,
   dropOffNotices = [],
+  canPrimeNotifications = false,
 }: {
   listing: Listing | null;
   viewerId?: string;
   canChat?: boolean;
   /** Org admins oversee but don't carry pickups — hide the claim affordance. */
   canClaim?: boolean;
+  /** Volunteer hasn't enabled notifications or been prompted — show the one-time
+   * prime card after they claim, the design's gentle anti-flaking on-ramp. */
+  canPrimeNotifications?: boolean;
   /** A pending buddy invite addressed to the current viewer, if any. */
   incomingInvite?: { id: string; inviterName: string } | null;
   /** The primary's outstanding buddy invite, if one is awaiting a response. */
@@ -95,6 +100,8 @@ export function ListingDetail({
   const [confirmTakeHome, setConfirmTakeHome] = useState(false);
   // Set when this volunteer completes the delivery; renders the celebration.
   const [celebration, setCelebration] = useState<VolunteerImpact | null>(null);
+  // One-time notification prime, surfaced right after a fresh claim.
+  const [primeOpen, setPrimeOpen] = useState(false);
 
   if (!listing) {
     return (
@@ -131,6 +138,7 @@ export function ListingDetail({
   function onClaim() {
     startTransition(async () => {
       await claimListing(id);
+      if (canPrimeNotifications) setPrimeOpen(true);
       show("Claimed — it's yours for the next fifteen minutes.");
     });
   }
@@ -225,6 +233,12 @@ export function ListingDetail({
       >
         ← Feed
       </Link>
+
+      {primeOpen && (
+        <div className="mb-4 animate-fade-in">
+          <NotificationPrimeCard onDone={() => setPrimeOpen(false)} />
+        </div>
+      )}
 
       {incomingInvite && !listing.mine && onClaimActive && (
         <div className="mb-4 rounded-xl border border-rescued-200 bg-rescued-50 p-5">

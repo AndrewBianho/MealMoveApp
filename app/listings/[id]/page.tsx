@@ -34,11 +34,19 @@ export default async function ListingDetailPage({
   // outstanding invite — both drive the buddy UI.
   let incomingInvite: { id: string; inviterName: string } | null = null;
   let outgoingInvite: { inviteeName: string } | null = null;
+  // Whether to offer the one-time post-claim notification prime to this viewer.
+  let canPrimeNotifications = false;
   if (viewerId) {
     const [user, ctx, mine, pending] = await Promise.all([
       prisma.user.findUnique({
         where: { id: viewerId },
-        select: { id: true, role: true, restaurantId: true },
+        select: {
+          id: true,
+          role: true,
+          restaurantId: true,
+          notificationsEnabled: true,
+          notifyPrimedAt: true,
+        },
       }),
       prisma.foodListing.findUnique({
         where: { id: params.id },
@@ -60,6 +68,10 @@ export default async function ListingDetailPage({
       }),
     ]);
     canChat = Boolean(user && ctx && canAccessChat(user, ctx));
+    // Volunteers only, and only if they haven't already opted in or been asked.
+    canPrimeNotifications = Boolean(
+      canClaim && user && !user.notificationsEnabled && !user.notifyPrimedAt
+    );
     if (mine) incomingInvite = { id: mine.id, inviterName: mine.inviter.name };
     // Only the primary should see the outgoing-invite state.
     if (pending && ctx?.pickup?.volunteerId === viewerId) {
@@ -77,6 +89,7 @@ export default async function ListingDetailPage({
         incomingInvite={incomingInvite}
         outgoingInvite={outgoingInvite}
         dropOffNotices={dropOffNotices}
+        canPrimeNotifications={canPrimeNotifications}
       />
     </main>
   );
