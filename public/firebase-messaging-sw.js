@@ -2,11 +2,11 @@ importScripts("https://www.gstatic.com/firebasejs/12.15.0/firebase-app-compat.js
 importScripts("https://www.gstatic.com/firebasejs/12.15.0/firebase-messaging-compat.js");
 
 firebase.initializeApp({
-  apiKey: "REPLACE_NEXT_PUBLIC_FIREBASE_API_KEY",
-  authDomain: "REPLACE_NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN",
-  projectId: "REPLACE_NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-  messagingSenderId: "REPLACE_NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID",
-  appId: "REPLACE_NEXT_PUBLIC_FIREBASE_APP_ID",
+  apiKey: "AIzaSyACC_W16oWf9yf1imqlyejxJuPLaA2qPzg",
+  authDomain: "mealmove-cd53f.firebaseapp.com",
+  projectId: "mealmove-cd53f",
+  messagingSenderId: "454029794003",
+  appId: "1:454029794003:web:d574d6bd21cd96ffe61226",
 });
 
 const messaging = firebase.messaging();
