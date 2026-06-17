@@ -14,7 +14,7 @@ import Link from "next/link";
 // GDPR or CCPA) before you rely on it.
 
 const ORG_NAME = "Meal Move";
-const CONTACT_EMAIL = "privacy@mealmove.app";
+const CONTACT_EMAIL = "support@mealmove.app";
 const EFFECTIVE_DATE = "June 16, 2026";
 
 export const metadata: Metadata = {
