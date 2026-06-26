@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { cn } from "./cn";
 import { ListingCard } from "./ListingCard";
 import { EmptyState } from "./EmptyState";
@@ -214,6 +214,52 @@ function SectionHeader({ title, count }: { title: string; count: number }) {
   );
 }
 
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={cn("transition-transform duration-200", open && "rotate-180")}
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+// A collapsible "Claimed & closed" header — tracking that's incidental to
+// browsing, so it folds away by default (with its count) and one tap expands it.
+function CollapsibleSectionHeader({
+  title,
+  count,
+  open,
+  onToggle,
+}: {
+  title: string;
+  count: number;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-expanded={open}
+      className="mb-3.5 flex w-full items-center gap-2 rounded-lg py-1 text-left text-neutral-600 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+    >
+      <Chevron open={open} />
+      <h2 className="text-[15px] font-semibold text-neutral-800">{title}</h2>
+      <span className="font-mono text-xs text-neutral-500">{count}</span>
+    </button>
+  );
+}
+
 // Single-column stack — wide horizontal cards, one per row, in a calm rhythm.
 function ListingStack({
   listings,
@@ -247,6 +293,10 @@ export function ListingFeed({
   const [filter, setFilter] = useState<Filter>("open");
   const [sort, setSort] = useState<Sort>("closing soon");
   const [category, setCategory] = useState<CategoryChoice>("all types");
+  // "Claimed & closed" is tracking, not browsing — collapsed by default for
+  // volunteers (who have a dedicated "My pickups" page), expanded for org admins
+  // who use the feed for oversight.
+  const [closedOpen, setClosedOpen] = useState(!canClaim);
   const { message, show } = useToast();
   const [isPending, startTransition] = useTransition();
 
@@ -344,6 +394,16 @@ export function ListingFeed({
     .sort((a, b) => (a.availableAt ?? 0) - (b.availableAt ?? 0));
   const unclaimable = shown.filter((l) => l.status !== "open");
 
+  // Expand the collapsed tracking section when it's the point of the view — an
+  // org admin, an explicit tracking filter, or nothing claimable to lead with.
+  const trackingFilter =
+    filter === "claimed" || filter === "in transit" || filter === "delivered";
+  const closedDefaultOpen =
+    !canClaim || trackingFilter || (claimable.length === 0 && comingUp.length === 0);
+  useEffect(() => {
+    setClosedOpen(closedDefaultOpen);
+  }, [closedDefaultOpen]);
+
   return (
     <div className={cn(isPending && "opacity-70 transition-opacity")}>
       <div className="mb-6 space-y-3">
@@ -382,8 +442,13 @@ export function ListingFeed({
           )}
           {unclaimable.length > 0 && (
             <section>
-              <SectionHeader title="Claimed & closed" count={unclaimable.length} />
-              <ListingStack listings={unclaimable} />
+              <CollapsibleSectionHeader
+                title="Claimed & closed"
+                count={unclaimable.length}
+                open={closedOpen}
+                onToggle={() => setClosedOpen((o) => !o)}
+              />
+              {closedOpen && <ListingStack listings={unclaimable} />}
             </section>
           )}
         </div>
