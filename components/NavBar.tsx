@@ -31,6 +31,9 @@ const RESTAURANT: Item = { href: "/restaurant", label: "Restaurant", short: "Res
 const DROPOFF: Item = { href: "/dropoff", label: "Drop-off", icon: "dropoff" };
 const IMPACT: Item = { href: "/impact", label: "Impact", icon: "impact" };
 const MEMBERS: Item = { href: "/admin/users", label: "Members", icon: "members" };
+const RELIABILITY: Item = { href: "/admin/reliability", label: "Reliability", short: "Reliability", icon: "reliability" };
+const PARTNERS: Item = { href: "/admin/partners", label: "Partner notes", short: "Partners", icon: "partners" };
+const HEALTH: Item = { href: "/admin/health", label: "Ops health", short: "Health", icon: "health" };
 
 const NAV_BY_ROLE: Record<Role, Item[]> = {
   volunteer: [FEED, MAP, PICKUPS, IMPACT],
@@ -39,7 +42,7 @@ const NAV_BY_ROLE: Record<Role, Item[]> = {
   // Org admins oversee — they don't claim, so no "My pickups". They keep the
   // feed/map (visibility), the restaurant console (special posts), impact (the
   // in-depth stats), and members.
-  org_admin: [FEED, MAP, RESTAURANT, DROPOFF, IMPACT, MEMBERS],
+  org_admin: [FEED, MAP, RESTAURANT, DROPOFF, IMPACT, HEALTH, RELIABILITY, PARTNERS, MEMBERS],
 };
 
 // Line icons for the mobile bottom bar / more-sheet, keyed by Item.icon.
@@ -80,6 +83,24 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M12 20V4" />
       <path d="M19 20v-7" />
       <path d="M3 20h18" />
+    </>
+  ),
+  reliability: (
+    <>
+      <path d="M3.5 12a8.5 8.5 0 0 1 17 0" />
+      <path d="M12 12l4-2.5" />
+      <circle cx="12" cy="12" r="1.4" />
+    </>
+  ),
+  partners: (
+    <>
+      <path d="M4 7h11l-2.5-2.5M20 17H9l2.5 2.5" />
+      <path d="M4 7l2.5 2.5M20 17l-2.5-2.5" />
+    </>
+  ),
+  health: (
+    <>
+      <path d="M3 12h4l2 5 4-12 2 7h6" />
     </>
   ),
   members: (

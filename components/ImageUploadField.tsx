@@ -1,10 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { Camera, Upload, X } from "./icons";
 import { cn } from "./cn";
 import { primaryFill } from "./styles";
+import {
+  clearPendingUpload,
+  getPendingUpload,
+  savePendingUpload,
+  shouldQueueUpload,
+} from "@/lib/uploadQueue";
 
 // Downscale to keep phone photos small (fast uploads, well under the 5 MB cap)
 // and re-encode as JPEG. Works on both a File (upload) and a canvas blob (camera).
@@ -34,6 +40,7 @@ export function ImageUploadField({
   hint,
   aspect = "aspect-[16/9]",
   optional = true,
+  uploadKey,
 }: {
   value?: string | null;
   onChange: (url: string | null) => void;
@@ -41,10 +48,17 @@ export function ImageUploadField({
   hint?: string;
   aspect?: string;
   optional?: boolean;
+  /**
+   * Stable id (e.g. "pickup:<listingId>"). When set, a photo captured while
+   * offline is stashed locally and uploaded automatically on reconnect, so the
+   * pickup isn't lost on a flaky connection.
+   */
+  uploadKey?: string;
 }) {
   const [preview, setPreview] = useState<string | null>(value ?? null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [queued, setQueued] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
 
   const fileInput = useRef<HTMLInputElement>(null);
@@ -89,24 +103,84 @@ export function ImageUploadField({
     };
   }, [cameraOpen]);
 
+  // Downscale + POST, returning the hosted URL or throwing. A network failure
+  // throws (so callers can decide to queue); a server error throws its message.
+  async function postUpload(blob: Blob): Promise<string> {
+    const small = await downscale(blob);
+    const form = new FormData();
+    form.append("file", small, "photo.jpg");
+    const res = await fetch("/api/upload", { method: "POST", body: form });
+    const data = (await res.json()) as { url?: string; error?: string };
+    if (!res.ok || !data.url) throw new Error(data.error ?? "Upload failed.");
+    return data.url;
+  }
+
   async function upload(blob: Blob) {
     setBusy(true);
     setError(null);
+    setQueued(false);
     try {
-      const small = await downscale(blob);
-      const form = new FormData();
-      form.append("file", small, "photo.jpg");
-      const res = await fetch("/api/upload", { method: "POST", body: form });
-      const data = (await res.json()) as { url?: string; error?: string };
-      if (!res.ok || !data.url) throw new Error(data.error ?? "Upload failed.");
-      setPreview(data.url);
-      onChange(data.url);
+      const url = await postUpload(blob);
+      setPreview(url);
+      onChange(url);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed.");
+      const online = typeof navigator === "undefined" ? true : navigator.onLine;
+      // Offline (or a network hiccup): stash the photo and finish on reconnect
+      // instead of losing it. Needs a uploadKey to know what to resume.
+      if (uploadKey && shouldQueueUpload(online, e)) {
+        await savePendingUpload(uploadKey, blob);
+        setPreview(URL.createObjectURL(blob));
+        setQueued(true);
+      } else {
+        setError(e instanceof Error ? e.message : "Upload failed.");
+      }
     } finally {
       setBusy(false);
     }
   }
+
+  // Try to send a previously-stashed photo. Clears the queue + advances the
+  // claim (onChange) on success; stays queued if still offline.
+  const flush = useCallback(async () => {
+    if (!uploadKey) return;
+    const blob = await getPendingUpload(uploadKey);
+    if (!blob) return;
+    setBusy(true);
+    try {
+      const url = await postUpload(blob);
+      await clearPendingUpload(uploadKey);
+      setQueued(false);
+      setPreview(url);
+      onChange(url);
+    } catch {
+      // Still unreachable — leave it queued for the next reconnect.
+    } finally {
+      setBusy(false);
+    }
+    // postUpload/onChange are stable enough for this manual resume path.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadKey]);
+
+  // On mount, pick up any photo stashed in a previous (offline) session, and
+  // flush automatically whenever the connection returns.
+  useEffect(() => {
+    if (!uploadKey) return;
+    let cancelled = false;
+    (async () => {
+      const blob = await getPendingUpload(uploadKey);
+      if (blob && !cancelled) {
+        setQueued(true);
+        setPreview((p) => p ?? URL.createObjectURL(blob));
+        if (typeof navigator === "undefined" || navigator.onLine) flush();
+      }
+    })();
+    const onOnline = () => flush();
+    window.addEventListener("online", onOnline);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("online", onOnline);
+    };
+  }, [uploadKey, flush]);
 
   function capture() {
     const video = videoRef.current;
@@ -129,6 +203,8 @@ export function ImageUploadField({
     setPreview(null);
     onChange(null);
     setError(null);
+    setQueued(false);
+    if (uploadKey) clearPendingUpload(uploadKey);
   }
 
   const btn =
@@ -195,10 +271,17 @@ export function ImageUploadField({
         </div>
       )}
 
-      {hint && !error && (
+      {hint && !error && !queued && (
         <p className="mt-1.5 text-[12px] text-neutral-700">{hint}</p>
       )}
       {error && <p className="mt-1.5 text-[12px] text-failed-600">{error}</p>}
+      {queued && (
+        <p className="mt-1.5 flex items-center gap-1.5 text-[12px] text-urgent-700">
+          <span aria-hidden="true">⏳</span>
+          Saved — we&apos;ll upload it when you&apos;re back online. Your pickup is
+          safe.
+        </p>
+      )}
 
       {/* Hidden inputs: gallery/file picker, and the device's native camera. */}
       <input

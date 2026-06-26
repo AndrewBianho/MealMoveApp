@@ -106,6 +106,39 @@ export function buildDropOffPayload(notice: DropOffPickupNotice): NotifyPayload 
   };
 }
 
+export interface BroadcastPush {
+  listingId: string;
+  listingTitle: string;
+  servings: number;
+  minutesLeft: number;
+  /** Time-left band driving the escalation; tunes the urgency of the copy. */
+  band: "open" | "soon" | "closing_soon";
+}
+
+export function buildBroadcastPayload(push: BroadcastPush): NotifyPayload {
+  const title = escapeHtml(push.listingTitle);
+  const mins = Math.max(0, push.minutesLeft);
+  const lead =
+    push.band === "closing_soon"
+      ? "Last call"
+      : push.band === "soon"
+        ? "Closing soon"
+        : "Food to rescue";
+  const servings = `${push.servings} ${push.servings === 1 ? "serving" : "servings"}`;
+  return {
+    title: `${lead}: ${push.listingTitle}`,
+    body: `${servings} · about ${mins} min left. Tap to claim it.`,
+    url: `/listings/${push.listingId}`,
+    email: {
+      subject: `${lead} — "${push.listingTitle}" needs a rescue`,
+      html:
+        `<p>"${title}" (${servings}) has about ${mins} minutes left before its ` +
+        `pickup window closes. If you can grab it, tap below to claim it.</p>` +
+        emailButton("Claim this pickup", `/listings/${push.listingId}`),
+    },
+  };
+}
+
 // Reaches every drop-off admin (the schema doesn't tie an admin to one DropOff,
 // mirroring the /dropoff page). Recipient lookup is injectable for tests.
 export async function sendDropOffPickupNotice(

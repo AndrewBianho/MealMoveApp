@@ -4,6 +4,9 @@ import { auth } from "@/auth";
 import { getListings } from "@/lib/listings";
 import { isDemo } from "@/lib/mode";
 import { prisma } from "@/lib/prisma";
+import { countActiveVolunteersNear } from "@/lib/nearby";
+import { restaurantAccuracy } from "@/lib/accuracy";
+import { RestaurantAccuracySummary } from "@/components/RestaurantAccuracySummary";
 import { RESTAURANT } from "@/lib/mock";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +25,21 @@ export default async function RestaurantPage() {
   const all = await getListings();
   const mine = restaurant ? all.filter((l) => l.source === restaurant.name) : [];
   const demo = await isDemo();
+
+  // How many volunteers are active near this restaurant right now — an honest
+  // "will someone show up?" signal for the post form and live cards.
+  const nearbyVolunteers = restaurant
+    ? await countActiveVolunteersNear(
+        { lat: restaurant.lat, lng: restaurant.lng },
+        { demo }
+      )
+    : 0;
+
+  // How dependable this restaurant's pickups have been, per volunteers — a
+  // private operations signal shown to the restaurant (and org admins).
+  const accuracy = restaurant
+    ? await restaurantAccuracy(restaurant.id)
+    : null;
 
   // This restaurant's recurring schedules, newest first.
   const schedules = restaurant
@@ -75,7 +93,13 @@ export default async function RestaurantPage() {
             restaurantImageUrl={restaurant.imageUrl}
             listings={mine}
             schedules={schedules}
+            nearbyVolunteers={nearbyVolunteers}
           />
+          {accuracy && (
+            <div className="mt-8 max-w-md rounded-3xl bg-card p-6 shadow-card">
+              <RestaurantAccuracySummary data={accuracy} />
+            </div>
+          )}
           <div className="mt-8 max-w-md">
             <TeamPanel
               members={members}

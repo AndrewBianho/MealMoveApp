@@ -4,86 +4,178 @@ import Link from "next/link";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { Button } from "./Button";
+import { PasswordField } from "./PasswordField";
+import { cn } from "./cn";
+import { inputCls, labelCls, errorBannerCls } from "./authStyles";
+import { SuccessPanel, BackToSignIn, CheckIcon } from "./AuthPanels";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Demo logins — one tap prefills the credentials for each role. Password is the
+// same across all four (the seeded demo world; see prisma/reset-demo.ts).
+const DEMO = [
+  { role: "Volunteer", email: "you@campus.edu" },
+  { role: "Restaurant", email: "saxbys@campus.edu" },
+  { role: "Drop-off admin", email: "dropoff@campus.edu" },
+  { role: "Org admin", email: "admin@campus.edu" },
+] as const;
+const DEMO_PASSWORD = "MealMove1";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // Default on — matches the current always-persistent session. (Wiring the
+  // off-state to a shorter session maxAge is a follow-up in auth.config.ts.)
+  const [remember, setRemember] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setLoading(true);
-    const res = await signIn("credentials", { email, password, redirect: false });
-    setLoading(false);
-    if (res?.error) {
-      setError("Invalid email or password.");
+    if (!EMAIL_RE.test(email) || !password) {
+      setError("Enter your email and password to continue.");
       return;
     }
-    // Land on "/"; middleware bounces each role to its own home.
-    window.location.href = "/";
+    setLoading(true);
+    const res = await signIn("credentials", { email, password, redirect: false });
+    if (res?.error) {
+      setLoading(false);
+      setError("That email and password don't match. Try again.");
+      return;
+    }
+    // Show the payoff for a calm beat, then land on "/"; middleware bounces each
+    // role to its own home.
+    setDone(true);
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 900);
   }
 
-  const fieldCls =
-    "w-full rounded-md border border-neutral-200/60 bg-card px-3 py-2 text-sm " +
-    "placeholder:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 " +
-    "focus-visible:ring-transit-400 focus-visible:ring-offset-1";
-  const labelCls =
-    "mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-700";
+  function prefillDemo(demoEmail: string) {
+    setEmail(demoEmail);
+    setPassword(DEMO_PASSWORD);
+    setError(null);
+  }
+
+  if (done) {
+    return (
+      <SuccessPanel heading="You're in" message="Taking you to your pickups…">
+        <p className="mt-5 text-sm">
+          <BackToSignIn />
+        </p>
+      </SuccessPanel>
+    );
+  }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div>
-        <label className={labelCls} htmlFor="email">
-          Email
-        </label>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          className={fieldCls}
-          placeholder="you@campus.edu"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      </div>
-      <div>
-        <div className="mb-1.5 flex items-baseline justify-between">
-          <label
-            className="font-mono text-[10px] uppercase tracking-wide text-neutral-700"
-            htmlFor="password"
-          >
-            Password
+    <>
+      <h1 className="font-display text-[30px] font-bold leading-[1.05] tracking-tight text-neutral-900">
+        Welcome back
+      </h1>
+      <p className="mb-6 mt-1.5 text-[15px] leading-relaxed text-neutral-700">
+        Sign in to claim pickups and track your rescues.
+      </p>
+
+      <form onSubmit={onSubmit} className="space-y-[18px]">
+        <div>
+          <label className={labelCls} htmlFor="email">
+            Email
           </label>
-          <Link
-            href="/forgot-password"
-            className="font-mono text-[10px] uppercase tracking-wide text-rescued-600 hover:underline"
-          >
-            Forgot password?
-          </Link>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            className={inputCls}
+            placeholder="you@campus.edu"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </div>
-        <input
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          className={fieldCls}
-          placeholder="••••••••"
+
+        <PasswordField
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={setPassword}
+          autoComplete="current-password"
+          showRules={false}
+          labelRight={
+            <Link
+              href="/forgot-password"
+              className="font-mono text-[11px] uppercase tracking-wide text-rescued-600 hover:underline"
+            >
+              Forgot?
+            </Link>
+          }
         />
+
+        <button
+          type="button"
+          onClick={() => setRemember((r) => !r)}
+          className="flex items-center gap-2.5 text-left"
+          aria-pressed={remember}
+        >
+          <span
+            className={cn(
+              "flex h-[18px] w-[18px] items-center justify-center rounded-md transition-colors",
+              remember
+                ? "bg-rescued-600 text-white"
+                : "border border-neutral-300 bg-card"
+            )}
+            aria-hidden
+          >
+            {remember && <CheckIcon className="h-3 w-3" />}
+          </span>
+          <span className="text-sm text-neutral-800">Remember me</span>
+        </button>
+
+        {error && (
+          <p className={errorBannerCls} role="alert">
+            {error}
+          </p>
+        )}
+
+        <Button
+          type="submit"
+          variant="primary"
+          className="w-full"
+          disabled={loading}
+        >
+          {loading ? "Signing in…" : "Log in"}
+        </Button>
+      </form>
+
+      <p className="mt-5 text-center text-sm text-neutral-700">
+        New to Meal Move?{" "}
+        <Link
+          href="/signup"
+          className="font-bold text-rescued-600 hover:underline"
+        >
+          Create an account
+        </Link>
+      </p>
+
+      <div className="mt-6 border-t border-neutral-200/70 pt-5">
+        <p className="mb-2.5 font-mono text-[11px] uppercase tracking-wide text-neutral-700">
+          Or try a demo login
+        </p>
+        <div className="grid grid-cols-2 gap-2.5">
+          {DEMO.map((d) => (
+            <button
+              key={d.email}
+              type="button"
+              onClick={() => prefillDemo(d.email)}
+              className={cn(
+                "rounded-md border border-neutral-200 bg-neutral-50/60 px-3 py-2.5 text-sm font-medium text-neutral-800 transition-colors",
+                "hover:border-rescued-400 hover:bg-rescued-50 hover:text-rescued-800",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
+              )}
+            >
+              {d.role}
+            </button>
+          ))}
+        </div>
       </div>
-
-      {error && <p className="text-sm text-failed-600">{error}</p>}
-
-      <Button
-        type="submit"
-        variant="primary"
-        className="w-full"
-        disabled={loading || !email || !password}
-      >
-        {loading ? "Signing in…" : "Sign in"}
-      </Button>
-    </form>
+    </>
   );
 }

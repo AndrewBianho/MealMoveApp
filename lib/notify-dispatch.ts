@@ -1,6 +1,7 @@
 import { prisma } from "./prisma";
 import { sendNudgeEmail } from "./email";
 import { sendMulticast, type PushSender } from "./firebaseAdmin";
+import { quietHoursActive } from "./quietHours";
 
 export interface NotifyPayload {
   title: string;
@@ -14,17 +15,32 @@ type Db = Pick<typeof prisma, "user" | "deviceToken">;
 export async function dispatchToUser(
   userId: string,
   payload: NotifyPayload,
-  deps: { db?: Db; push?: PushSender; email?: typeof sendNudgeEmail } = {}
-): Promise<{ channel: "push" | "email" | "none" }> {
+  deps: {
+    db?: Db;
+    push?: PushSender;
+    email?: typeof sendNudgeEmail;
+    now?: Date;
+  } = {}
+): Promise<{ channel: "push" | "email" | "none" | "quiet" }> {
   const db = deps.db ?? prisma;
   const push = deps.push ?? sendMulticast;
   const email = deps.email ?? sendNudgeEmail;
+  const now = deps.now ?? new Date();
 
   const user = await db.user.findUnique({
     where: { id: userId },
-    select: { email: true, notificationsEnabled: true },
+    select: {
+      email: true,
+      notificationsEnabled: true,
+      quietHoursStart: true,
+      quietHoursEnd: true,
+    },
   });
   if (!user || !user.notificationsEnabled) return { channel: "none" };
+  // Respect quiet hours: hold all channels during the volunteer's set window.
+  if (quietHoursActive(user.quietHoursStart, user.quietHoursEnd, now)) {
+    return { channel: "quiet" };
+  }
 
   const tokens = (
     await db.deviceToken.findMany({ where: { userId }, select: { token: true } })

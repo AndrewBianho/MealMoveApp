@@ -4,6 +4,7 @@ import { cn } from "./cn";
 import { Clock, MapPin, ArrowRight, Calendar } from "./icons";
 import { Button } from "./Button";
 import { StatusBadge } from "./StatusBadge";
+import { NearbyVolunteers } from "./NearbyVolunteers";
 import type { Listing } from "@/lib/types";
 
 export type ListingCardAudience = "volunteer" | "restaurant" | "dropoff";
@@ -14,6 +15,9 @@ interface ListingCardProps {
   onClaim?: (id: string) => void;
   /** Who's viewing — tunes which facts/lines show. Defaults to the volunteer view. */
   audience?: ListingCardAudience;
+  /** Volunteers active near the pickup. Shown to the restaurant on open cards as
+   *  a "will someone show up?" signal. */
+  nearbyVolunteers?: number;
   /** Extra classes on the root — used for staggered entrance delays in the feed. */
   className?: string;
 }
@@ -53,6 +57,7 @@ export function ListingCard({
   listing,
   onClaim,
   audience = "volunteer",
+  nearbyVolunteers,
   className,
 }: ListingCardProps) {
   const {
@@ -197,6 +202,19 @@ export function ListingCard({
               {notes}
             </p>
           )}
+
+          {/* Restaurant-only "will someone show up?" signal, on listings still
+              open for claiming. */}
+          {audience === "restaurant" &&
+            status === "open" &&
+            !scheduled &&
+            nearbyVolunteers != null && (
+              <NearbyVolunteers
+                variant="inline"
+                count={nearbyVolunteers}
+                className="mt-2"
+              />
+            )}
         </div>
 
         {/* Photo sits as a fixed-width panel on the card's right, stretched to

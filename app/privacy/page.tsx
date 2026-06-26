@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { DonorProtectionNote } from "@/components/DonorProtectionNote";
 
 // Public privacy policy (allow-listed in auth.config so it's reachable before
 // sign-up). It describes the data Meal Move actually handles today, plus push
@@ -200,6 +201,15 @@ export default function PrivacyPage() {
           messages to the people on a given rescue. No system is perfectly
           secure, but we work to keep your information safe.
         </p>
+      </Section>
+
+      <Section title="Food safety & good-faith donors">
+        <p>
+          Restaurants share surplus in good faith, and volunteers handle it with
+          a short safety check at pickup. The note below summarizes how good-faith
+          donors are generally protected.
+        </p>
+        <DonorProtectionNote className="mt-2" />
       </Section>
 
       <Section title="Changes to this policy">

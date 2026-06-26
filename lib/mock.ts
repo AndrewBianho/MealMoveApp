@@ -93,6 +93,8 @@ export const LISTINGS: Listing[] = [
     status: "open",
     category: "prepared",
     perishable: true,
+    allergens: ["sesame (tahini)", "gluten"],
+    tempHandling: "cold",
     notes:
       "Please ring the bell at the side (kitchen) door — the front will be locked after close. Ask for Sam. Some wraps contain tahini (sesame); the salads are nut-free but share a prep surface. Bring a flat tray or box — the containers stack but slide.",
   },
@@ -109,6 +111,8 @@ export const LISTINGS: Listing[] = [
     status: "open",
     category: "bakery",
     perishable: false,
+    allergens: ["walnuts", "poppy seed", "gluten"],
+    tempHandling: "ambient",
     notes:
       "Everything boxed and ready at the back counter. A few items have walnuts or poppy seed — they're bagged separately and labeled. Coffee cake should stay flat so the icing doesn't smear.",
   },

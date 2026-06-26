@@ -42,6 +42,23 @@ enum FoodCategory {
   beverages
 }
 
+// How this food must be kept while it's in transit — a safety signal for the
+// volunteer (and the proof checklist at pickup). null = unspecified.
+enum TempHandling {
+  hot
+  cold
+  ambient
+}
+
+// The volunteer's one-tap "rescue accuracy" signal after a delivery: was the
+// food present and roughly as described? An operations metric (private to
+// org-admin + the restaurant), never a public leaderboard — see Pickup.
+enum RescueAccuracy {
+  yes // present and as described
+  partly // there, but off (less than posted, different food)
+  no // not there / unusable
+}
+
 // Lifecycle of a buddy invite — one volunteer asking another to do a pickup
 // together. Pending until the invitee responds; cancelled if the inviter pulls it.
 enum BuddyInviteStatus {
@@ -97,8 +114,19 @@ model User {
   passwordResetTokens  PasswordResetToken[]
   dropOffNotices       DropOffNotice[]
   notificationsEnabled Boolean       @default(false)
+  // Quiet hours: don't send push/email between these local hours (0–23). Both
+  // null = always on. Wraps midnight when start > end (e.g. 22 → 7). A single
+  // chapter-local clock — no per-user timezone is tracked.
+  quietHoursStart      Int?
+  quietHoursEnd        Int?
   notifyPrimedAt       DateTime?
   deviceTokens         DeviceToken[]
+  // Volunteer's rough position, used to target escalating broadcasts and to
+  // show restaurants how many volunteers are active nearby. Optional — a
+  // volunteer without a position simply isn't distance-targeted.
+  lat                  Float?
+  lng                  Float?
+  broadcasts           ListingBroadcast[]
   createdAt            DateTime      @default(now())
 
   @@index([status]) // the org-admin pending-approval queue
@@ -127,6 +155,12 @@ model Restaurant {
   lng       Float
   imageUrl  String? // default image, shown on a card when the listing has no food photo
   demo      Boolean       @default(false) // belongs to the curated demo world, not real data
+  // Relationship memory for handoff — the human know-how that otherwise leaves
+  // when founders graduate. Org-admin editable; not shown to volunteers.
+  primaryContact String?   // who to talk to ("Maria, closing manager")
+  contactInfo    String?   // how to reach them (phone / email, free-form)
+  lastContactAt  DateTime? // when the org last spoke with them
+  quirks         String?   // free-text notes ("bring a cooler bag", "dead on Tuesdays")
   members   User[]
   listings  FoodListing[]
   recurringPosts RecurringPost[]
@@ -175,6 +209,12 @@ model DropOff {
   notes              String? // human-readable restrictions (allergens, hours…)
   retrievalHours     Json? // RetrievalHours: per-weekday food-retrieval windows (see lib/hours.ts)
   demo               Boolean        @default(false) // belongs to the curated demo world, not real data
+  // Relationship memory for handoff — org-admin editable contacts & quirks that
+  // survive founder turnover. Not shown to volunteers. Mirrors Restaurant.
+  primaryContact String?
+  contactInfo    String?
+  lastContactAt  DateTime?
+  quirks         String?
   listings  FoodListing[]
   notices   DropOffNotice[]
   createdAt DateTime      @default(now())
@@ -214,6 +254,10 @@ model FoodListing {
   weightLbs    Float? // actual weight if the restaurant provides it
   category     FoodCategory   @default(prepared)
   perishable   Boolean        @default(false)
+  // Food-safety surfacing: allergens present (free-form labels) and how the food
+  // must be kept in transit. Both optional — older listings predate them.
+  allergens    String[]       @default([])
+  tempHandling TempHandling?
   imageUrl     String? // photo of this specific food; takes priority over the restaurant's default
   notes        String? // special requests / restraints from the restaurant
   demo         Boolean        @default(false) // belongs to the curated demo world, not real data
@@ -235,6 +279,7 @@ model FoodListing {
   events       ListingEvent[]
   messages     Message[]
   buddyInvites BuddyInvite[]
+  broadcasts   ListingBroadcast[]
 
   @@index([demo, status, expiresAt])
   @@index([recurringPostId, availableAt])
@@ -261,6 +306,15 @@ model Pickup {
   // Proof photos the volunteer captures — required to advance the claim.
   photoAtPickupUrl   String? // food photo taken leaving the restaurant (claimed → in_transit)
   photoAtDeliveryUrl String? // food photo taken at the drop-off (in_transit → delivered)
+  // Answers to the dismissible food-safety checklist captured at the pickup
+  // proof step, e.g. { tempKept: true, underTwoHours: true, sealed: false }.
+  // Json so the question set can evolve without a migration.
+  safetyChecklist    Json?
+  // The volunteer's post-delivery "rescue accuracy" signal — was the food there
+  // and as described? Symmetry to the volunteer reliability meter, but kept
+  // private (org-admin + the restaurant only), never a public leaderboard.
+  rescueAccuracy     RescueAccuracy?
+  rescueAccuracyNote String?
 
   @@index([volunteerId])
   @@index([buddyId])
@@ -288,11 +342,14 @@ model BuddyInvite {
 // whom, and when. The institutional record that survives founder turnover.
 model AdminEvent {
   id       String   @id @default(cuid())
-  type     String // role_changed
+  type     String // role_changed | account_approved | notes_edited
   actor    User     @relation("AdminActor", fields: [actorId], references: [id])
   actorId  String
-  target   User     @relation("AdminTarget", fields: [targetId], references: [id])
-  targetId String
+  // The user this action was about, when there is one. Null for actions that
+  // target an org entity instead (e.g. editing a restaurant/drop-off's notes),
+  // whose subject lives in meta as { entity, entityId, name }.
+  target   User?    @relation("AdminTarget", fields: [targetId], references: [id])
+  targetId String?
   meta     Json?
   at       DateTime @default(now())
 
@@ -357,4 +414,20 @@ model DeviceToken {
   lastSeenAt DateTime @default(now())
 
   @@index([userId])
+}
+
+// Sent-state for escalating broadcasts: one row per (listing, volunteer, band),
+// so the sweep never pings the same volunteer twice about the same listing in
+// the same time-left band. See lib/broadcast.ts.
+model ListingBroadcast {
+  id          String      @id @default(cuid())
+  listing     FoodListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId   String
+  volunteer   User        @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  volunteerId String
+  band        String // "open" | "soon" | "closing_soon"
+  sentAt      DateTime    @default(now())
+
+  @@unique([listingId, volunteerId, band])
+  @@index([listingId])
 }

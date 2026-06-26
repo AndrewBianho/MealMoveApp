@@ -26,8 +26,8 @@ function placeAround(i: number): { lat: number; lng: number } {
 }
 
 export async function seedDemo(prisma: PrismaClient) {
-  // All demo accounts share the password "password".
-  const passwordHash = await bcrypt.hash("password", 10);
+  // All demo accounts share the password "MealMove1".
+  const passwordHash = await bcrypt.hash("MealMove1", 10);
 
   // One anchor for the whole seed. Demo listings store this as their postedAt
   // and derive expiresAt from it, so "minutes left" reads as a fixed offset
@@ -40,8 +40,20 @@ export async function seedDemo(prisma: PrismaClient) {
   const sources = Array.from(new Set(LISTINGS.map((l) => l.source)));
   for (let i = 0; i < sources.length; i++) {
     const { lat, lng } = placeAround(i);
+    // Seed the flagship demo restaurant with relationship-memory notes so the
+    // org-admin "Partner notes" panel showcases the handoff knowledge feature.
+    const notes =
+      sources[i] === RESTAURANT
+        ? {
+            primaryContact: "Maria — closing shift manager",
+            contactInfo: "215-555-0188",
+            lastContactAt: new Date(anchor.getTime() - 6 * 24 * 60 * 60_000),
+            quirks:
+              "Bring a cooler bag for the pastries. Dead on Tuesdays — best surplus Fri–Sun after 8pm.",
+          }
+        : {};
     const r = await prisma.restaurant.create({
-      data: { name: sources[i], address: "Main Line", lat, lng, demo: true },
+      data: { name: sources[i], address: "Main Line", lat, lng, demo: true, ...notes },
     });
     restaurantId.set(sources[i], r.id);
   }
@@ -49,6 +61,17 @@ export async function seedDemo(prisma: PrismaClient) {
   // Drop-off locations, with their real intake constraints.
   const dropOffId = new Map<string, string>();
   for (const d of DROP_OFFS) {
+    // First drop-off carries relationship-memory notes so the org-admin panel
+    // showcases the feature on the drop-off side too.
+    const relNotes =
+      d.name === DROP_OFFS[0].name
+        ? {
+            primaryContact: "Front desk (ask for the kitchen lead)",
+            contactInfo: "kitchen@shelter.example",
+            lastContactAt: new Date(anchor.getTime() - 2 * 24 * 60 * 60_000),
+            quirks: "Use the loading dock on Elm, not the main door. Closed Sundays.",
+          }
+        : {};
     const created = await prisma.dropOff.create({
       data: {
         name: d.name,
@@ -60,6 +83,7 @@ export async function seedDemo(prisma: PrismaClient) {
         capacity: d.capacity,
         notes: d.notes,
         demo: true,
+        ...relNotes,
         ...(d.retrievalHours
           ? { retrievalHours: d.retrievalHours as unknown as Prisma.InputJsonValue }
           : {}),
@@ -75,17 +99,22 @@ export async function seedDemo(prisma: PrismaClient) {
   const names = Array.from(
     new Set<string>(["You", ...(LISTINGS.map((l) => l.claimedBy).filter(Boolean) as string[])])
   );
-  for (const name of names) {
+  for (let i = 0; i < names.length; i++) {
+    const name = names[i];
     const email = `${name.toLowerCase().replace(/[^a-z]+/g, ".")}@campus.edu`;
+    // Spread volunteers around Malvern (same spiral as restaurants) and opt them
+    // into notifications so the escalating broadcast has demo targets to reach.
+    const { lat, lng } = placeAround(i);
+    const geo = { lat, lng, notificationsEnabled: true };
     const u = await prisma.user.upsert({
       where: { email },
-      update: { name, role: "volunteer", passwordHash, dataMode: "demo" },
-      create: { name, email, role: "volunteer", passwordHash, dataMode: "demo" },
+      update: { name, role: "volunteer", passwordHash, dataMode: "demo", ...geo },
+      create: { name, email, role: "volunteer", passwordHash, dataMode: "demo", ...geo },
     });
     volunteerId.set(name, u.id);
   }
 
-  // Cross-role demo accounts (all password: "password"), defaulting to demo.
+  // Cross-role demo accounts (all password: "MealMove1"), defaulting to demo.
   await prisma.user.upsert({
     where: { email: "saxbys@campus.edu" },
     update: {
@@ -129,9 +158,36 @@ export async function seedDemo(prisma: PrismaClient) {
   // Listings + their pickups + event trail.
   for (const l of LISTINGS) {
     const status = toEnum(l.status);
-    // Frozen offset from the anchor: a positive minutesLeft stays exactly that
-    // many minutes out; a spent listing sits 30 min in the past (reads as 0).
-    const expiresAt = new Date(anchor.getTime() + (l.minutesLeft > 0 ? l.minutesLeft : -30) * 60_000);
+    const delivered = status === "delivered";
+    // A taken-home pickup was claimed yesterday and is still chilling overnight
+    // for a next-day drop — deliverBy is tomorrow at 8 PM (mirrors the action).
+    const takenHome = status === "taken_home";
+    const hasClaim = Boolean(l.claimedBy);
+
+    // When the volunteer claimed it. Delivered pickups get a realistic claim →
+    // delivery span (25–54 min, deterministic) so "hours driven" reads as real
+    // road time; taken-home was claimed ~18h ago; others claimed at the anchor.
+    const driveMin = 25 + (l.servings % 30);
+    const claimAt = delivered
+      ? new Date(anchor.getTime() - driveMin * 60_000)
+      : takenHome
+        ? new Date(anchor.getTime() - 18 * 60 * 60_000)
+        : anchor;
+
+    // Realistic posting→claim gap (4–29 min, deterministic) so the ops "median
+    // time to claim" reads as real minutes, not 0. Unclaimed listings were just
+    // posted (the anchor).
+    const claimDelayMin = 4 + (l.servings % 26);
+    const postedAt = hasClaim
+      ? new Date(claimAt.getTime() - claimDelayMin * 60_000)
+      : anchor;
+    // A claimed listing's window always covers its claim (so it counts as
+    // "claimed before expiry" in ops metrics). An unclaimed one keeps its frozen
+    // offset: positive minutesLeft stays that many minutes out; a spent listing
+    // sits 30 min in the past (reads as 0).
+    const expiresAt = hasClaim
+      ? new Date(claimAt.getTime() + Math.max(l.minutesLeft, 30) * 60_000)
+      : new Date(anchor.getTime() + (l.minutesLeft > 0 ? l.minutesLeft : -30) * 60_000);
 
     const listing = await prisma.foodListing.create({
       data: {
@@ -141,49 +197,58 @@ export async function seedDemo(prisma: PrismaClient) {
         weightLbs: l.weightLbs ?? null,
         category: l.category ?? "prepared",
         perishable: l.perishable ?? false,
+        allergens: l.allergens ?? [],
+        tempHandling: l.tempHandling ?? null,
         notes: l.notes ?? null,
         demo: true,
         status,
         restaurantId: restaurantId.get(l.source)!,
         dropOffId: l.dropOff ? dropOffId.get(l.dropOff)! : null,
-        postedAt: anchor,
+        postedAt,
         expiresAt,
-        events: { create: { type: "posted" } },
+        events: { create: { type: "posted", at: postedAt } },
       },
     });
 
     if (l.claimedBy) {
       const actorId = volunteerId.get(l.claimedBy)!;
-      // Delivered pickups get a realistic claim → delivery span (25–54 min,
-      // deterministic) so the "hours driven" stat reads as real time on the
-      // road rather than ~0. Anchored like everything else so demo time is fixed.
-      const delivered = status === "delivered";
-      // A taken-home pickup was claimed yesterday and is still chilling overnight
-      // for a next-day drop — deliverBy is tomorrow at 8 PM (mirrors the action).
-      const takenHome = status === "taken_home";
-      const driveMin = 25 + (l.servings % 30);
       const deliverBy = new Date(anchor);
       deliverBy.setDate(deliverBy.getDate() + 1);
       deliverBy.setHours(20, 0, 0, 0);
+      const takenHomeAt = takenHome ? new Date(anchor.getTime() - 3 * 60 * 60_000) : null;
+      // Most delivered demo pickups were "as described"; an occasional "partly"
+      // (deterministic, by servings) so the private rescue-accuracy read-out has
+      // realistic, non-perfect data for the restaurant + org-admin views.
+      const accuracy = delivered
+        ? l.servings % 5 === 0
+          ? ("partly" as const)
+          : ("yes" as const)
+        : null;
       await prisma.pickup.create({
         data: {
           listingId: listing.id,
           volunteerId: actorId,
-          claimedAt: delivered
-            ? new Date(anchor.getTime() - driveMin * 60_000)
-            : takenHome
-              ? new Date(anchor.getTime() - 18 * 60 * 60_000)
-              : anchor,
-          holdUntil: new Date(anchor.getTime() + 15 * 60_000),
+          claimedAt: claimAt,
+          holdUntil: new Date(claimAt.getTime() + 15 * 60_000),
           deliveredAt: delivered ? anchor : null,
-          takenHomeAt: takenHome ? new Date(anchor.getTime() - 3 * 60 * 60_000) : null,
+          takenHomeAt,
           deliverBy: takenHome ? deliverBy : null,
           photoAtPickupUrl: takenHome ? l.imageUrl ?? null : null,
+          rescueAccuracy: accuracy,
+          rescueAccuracyNote:
+            accuracy === "partly" ? "A couple of trays were already gone." : null,
         },
       });
-      await prisma.listingEvent.create({ data: { listingId: listing.id, type: "claimed", actorId } });
+      await prisma.listingEvent.create({
+        data: { listingId: listing.id, type: "claimed", actorId, at: claimAt },
+      });
       if (status === "delivered" || status === "failed" || status === "taken_home") {
-        await prisma.listingEvent.create({ data: { listingId: listing.id, type: status, actorId } });
+        // delivered/taken-home happened after the claim; a failed claim is
+        // stamped at the listing's expiry.
+        const at = delivered ? anchor : takenHome ? takenHomeAt! : expiresAt;
+        await prisma.listingEvent.create({
+          data: { listingId: listing.id, type: status, actorId, at },
+        });
       }
     }
   }

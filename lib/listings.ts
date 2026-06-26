@@ -77,6 +77,8 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
     lng: l.restaurant.lng,
     category: l.category,
     perishable: l.perishable,
+    allergens: l.allergens.length > 0 ? l.allergens : undefined,
+    tempHandling: l.tempHandling ?? undefined,
     notes: l.notes ?? undefined,
     // Food photo wins; fall back to the restaurant's default image.
     imageUrl: l.imageUrl ?? l.restaurant.imageUrl ?? undefined,
@@ -87,6 +89,7 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
     lastCheckInAt: l.pickup?.lastCheckInAt?.getTime(),
     photoAtPickupUrl: l.pickup?.photoAtPickupUrl ?? undefined,
     photoAtDeliveryUrl: l.pickup?.photoAtDeliveryUrl ?? undefined,
+    rescueAccuracy: l.pickup?.rescueAccuracy ?? undefined,
     mine:
       viewerId != null &&
       (l.pickup?.volunteerId === viewerId || l.pickup?.buddyId === viewerId),
