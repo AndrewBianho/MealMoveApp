@@ -2,8 +2,21 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { cn } from "./cn";
+import dynamic from "next/dynamic";
 import { ListingCard } from "./ListingCard";
 import { EmptyState } from "./EmptyState";
+
+// Lazy — keep Mapbox (and its CSS) out of the default list bundle; it only loads
+// when a volunteer switches to map view. Client-only, with a calm placeholder.
+const ListingsMap = dynamic(
+  () => import("./ListingsMap").then((m) => m.ListingsMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[60vh] animate-pulse rounded-2xl border border-neutral-200/60 bg-neutral-100" />
+    ),
+  }
+);
 import { Toast, useToast } from "./Toast";
 import { useGeolocation } from "./useGeolocation";
 import { claimListing } from "@/app/actions";
@@ -201,6 +214,37 @@ function SortControl({
   );
 }
 
+// List ↔ Map view of the same filtered listings, without leaving the feed.
+type View = "list" | "map";
+function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => void }) {
+  return (
+    <div
+      role="group"
+      aria-label="List or map view"
+      className="inline-flex rounded-full border border-neutral-200 bg-card p-0.5"
+    >
+      {(["list", "map"] as View[]).map((v) => {
+        const active = v === view;
+        return (
+          <button
+            key={v}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(v)}
+            className={cn(
+              "rounded-full px-3 py-1 text-[12.5px] font-semibold transition-colors duration-150",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",
+              active ? "bg-neutral-900 text-neutral-50" : "text-neutral-600 hover:text-neutral-900"
+            )}
+          >
+            {v}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function isSpent(status: ListingStatus): boolean {
   return ["delivered", "expired", "failed"].includes(status);
 }
@@ -293,6 +337,7 @@ export function ListingFeed({
   const [filter, setFilter] = useState<Filter>("open");
   const [sort, setSort] = useState<Sort>("closing soon");
   const [category, setCategory] = useState<CategoryChoice>("all types");
+  const [view, setView] = useState<View>("list");
   // "Claimed & closed" is tracking, not browsing — collapsed by default for
   // volunteers (who have a dedicated "My pickups" page), expanded for org admins
   // who use the feed for oversight.
@@ -418,11 +463,31 @@ export function ListingFeed({
           ) : (
             <span />
           )}
-          <SortControl sort={sort} onChange={setSort} located={!!here} />
+          <div className="flex items-center gap-3">
+            {view === "list" && (
+              <SortControl sort={sort} onChange={setSort} located={!!here} />
+            )}
+            <ViewToggle view={view} onChange={setView} />
+          </div>
         </div>
       </div>
 
-      {shown.length > 0 ? (
+      {shown.length === 0 ? (
+        <EmptyState
+          icon={
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M7 20c0-4 0-7 5-7" />
+              <path d="M12 13c0-3.5 2.5-6 6-6 0 3.5-2.5 6-6 6Z" />
+              <path d="M12 13c0-3-2-5.5-5-5.5C7 10.5 9 13 12 13Z" />
+            </svg>
+          }
+          title={`No ${filter === "all" ? "" : `${filter} `}listings right now`}
+          hint="Check back soon — new rescues post throughout the evening."
+        />
+      ) : view === "map" ? (
+        // Map mirrors the active filters; pins carry their own popups/links.
+        <ListingsMap listings={shown} />
+      ) : (
         <div className="space-y-9">
           {claimable.length > 0 && (
             <section>
@@ -452,18 +517,6 @@ export function ListingFeed({
             </section>
           )}
         </div>
-      ) : (
-        <EmptyState
-          icon={
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M7 20c0-4 0-7 5-7" />
-              <path d="M12 13c0-3.5 2.5-6 6-6 0 3.5-2.5 6-6 6Z" />
-              <path d="M12 13c0-3-2-5.5-5-5.5C7 10.5 9 13 12 13Z" />
-            </svg>
-          }
-          title={`No ${filter === "all" ? "" : `${filter} `}listings right now`}
-          hint="Check back soon — new rescues post throughout the evening."
-        />
       )}
 
       <Toast message={message} />
