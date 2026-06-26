@@ -9,7 +9,9 @@ export interface PasswordRule {
 }
 
 export const PASSWORD_RULES: PasswordRule[] = [
-  { id: "len", label: "At least 8 characters", test: (p) => p.length >= 8 },
+  { id: "len", label: "8+ characters", test: (p) => p.length >= 8 },
+  { id: "upper", label: "1 uppercase", test: (p) => /[A-Z]/.test(p) },
+  { id: "number", label: "1 number", test: (p) => /[0-9]/.test(p) },
 ];
 
 /** True when every rule passes — the same check the server enforces. */

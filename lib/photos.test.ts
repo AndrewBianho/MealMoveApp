@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import {
   startDeliveryWithPhotoFor,
   markDeliveredWithPhotoFor,
+  recordRescueAccuracyFor,
 } from "./photos";
 
 const t0 = 1_000_000_000_000;
@@ -95,7 +96,7 @@ test("startDeliveryWithPhotoFor: notifies the drop-off that food is on its way",
     },
   });
   const notices: any[] = [];
-  await startDeliveryWithPhotoFor(db, "vol1", "ls1", "https://x/p.jpg", async (n) => {
+  await startDeliveryWithPhotoFor(db, "vol1", "ls1", "https://x/p.jpg", null, async (n) => {
     notices.push(n);
   });
   assert.equal(notices.length, 1);
@@ -115,7 +116,7 @@ test("startDeliveryWithPhotoFor: posts a pickup update into the coordination thr
   });
   // Inject a no-op notify: this test covers thread-posting, not the drop-off
   // notice, and the real dispatch would query the database (unavailable in CI).
-  await startDeliveryWithPhotoFor(db, "vol1", "ls1", "https://x/p.jpg", async () => {});
+  await startDeliveryWithPhotoFor(db, "vol1", "ls1", "https://x/p.jpg", null, async () => {});
   assert.equal(calls.messages.length, 1);
   assert.equal(calls.messages[0].senderId, "vol1");
   assert.equal(calls.messages[0].listingId, "ls1");
@@ -128,7 +129,7 @@ test("startDeliveryWithPhotoFor: no drop-off notice when none is assigned yet, b
     listing: { status: "claimed", title: "Bagels", dropOff: null },
   });
   const notices: any[] = [];
-  await startDeliveryWithPhotoFor(db, "vol1", "ls1", "https://x/p.jpg", async (n) => {
+  await startDeliveryWithPhotoFor(db, "vol1", "ls1", "https://x/p.jpg", null, async (n) => {
     notices.push(n);
   });
   assert.equal(notices.length, 0);
@@ -167,6 +168,65 @@ test("markDeliveredWithPhotoFor: rejects when not in_transit", async () => {
   await assert.rejects(
     () => markDeliveredWithPhotoFor(db, "vol1", "ls1", "https://x/d.jpg"),
     /no longer active/
+  );
+});
+
+test("recordRescueAccuracyFor: saves the signal + note on a delivered pickup and logs it", async () => {
+  const { db, calls } = txDb({
+    volunteerId: "vol1",
+    listing: { status: "delivered" },
+  });
+  await recordRescueAccuracyFor(db, "vol1", "ls1", "partly", "  half the trays were gone  ");
+  assert.equal(calls.pickup.rescueAccuracy, "partly");
+  assert.equal(calls.pickup.rescueAccuracyNote, "half the trays were gone");
+  assert.deepEqual(
+    calls.events.map((e: any) => e.type),
+    ["rescue_accuracy"]
+  );
+  assert.equal(calls.events[0].meta.accuracy, "partly");
+});
+
+test("recordRescueAccuracyFor: a buddy can record it; an empty note stores null", async () => {
+  const { db, calls } = txDb({
+    volunteerId: "vol1",
+    buddyId: "vol2",
+    listing: { status: "delivered" },
+  });
+  await recordRescueAccuracyFor(db, "vol2", "ls1", "yes", "   ");
+  assert.equal(calls.pickup.rescueAccuracy, "yes");
+  assert.equal(calls.pickup.rescueAccuracyNote, null);
+});
+
+test("recordRescueAccuracyFor: rejects a bad value, a non-owner, and a too-early status", async () => {
+  await assert.rejects(
+    () =>
+      recordRescueAccuracyFor(
+        txDb({ volunteerId: "vol1", listing: { status: "delivered" } }).db,
+        "vol1",
+        "ls1",
+        "maybe"
+      ),
+    /as described/
+  );
+  await assert.rejects(
+    () =>
+      recordRescueAccuracyFor(
+        txDb({ volunteerId: "vol1", listing: { status: "delivered" } }).db,
+        "intruder",
+        "ls1",
+        "yes"
+      ),
+    /isn't ready/
+  );
+  await assert.rejects(
+    () =>
+      recordRescueAccuracyFor(
+        txDb({ volunteerId: "vol1", listing: { status: "claimed" } }).db,
+        "vol1",
+        "ls1",
+        "yes"
+      ),
+    /isn't ready/
   );
 });
 

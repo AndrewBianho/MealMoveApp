@@ -3,6 +3,8 @@
 import { useMemo, useState, useTransition } from "react";
 import { Button } from "./Button";
 import { ListingCard } from "./ListingCard";
+import { NearbyVolunteers } from "./NearbyVolunteers";
+import { DonorProtectionNote } from "./DonorProtectionNote";
 import { ImageUploadField } from "./ImageUploadField";
 import { RecurringPostManager } from "./RecurringPostManager";
 import { Toast, useToast } from "./Toast";
@@ -25,12 +27,15 @@ export function RestaurantConsole({
   restaurantImageUrl,
   listings,
   schedules,
+  nearbyVolunteers,
 }: {
   restaurant: string;
   restaurantId: string;
   restaurantImageUrl?: string | null;
   listings: Listing[];
   schedules: RecurringPostView[];
+  /** Volunteers active near this restaurant right now — the post-time odds. */
+  nearbyVolunteers: number;
 }) {
   const { message, show } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -40,6 +45,8 @@ export function RestaurantConsole({
   const [weight, setWeight] = useState("");
   const [windowMin, setWindowMin] = useState(WINDOWS[1].minutes);
   const [notes, setNotes] = useState("");
+  const [allergens, setAllergens] = useState(""); // comma-separated labels
+  const [tempHandling, setTempHandling] = useState(""); // "" | hot | cold | ambient
   const [foodImage, setFoodImage] = useState<string | null>(null);
 
   const servingsNum = Number(servings);
@@ -56,6 +63,11 @@ export function RestaurantConsole({
         minutes: windowMin,
         weightLbs: Number(weight) > 0 ? Number(weight) : undefined,
         notes: notes.trim() || undefined,
+        allergens: allergens
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean),
+        tempHandling: tempHandling || undefined,
         imageUrl: foodImage ?? undefined,
       });
       show(`Posted “${name}” — it's live on the volunteer feed.`);
@@ -63,6 +75,8 @@ export function RestaurantConsole({
       setServings("");
       setWeight("");
       setNotes("");
+      setAllergens("");
+      setTempHandling("");
       setFoodImage(null);
       setWindowMin(WINDOWS[1].minutes);
     });
@@ -135,7 +149,11 @@ export function RestaurantConsole({
 
         <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
           <h2 className="text-lg font-medium">Post surplus</h2>
-          <p className="mb-4 text-sm text-neutral-700">Posting from {restaurant}.</p>
+          <p className="mb-3 text-sm text-neutral-700">Posting from {restaurant}.</p>
+
+          {/* Honest expectation signal: how many volunteers are nearby before
+              you post, so a dead hour reads as a gentle nudge, not silence. */}
+          <NearbyVolunteers count={nearbyVolunteers} className="mb-4" />
 
           <div className="space-y-4">
             <div>
@@ -216,6 +234,39 @@ export function RestaurantConsole({
               />
             </div>
 
+            <div>
+              <label className={labelCls} htmlFor="allergens">
+                Allergens <span className="text-neutral-600">(optional)</span>
+              </label>
+              <input
+                id="allergens"
+                className={fieldCls}
+                placeholder="e.g. nuts, dairy, gluten"
+                value={allergens}
+                onChange={(e) => setAllergens(e.target.value)}
+              />
+              <p className="mt-1 text-[11px] text-neutral-600">
+                Comma-separated — shown to volunteers so they can keep it safe.
+              </p>
+            </div>
+
+            <div>
+              <label className={labelCls} htmlFor="temp">
+                Keep it <span className="text-neutral-600">(optional)</span>
+              </label>
+              <select
+                id="temp"
+                className={fieldCls}
+                value={tempHandling}
+                onChange={(e) => setTempHandling(e.target.value)}
+              >
+                <option value="">Not specified</option>
+                <option value="hot">Hot</option>
+                <option value="cold">Cold</option>
+                <option value="ambient">Room temperature</option>
+              </select>
+            </div>
+
             <ImageUploadField
               label="Food photo"
               hint="A photo of this food. Falls back to your restaurant photo."
@@ -231,6 +282,8 @@ export function RestaurantConsole({
             >
               {isPending ? "Posting…" : "Post listing"}
             </Button>
+
+            <DonorProtectionNote variant="inline" />
           </div>
         </div>
 
@@ -247,7 +300,12 @@ export function RestaurantConsole({
           {live.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2">
               {live.map((l) => (
-                <ListingCard key={l.id} listing={l} audience="restaurant" />
+                <ListingCard
+                  key={l.id}
+                  listing={l}
+                  audience="restaurant"
+                  nearbyVolunteers={nearbyVolunteers}
+                />
               ))}
             </div>
           ) : (

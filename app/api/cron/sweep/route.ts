@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { runSweep, materializeSchedules } from "@/lib/sweep";
 import { dispatchCheckIns } from "@/lib/checkins";
+import { escalateBroadcasts } from "@/lib/broadcast";
 
 export const dynamic = "force-dynamic";
 
@@ -18,5 +19,15 @@ export async function GET(req: Request) {
   // a claim that's both due for a nudge and past its hold is released, not nudged.
   const swept = await runSweep();
   const checkins = await dispatchCheckIns();
-  return NextResponse.json({ ok: true, ...materialized, ...swept, ...checkins });
+  // Escalate AFTER the sweep so just-expired listings are already out of the
+  // pool — we only broadcast food that's still claimable. Reach widens as each
+  // listing's window narrows; dedupe keeps it to one ping per volunteer/band.
+  const broadcasts = await escalateBroadcasts();
+  return NextResponse.json({
+    ok: true,
+    ...materialized,
+    ...swept,
+    ...checkins,
+    broadcasts,
+  });
 }

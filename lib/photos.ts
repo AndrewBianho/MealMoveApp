@@ -1,6 +1,13 @@
 import { prisma } from "./prisma";
 import { isOnClaim } from "./buddies";
 import { sendDropOffPickupNotice } from "./notify";
+import { cleanSafetyAnswers, type SafetyAnswers } from "./safety";
+import {
+  cleanAccuracyNote,
+  cleanRescueAccuracy,
+  type RescueAccuracy,
+} from "./accuracy";
+import { Prisma } from "@prisma/client";
 
 // A structural slice of the Prisma client — just the methods these functions
 // touch. Lets tests inject a fake db without standing up a database.
@@ -53,12 +60,15 @@ export async function startDeliveryWithPhotoFor(
   userId: string,
   listingId: string,
   photoUrl: string,
+  safety?: SafetyAnswers | null,
   notify = sendDropOffPickupNotice
 ): Promise<void> {
   const url = photoUrl?.trim();
   if (!url) throw new Error("A pickup photo is required to start delivery.");
   const pickup = await loadClaimInStatus(db, userId, listingId, ["claimed"]);
   const dropOff = pickup.listing.dropOff;
+  // Record the dismissible safety checklist alongside the proof, if answered.
+  const checklist = cleanSafetyAnswers(safety);
 
   // A durable "it's picked up" line in the coordination thread, posted from the
   // volunteer who captured the photo (a participant). The drop-off, restaurant,
@@ -70,7 +80,12 @@ export async function startDeliveryWithPhotoFor(
   await db.$transaction([
     db.pickup.update({
       where: { listingId },
-      data: { photoAtPickupUrl: url },
+      data: {
+        photoAtPickupUrl: url,
+        ...(checklist
+          ? { safetyChecklist: checklist as Prisma.InputJsonValue }
+          : {}),
+      },
     }),
     db.foodListing.update({
       where: { id: listingId },
@@ -201,6 +216,53 @@ export async function takeHomeForTomorrowFor(
     }),
     db.message.create({
       data: { listingId, senderId: userId, body },
+    }),
+  ]);
+}
+
+/**
+ * Record the volunteer's one-tap "rescue accuracy" signal after they've handled
+ * the food — was it present and roughly as described? Symmetry to the volunteer
+ * reliability meter, but kept private (org-admin + the restaurant only). Allowed
+ * once the food's been picked up and delivered (or kept overnight); only the
+ * primary or buddy on the claim can answer. Overwriteable so a fat-finger tap is
+ * fixable; never blocks the rescue. Logs to the listing event stream.
+ */
+export async function recordRescueAccuracyFor(
+  db: Db,
+  userId: string,
+  listingId: string,
+  accuracy: unknown,
+  note?: unknown
+): Promise<void> {
+  const value = cleanRescueAccuracy(accuracy);
+  if (!value) throw new Error("Pick whether the food was as described.");
+  const cleanNote = cleanAccuracyNote(note);
+
+  const pickup = await db.pickup.findUnique({
+    where: { listingId },
+    include: { listing: { include: { dropOff: true } } },
+  });
+  if (
+    !pickup ||
+    !isOnClaim(pickup, userId) ||
+    !["in_transit", "taken_home", "delivered"].includes(pickup.listing.status)
+  ) {
+    throw new Error("This pickup isn't ready for a rescue-accuracy signal.");
+  }
+
+  await db.$transaction([
+    db.pickup.update({
+      where: { listingId },
+      data: { rescueAccuracy: value as RescueAccuracy, rescueAccuracyNote: cleanNote },
+    }),
+    db.listingEvent.create({
+      data: {
+        listingId,
+        type: "rescue_accuracy",
+        actorId: userId,
+        meta: cleanNote ? { accuracy: value, note: cleanNote } : { accuracy: value },
+      },
     }),
   ]);
 }

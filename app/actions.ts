@@ -11,11 +11,13 @@ import { rateLimit, resetLimit, clientIp, LIMITS } from "@/lib/rate-limit";
 import { passwordValid } from "@/lib/password";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { geocodeAddress } from "@/lib/geocode";
+import { cleanOrgNotes, type OrgNotesInput } from "@/lib/orgNotes";
 import { confirmCheckInFor, releaseClaimFor } from "@/lib/checkins";
 import {
   startDeliveryWithPhotoFor,
   markDeliveredWithPhotoFor,
   takeHomeForTomorrowFor,
+  recordRescueAccuracyFor,
 } from "@/lib/photos";
 import {
   invitableVolunteers,
@@ -86,7 +88,7 @@ export async function registerUser(input: {
     return { ok: false, error: "Please enter a valid 10-digit phone number." };
   }
   if (!passwordValid(password)) {
-    return { ok: false, error: "Password must be at least 8 characters." };
+    return { ok: false, error: "Password must be 8+ characters with an uppercase letter and a number." };
   }
 
   // If this email was invited to an existing organization, the invite governs
@@ -418,7 +420,7 @@ export async function resetPassword(
 
   if (!token) return { ok: false, error: "This reset link is invalid." };
   if (!passwordValid(newPassword)) {
-    return { ok: false, error: "Password must be at least 8 characters." };
+    return { ok: false, error: "Password must be 8+ characters with an uppercase letter and a number." };
   }
 
   const record = await prisma.passwordResetToken.findUnique({
@@ -515,9 +517,13 @@ export async function releaseClaim(listingId: string) {
  * Capture the pickup photo and advance claimed → in_transit. The photo is
  * required — it's the proof a pickup actually happened (anti-flaking).
  */
-export async function startDelivery(listingId: string, photoUrl: string) {
+export async function startDelivery(
+  listingId: string,
+  photoUrl: string,
+  safety?: Record<string, boolean> | null
+) {
   const userId = await currentUserId();
-  await startDeliveryWithPhotoFor(prisma, userId, listingId, photoUrl);
+  await startDeliveryWithPhotoFor(prisma, userId, listingId, photoUrl, safety);
   refreshViews(listingId);
 }
 
@@ -543,6 +549,50 @@ export async function takeHomeForTomorrow(listingId: string) {
   const userId = await currentUserId();
   await takeHomeForTomorrowFor(prisma, userId, listingId);
   refreshViews(listingId);
+}
+
+/**
+ * Record the caller's one-tap "rescue accuracy" signal on a pickup they did —
+ * was the food present and as described? Private operations metric (org-admin +
+ * the restaurant), never a public board.
+ */
+export async function recordRescueAccuracy(
+  listingId: string,
+  accuracy: string,
+  note?: string
+) {
+  const userId = await currentUserId();
+  await recordRescueAccuracyFor(prisma, userId, listingId, accuracy, note);
+  refreshViews(listingId);
+}
+
+/**
+ * Save the caller's quiet-hours window (local hours 0–23). Pass both null to
+ * clear it. A personal notification preference — not chapter data — so it's
+ * available in demo too. Validated server-side so a tampered payload can't
+ * persist garbage.
+ */
+export async function setQuietHours(
+  start: number | null,
+  end: number | null
+): Promise<SignUpResult> {
+  const userId = await currentUserId();
+  const valid = (h: number | null) =>
+    h === null || (Number.isInteger(h) && h >= 0 && h <= 23);
+  if (!valid(start) || !valid(end)) {
+    return { ok: false, error: "Pick an hour between 0 and 23." };
+  }
+  // Both-or-neither: a half-set window is meaningless, so clear it.
+  const both = start !== null && end !== null;
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      quietHoursStart: both ? start : null,
+      quietHoursEnd: both ? end : null,
+    },
+  });
+  revalidatePath("/settings");
+  return { ok: true };
 }
 
 /** Volunteers the caller can invite to buddy this pickup. */
@@ -584,6 +634,35 @@ const IMAGE_URL_MAX = 2048;
 const SERVINGS_MAX = 10_000;
 const MINUTES_MAX = 24 * 60; // 24 hours
 const WEIGHT_MAX = 100_000; // lbs
+const ALLERGENS_MAX = 12; // distinct labels per listing
+const ALLERGEN_LEN_MAX = 40; // chars per label
+
+const TEMP_HANDLING = ["hot", "cold", "ambient"] as const;
+type TempHandling = (typeof TEMP_HANDLING)[number];
+
+// Clean an allergen list from the client: trim, drop blanks, dedupe
+// (case-insensitively), and cap both count and per-label length.
+function cleanAllergens(input: unknown): string[] {
+  if (!Array.isArray(input)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of input) {
+    if (typeof raw !== "string") continue;
+    const label = raw.trim().slice(0, ALLERGEN_LEN_MAX);
+    if (!label) continue;
+    const key = label.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(label);
+    if (out.length >= ALLERGENS_MAX) break;
+  }
+  return out;
+}
+
+// Validate the temp-handling choice, or null when unspecified/invalid.
+function cleanTempHandling(input: unknown): TempHandling | null {
+  return TEMP_HANDLING.includes(input as TempHandling) ? (input as TempHandling) : null;
+}
 
 // A finite number within [min, max]; rejects NaN/Infinity/strings-as-numbers.
 function boundedInt(value: unknown, min: number, max: number): number | null {
@@ -606,6 +685,8 @@ export async function postListing(input: {
   weightLbs?: number;
   notes?: string;
   imageUrl?: string;
+  allergens?: string[];
+  tempHandling?: string;
 }) {
   const session = await auth();
   const role = session?.user?.role;
@@ -645,6 +726,8 @@ export async function postListing(input: {
 
   const notes = input.notes?.trim().slice(0, NOTES_MAX) || null;
   const imageUrl = input.imageUrl?.trim().slice(0, IMAGE_URL_MAX) || null;
+  const allergens = cleanAllergens(input.allergens);
+  const tempHandling = cleanTempHandling(input.tempHandling);
 
   const listing = await prisma.foodListing.create({
     data: {
@@ -653,6 +736,8 @@ export async function postListing(input: {
       weightLbs,
       notes,
       imageUrl,
+      allergens,
+      tempHandling,
       status: "open",
       restaurantId,
       // Post into the poster's current world so it surfaces in their feed/map.
@@ -925,6 +1010,53 @@ export async function updateDropOffNotes(
   });
   revalidatePath("/dropoff");
   revalidatePath(`/dropoffs/${dropOffId}`);
+  return { ok: true };
+}
+
+/**
+ * Org-admin relationship memory: save the contacts & quirks an org admin keeps
+ * on a restaurant or drop-off — the handoff knowledge that survives founder
+ * turnover. Org-admin only, demo-blocked. Logs the edit to the AdminEvent stream
+ * so the institutional record shows who changed what, and when.
+ */
+export async function saveOrgNotes(
+  entity: "restaurant" | "drop_off",
+  id: string,
+  input: OrgNotesInput
+): Promise<SignUpResult> {
+  const session = await auth();
+  if (session?.user?.role !== "org_admin") {
+    return { ok: false, error: "Only org admins can edit relationship notes." };
+  }
+  const demo = await blockIfDemo();
+  if (demo) return demo;
+  if (entity !== "restaurant" && entity !== "drop_off") {
+    return { ok: false, error: "Unknown record." };
+  }
+
+  const data = cleanOrgNotes(input);
+
+  // Fetch the name for the log + confirm the row exists.
+  const name =
+    entity === "restaurant"
+      ? (await prisma.restaurant.findUnique({ where: { id }, select: { name: true } }))?.name
+      : (await prisma.dropOff.findUnique({ where: { id }, select: { name: true } }))?.name;
+  if (!name) return { ok: false, error: "Record not found." };
+
+  await prisma.$transaction([
+    entity === "restaurant"
+      ? prisma.restaurant.update({ where: { id }, data })
+      : prisma.dropOff.update({ where: { id }, data }),
+    prisma.adminEvent.create({
+      data: {
+        type: "notes_edited",
+        actorId: session.user.id,
+        meta: { entity, entityId: id, name },
+      },
+    }),
+  ]);
+
+  revalidatePath("/admin/partners");
   return { ok: true };
 }
 

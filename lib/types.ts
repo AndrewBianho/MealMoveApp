@@ -92,6 +92,10 @@ export interface Listing {
   lng?: number;
   category?: FoodCategory;
   perishable?: boolean;
+  /** Allergens present in this food, as free-form labels (food-safety surfacing). */
+  allergens?: string[];
+  /** How the food must be kept in transit — a safety signal. */
+  tempHandling?: "hot" | "cold" | "ambient";
   /** Special requests / restraints from the restaurant. */
   notes?: string;
   /** Food photo, falling back to the restaurant's default image. */
@@ -110,6 +114,8 @@ export interface Listing {
   photoAtPickupUrl?: string;
   /** Proof photo captured at the drop-off (in transit → delivered). */
   photoAtDeliveryUrl?: string;
+  /** The volunteer's recorded rescue-accuracy signal, once given. */
+  rescueAccuracy?: "yes" | "partly" | "no";
   /** True when the current viewer is on the claim — primary volunteer or buddy. */
   mine?: boolean;
   /** Primary volunteer's name (same as claimedBy; explicit for the buddy UI). */

@@ -16,6 +16,7 @@ import {
   cancelBuddyInvite,
   respondToBuddyInvite,
   releaseClaim,
+  recordRescueAccuracy,
 } from "@/app/actions";
 import { CheckInPrompt } from "./CheckInPrompt";
 import { NotificationPrimeCard } from "./NotificationPrimeCard";
@@ -23,6 +24,10 @@ import { ChatPanel } from "./ChatPanel";
 import { Avatar } from "./Avatar";
 import { BuddyInvitePicker } from "./BuddyInvitePicker";
 import { ImageUploadField } from "./ImageUploadField";
+import { SafetyChecklist } from "./SafetyChecklist";
+import { RescueAccuracySignal } from "./RescueAccuracySignal";
+import type { SafetyAnswers } from "@/lib/safety";
+import type { RescueAccuracy } from "@/lib/accuracy";
 import { OpenNowBadge } from "./RetrievalHoursDisplay";
 import { DropOffNotices } from "./DropOffNotices";
 import { RescueCelebration } from "./RescueCelebration";
@@ -38,6 +43,12 @@ const STEP_LABEL: Record<string, string> = {
   claimed: "Claimed",
   "in transit": "In transit",
   delivered: "Delivered",
+};
+
+const TEMP_LABEL: Record<NonNullable<Listing["tempHandling"]>, string> = {
+  hot: "hot",
+  cold: "cold",
+  ambient: "at room temp",
 };
 
 function ProofPhoto({ label, url }: { label: string; url: string }) {
@@ -102,6 +113,8 @@ export function ListingDetail({
   const [celebration, setCelebration] = useState<VolunteerImpact | null>(null);
   // One-time notification prime, surfaced right after a fresh claim.
   const [primeOpen, setPrimeOpen] = useState(false);
+  // Dismissible food-safety checklist answers, captured with the pickup proof.
+  const [safety, setSafety] = useState<SafetyAnswers>({});
 
   if (!listing) {
     return (
@@ -145,7 +158,7 @@ export function ListingDetail({
   function onPickupPhoto(url: string | null) {
     if (!url) return;
     startTransition(async () => {
-      await startDelivery(id, url);
+      await startDelivery(id, url, safety);
       show("On your way — drive safe.");
     });
   }
@@ -154,6 +167,16 @@ export function ListingDetail({
     startTransition(async () => {
       const impact = await markDelivered(id, url);
       setCelebration(impact);
+    });
+  }
+  function onRescueAccuracy(accuracy: RescueAccuracy, note: string) {
+    startTransition(async () => {
+      try {
+        await recordRescueAccuracy(id, accuracy, note);
+        show("Thanks — that helps us keep pickups dependable.");
+      } catch {
+        show("Couldn't save that just now.");
+      }
     });
   }
   function onTakeHome() {
@@ -338,6 +361,35 @@ export function ListingDetail({
               )}
             </div>
 
+            {(listing.allergens?.length || listing.tempHandling) && (
+              <div className="mt-4 rounded-md bg-neutral-100 px-4 py-3 text-sm text-neutral-800">
+                <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+                  food safety
+                </span>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  {listing.tempHandling && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-transit-50 px-2.5 py-1 font-mono text-[11px] text-transit-800">
+                      keep {TEMP_LABEL[listing.tempHandling]}
+                    </span>
+                  )}
+                  {listing.allergens?.map((a) => (
+                    <span
+                      key={a}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-urgent-50 px-2.5 py-1 font-mono text-[11px] text-urgent-800"
+                    >
+                      <span aria-hidden>⚠</span>
+                      {a}
+                    </span>
+                  ))}
+                </div>
+                {listing.allergens?.length ? (
+                  <p className="mt-1.5 text-[12px] text-neutral-600">
+                    Contains allergens — handle and label with care.
+                  </p>
+                ) : null}
+              </div>
+            )}
+
             {dropOffNotices.length > 0 && (
               <DropOffNotices notices={dropOffNotices} className="mt-4" />
             )}
@@ -461,11 +513,13 @@ export function ListingDetail({
               {listing.status === "claimed" &&
                 (listing.mine ? (
                   <>
+                    <SafetyChecklist answers={safety} onChange={setSafety} />
                     <ImageUploadField
                       label="Pickup photo"
                       optional={false}
                       hint="Snap the food as you leave — required to start delivery."
                       aspect="aspect-[4/3]"
+                      uploadKey={`pickup:${id}`}
                       onChange={onPickupPhoto}
                     />
                     {confirmCancel ? (
@@ -543,6 +597,7 @@ export function ListingDetail({
                       optional={false}
                       hint="Snap the food at the drop-off — required to mark delivered."
                       aspect="aspect-[4/3]"
+                      uploadKey={`delivery:${id}`}
                       onChange={onDeliveryPhoto}
                     />
                     {confirmTakeHome ? (
@@ -628,6 +683,7 @@ export function ListingDetail({
                       optional={false}
                       hint="When you drop it off tomorrow, snap the food — required to mark delivered."
                       aspect="aspect-[4/3]"
+                      uploadKey={`delivery:${id}`}
                       onChange={onDeliveryPhoto}
                     />
                   </>
@@ -645,6 +701,14 @@ export function ListingDetail({
                 </p>
               )}
             </div>
+          )}
+
+          {listing.status === "delivered" && listing.mine && (
+            <RescueAccuracySignal
+              current={listing.rescueAccuracy}
+              pending={isPending}
+              onSubmit={onRescueAccuracy}
+            />
           )}
 
           {onClaimActive && (listing.buddyName || isPrimary) && (

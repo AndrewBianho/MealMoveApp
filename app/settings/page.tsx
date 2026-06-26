@@ -1,6 +1,7 @@
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { DataModeToggle } from "@/components/DataModeToggle";
 import { NotificationsToggle } from "@/components/NotificationsToggle";
+import { QuietHoursControl } from "@/components/QuietHoursControl";
 import { getDataMode } from "@/lib/mode";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -16,7 +17,11 @@ export default async function SettingsPage() {
   const me = session?.user?.id
     ? await prisma.user.findUnique({
         where: { id: session.user.id },
-        select: { notificationsEnabled: true },
+        select: {
+          notificationsEnabled: true,
+          quietHoursStart: true,
+          quietHoursEnd: true,
+        },
       })
     : null;
 
@@ -48,6 +53,20 @@ export default async function SettingsPage() {
         </p>
         <div className="mt-4">
           <NotificationsToggle initialEnabled={me?.notificationsEnabled ?? false} />
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-neutral-900/5 bg-card p-5 shadow-card">
+        <h2 className="text-lg font-medium">Quiet hours</h2>
+        <p className="mt-1 text-sm text-neutral-700">
+          Pause notifications overnight or while you&apos;re busy. We&apos;ll hold
+          push and email during the window and reach you once it&apos;s over.
+        </p>
+        <div className="mt-4">
+          <QuietHoursControl
+            initialStart={me?.quietHoursStart ?? null}
+            initialEnd={me?.quietHoursEnd ?? null}
+          />
         </div>
       </section>
 

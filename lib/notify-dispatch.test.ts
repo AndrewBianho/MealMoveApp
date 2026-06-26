@@ -72,6 +72,37 @@ test("falls back to email when no token delivers", async () => {
   assert.deepEqual(emails[0], ["a@b.c", "s", "<p>h</p>"]);
 });
 
+test("holds all channels during quiet hours, then sends once they're over", async () => {
+  const user = {
+    email: "a@b.c",
+    notificationsEnabled: true,
+    quietHoursStart: 22,
+    quietHoursEnd: 7,
+  };
+  const emails: any[] = [];
+  const opts = {
+    push: async () => ({ delivered: 1, invalidTokens: [] as string[] }),
+    email: async (...a: any[]) => void emails.push(a),
+  };
+
+  // 2 AM is inside the 22 → 7 window: suppressed, no push, no email.
+  const quiet = await dispatchToUser("u1", payload, {
+    db: fakeDb(user, ["tok"]).db,
+    ...opts,
+    now: new Date(2026, 0, 1, 2, 0),
+  });
+  assert.equal(quiet.channel, "quiet");
+  assert.equal(emails.length, 0);
+
+  // Noon is outside the window: normal delivery resumes.
+  const awake = await dispatchToUser("u1", payload, {
+    db: fakeDb(user, ["tok"]).db,
+    ...opts,
+    now: new Date(2026, 0, 1, 12, 0),
+  });
+  assert.equal(awake.channel, "push");
+});
+
 test("emails directly when the user has no tokens", async () => {
   const { db } = fakeDb({ email: "a@b.c", notificationsEnabled: true }, []);
   const emails: any[] = [];
