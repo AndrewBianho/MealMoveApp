@@ -18,13 +18,19 @@ export default async function FeedPage() {
       ? await getVolunteerOnboarding(session.user.id)
       : null;
 
+  // Meals claimable right now (open + live), for the sub-line.
+  const openNow = listings.filter((l) => l.status === "open" && !l.scheduled).length;
+
   return (
-    <main className="mx-auto max-w-[1760px] px-6 py-8">
-      <header className="mb-6">
-        <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">Rescues near you</h1>
-        <p className="mt-1 text-sm text-neutral-700">
-          Claim a pickup and we&apos;ll hold it for fifteen minutes while you head
-          over.
+    <main className="mx-auto max-w-[720px] px-6 py-10 sm:px-8">
+      <header className="mb-7">
+        <h1 className="font-display text-[36px] font-medium leading-[1.05] tracking-tight text-balance">
+          Available pickups
+        </h1>
+        <p className="mt-2 text-[15px] font-medium text-neutral-600">
+          {openNow > 0
+            ? `${openNow} surplus ${openNow === 1 ? "meal" : "meals"} near you, ready to rescue.`
+            : "No open pickups right now — new surplus posts throughout the evening."}
         </p>
       </header>
 
