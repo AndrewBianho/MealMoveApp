@@ -101,6 +101,51 @@ function FilterPills({
   );
 }
 
+type Sort = "closing soon" | "nearest" | "most meals";
+const SORTS: Sort[] = ["closing soon", "nearest", "most meals"];
+
+// Sort lets a volunteer order by their actual constraint — soonest to expire,
+// closest to them, or biggest haul — rather than a single fixed order. "Nearest"
+// needs a shared location; until then it falls back to time order.
+function SortControl({
+  sort,
+  onChange,
+  located,
+}: {
+  sort: Sort;
+  onChange: (s: Sort) => void;
+  located: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="font-mono text-[11px] uppercase tracking-wide text-neutral-500">
+        sort
+      </span>
+      <div className="inline-flex rounded-full border border-neutral-200 bg-card p-0.5">
+        {SORTS.map((s) => {
+          const active = s === sort;
+          return (
+            <button
+              key={s}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(s)}
+              title={s === "nearest" && !located ? "Share your location to sort by distance" : undefined}
+              className={cn(
+                "rounded-full px-3 py-1 text-[12.5px] font-semibold transition-colors duration-150",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",
+                active ? "bg-neutral-900 text-neutral-50" : "text-neutral-600 hover:text-neutral-900"
+              )}
+            >
+              {s}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function isSpent(status: ListingStatus): boolean {
   return ["delivered", "expired", "failed"].includes(status);
 }
@@ -145,6 +190,7 @@ export function ListingFeed({
   canClaim?: boolean;
 }) {
   const [filter, setFilter] = useState<Filter>("open");
+  const [sort, setSort] = useState<Sort>("closing soon");
   const { message, show } = useToast();
   const [isPending, startTransition] = useTransition();
 
@@ -170,6 +216,17 @@ export function ListingFeed({
     );
   }, [listings, here]);
 
+  // Numeric miles per listing, for the "nearest" sort (the card's `distance` is a
+  // formatted string). Empty until a location is shared.
+  const milesById = useMemo(() => {
+    const m: Record<string, number> = {};
+    if (!here) return m;
+    for (const l of listings) {
+      if (l.lat != null && l.lng != null) m[l.id] = haversineMiles(here, { lat: l.lat, lng: l.lng });
+    }
+    return m;
+  }, [listings, here]);
+
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
     for (const l of listings) c[l.status] = (c[l.status] ?? 0) + 1;
@@ -193,13 +250,21 @@ export function ListingFeed({
     } else {
       list = located.filter((l) => l.status === filter);
     }
+    const by =
+      sort === "nearest"
+        ? (a: Listing, b: Listing) =>
+            (milesById[a.id] ?? Infinity) - (milesById[b.id] ?? Infinity)
+        : sort === "most meals"
+          ? (a: Listing, b: Listing) => b.servings - a.servings
+          : (a: Listing, b: Listing) => a.minutesLeft - b.minutesLeft;
     return [...list].sort((a, b) => {
+      // Spent listings always sink to the bottom, whatever the sort.
       if (isSpent(a.status) !== isSpent(b.status)) {
         return Number(isSpent(a.status)) - Number(isSpent(b.status));
       }
-      return a.minutesLeft - b.minutesLeft;
+      return by(a, b);
     });
-  }, [located, filter]);
+  }, [located, filter, sort, milesById]);
 
   // Split what's shown into three bands so the eye goes to claimable food first.
   const claimable = shown.filter((l) => l.status === "open" && !l.scheduled);
@@ -210,8 +275,11 @@ export function ListingFeed({
 
   return (
     <div className={cn(isPending && "opacity-70 transition-opacity")}>
-      <div className="mb-6">
+      <div className="mb-6 space-y-3">
         <FilterPills filter={filter} counts={counts} onChange={setFilter} />
+        <div className="flex justify-end">
+          <SortControl sort={sort} onChange={setSort} located={!!here} />
+        </div>
       </div>
 
       {shown.length > 0 ? (
