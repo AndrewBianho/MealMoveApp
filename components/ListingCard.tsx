@@ -74,6 +74,8 @@ export function ListingCard({
     minutesLeft,
     availableLabel,
     recurrence,
+    tempHandling,
+    perishable,
   } = listing;
 
   const scheduled = !!listing.scheduled;
@@ -81,6 +83,19 @@ export function ListingCard({
   const u = urgency(listing);
   const img = imageUrl ?? DEFAULT_IMAGE;
   const isPlaceholder = !imageUrl;
+
+  // Handling cue — "what do I need to bring, how much time do I really have?".
+  // Temp handling answers it directly; perishable is the fallback flag. Kept as
+  // calm neutral metadata so it never competes with the urgency signal.
+  const handling = tempHandling
+    ? tempHandling === "hot"
+      ? "keep hot"
+      : tempHandling === "cold"
+        ? "keep cold"
+        : "shelf-stable"
+    : perishable
+      ? "perishable"
+      : null;
 
   // Audience tuning: distance is only meaningful to a volunteer; the source line
   // is redundant for a restaurant (it's them); the → drop-off line is redundant
@@ -171,7 +186,6 @@ export function ListingCard({
           <p className="mt-2 flex items-center gap-1.5 text-[13.5px] font-medium text-neutral-500">
             <MapPin className="text-[0.95em] text-neutral-400" />
             {sourceLabel}
-            {category && <span className="font-mono text-[11px] text-neutral-400">· {category}</span>}
           </p>
         )}
 
@@ -185,6 +199,23 @@ export function ListingCard({
             </>
           )}
         </p>
+
+        {/* Scannability — food type + handling, so the feed reads by category at
+            a glance. Calm neutral metadata (no status hue), each only when set. */}
+        {(category || handling) && (
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+            {category && (
+              <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 font-mono text-[11px] text-neutral-700">
+                {category}
+              </span>
+            )}
+            {handling && (
+              <span className="rounded-full border border-neutral-200 px-2.5 py-0.5 font-mono text-[11px] text-neutral-600">
+                {handling}
+              </span>
+            )}
+          </div>
+        )}
 
         {dropOff && showRoute && (
           <p className="mt-2 flex items-center gap-1.5 text-[13px] text-clay-800">
