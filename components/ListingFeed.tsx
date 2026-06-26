@@ -8,7 +8,7 @@ import { Toast, useToast } from "./Toast";
 import { useGeolocation } from "./useGeolocation";
 import { claimListing } from "@/app/actions";
 import { haversineMiles, formatMiles } from "@/lib/distance";
-import type { Listing, ListingStatus } from "@/lib/types";
+import type { Listing, ListingStatus, FoodCategory } from "@/lib/types";
 
 // Per-card entrance delay (arbitrary animation-delay utilities), capped so a
 // long list doesn't drift in forever.
@@ -104,6 +104,61 @@ function FilterPills({
 type Sort = "closing soon" | "nearest" | "most meals";
 const SORTS: Sort[] = ["closing soon", "nearest", "most meals"];
 
+// Canonical food-type order for the category filter (matches the FoodCategory
+// enum), so the row reads the same way every time regardless of what's posted.
+const CATEGORY_ORDER: FoodCategory[] = [
+  "prepared",
+  "produce",
+  "bakery",
+  "packaged",
+  "dairy",
+  "beverages",
+];
+type CategoryChoice = FoodCategory | "all types";
+
+// A quiet secondary filter by food type. Only the categories actually present
+// are offered, and the whole row hides unless there are at least two to choose
+// between — so it never adds noise when there's nothing to narrow.
+function CategoryFilter({
+  available,
+  choice,
+  onChange,
+}: {
+  available: FoodCategory[];
+  choice: CategoryChoice;
+  onChange: (c: CategoryChoice) => void;
+}) {
+  const options: CategoryChoice[] = ["all types", ...available];
+  return (
+    <div
+      role="group"
+      aria-label="Filter by food type"
+      className="flex flex-wrap items-center gap-1.5"
+    >
+      {options.map((c) => {
+        const active = c === choice;
+        return (
+          <button
+            key={c}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(c)}
+            className={cn(
+              "rounded-full px-3 py-1 font-mono text-[11px] transition-colors duration-150",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",
+              active
+                ? "bg-neutral-900 text-neutral-50"
+                : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+            )}
+          >
+            {c}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // Sort lets a volunteer order by their actual constraint — soonest to expire,
 // closest to them, or biggest haul — rather than a single fixed order. "Nearest"
 // needs a shared location; until then it falls back to time order.
@@ -191,6 +246,7 @@ export function ListingFeed({
 }) {
   const [filter, setFilter] = useState<Filter>("open");
   const [sort, setSort] = useState<Sort>("closing soon");
+  const [category, setCategory] = useState<CategoryChoice>("all types");
   const { message, show } = useToast();
   const [isPending, startTransition] = useTransition();
 
@@ -239,6 +295,17 @@ export function ListingFeed({
     return c;
   }, [listings]);
 
+  // Food types actually present, in canonical order — drives the category row.
+  const availableCategories = useMemo(
+    () => CATEGORY_ORDER.filter((c) => listings.some((l) => l.category === c)),
+    [listings]
+  );
+  // If the active category disappears (data refresh) fall back to "all types".
+  const activeCategory: CategoryChoice =
+    category === "all types" || availableCategories.includes(category)
+      ? category
+      : "all types";
+
   const shown = useMemo(() => {
     let list: Listing[];
     if (filter === "all") {
@@ -249,6 +316,10 @@ export function ListingFeed({
       list = located.filter((l) => l.status === "open" && !l.scheduled);
     } else {
       list = located.filter((l) => l.status === filter);
+    }
+    // AND the food-type filter on top of the status filter.
+    if (activeCategory !== "all types") {
+      list = list.filter((l) => l.category === activeCategory);
     }
     const by =
       sort === "nearest"
@@ -264,7 +335,7 @@ export function ListingFeed({
       }
       return by(a, b);
     });
-  }, [located, filter, sort, milesById]);
+  }, [located, filter, sort, milesById, activeCategory]);
 
   // Split what's shown into three bands so the eye goes to claimable food first.
   const claimable = shown.filter((l) => l.status === "open" && !l.scheduled);
@@ -277,7 +348,16 @@ export function ListingFeed({
     <div className={cn(isPending && "opacity-70 transition-opacity")}>
       <div className="mb-6 space-y-3">
         <FilterPills filter={filter} counts={counts} onChange={setFilter} />
-        <div className="flex justify-end">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {availableCategories.length >= 2 ? (
+            <CategoryFilter
+              available={availableCategories}
+              choice={activeCategory}
+              onChange={setCategory}
+            />
+          ) : (
+            <span />
+          )}
           <SortControl sort={sort} onChange={setSort} located={!!here} />
         </div>
       </div>
