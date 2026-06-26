@@ -2,7 +2,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { cn } from "./cn";
 import { Clock, MapPin, ArrowRight } from "./icons";
-import { Button } from "./Button";
 import { StatusBadge } from "./StatusBadge";
 import { NearbyVolunteers } from "./NearbyVolunteers";
 import type { Listing } from "@/lib/types";
@@ -69,7 +68,6 @@ export function ListingCard({
     buddyName,
     dropOff,
     category,
-    notes,
     imageUrl,
     minutesLeft,
     availableLabel,
@@ -224,12 +222,6 @@ export function ListingCard({
           </p>
         )}
 
-        {notes && (
-          <p className="mt-2.5 line-clamp-3 rounded-lg bg-neutral-100 px-3 py-2 text-xs text-neutral-800">
-            {notes}
-          </p>
-        )}
-
         {audience === "restaurant" &&
           status === "open" &&
           !scheduled &&
@@ -237,8 +229,9 @@ export function ListingCard({
             <NearbyVolunteers variant="inline" count={nearbyVolunteers} className="mt-2.5" />
           )}
 
-        {/* Action — full-width claim for an open listing; a calm "opens <when>"
-            cue for a scheduled one; otherwise the live status + who has it. */}
+        {/* Action — for an open listing, a full-width link to the full details
+            page (where the claim happens); a calm "opens <when>" cue for a
+            scheduled one; otherwise the live status + who has it. */}
         <div className="mt-5">
           {scheduled ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-clay-50 px-3 py-1 font-mono text-[11px] uppercase tracking-wide text-clay-800">
@@ -246,9 +239,17 @@ export function ListingCard({
               opens {availableLabel}
             </span>
           ) : status === "open" && onClaim ? (
-            <Button variant="claim" className="w-full" onClick={() => onClaim(id)}>
-              Claim pickup
-            </Button>
+            <Link
+              href={`/listings/${id}`}
+              className={cn(
+                "flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-5 py-2.5 text-sm font-bold text-neutral-50 shadow-card transition-all duration-200",
+                "hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-lift active:translate-y-0 active:scale-[0.98]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50"
+              )}
+            >
+              More details
+              <ArrowRight className="text-[0.95em]" />
+            </Link>
           ) : (
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <StatusBadge status={status} />
