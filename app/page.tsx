@@ -1,5 +1,7 @@
 import { ListingFeed } from "@/components/ListingFeed";
+import { FirstRescueTracker } from "@/components/FirstRescueTracker";
 import { getListings } from "@/lib/listings";
+import { getVolunteerOnboarding } from "@/lib/onboarding";
 import { auth } from "@/auth";
 
 // Reads live data per request (and after revalidation from server actions).
@@ -8,6 +10,13 @@ export const dynamic = "force-dynamic";
 export default async function FeedPage() {
   const [listings, session] = await Promise.all([getListings(), auth()]);
   const canClaim = session?.user?.role !== "org_admin";
+
+  // First-run activation: only volunteers see the first-rescue tracker, and only
+  // until they complete their first rescue.
+  const onboarding =
+    session?.user?.role === "volunteer"
+      ? await getVolunteerOnboarding(session.user.id)
+      : null;
 
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">
@@ -18,6 +27,10 @@ export default async function FeedPage() {
           over.
         </p>
       </header>
+
+      {onboarding?.show && (
+        <FirstRescueTracker step={onboarding.step} active={onboarding.active} />
+      )}
 
       <ListingFeed listings={listings} canClaim={canClaim} />
     </main>
