@@ -2,6 +2,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { DataModeToggle } from "@/components/DataModeToggle";
 import { NotificationsToggle } from "@/components/NotificationsToggle";
 import { QuietHoursControl } from "@/components/QuietHoursControl";
+import { ReplayWalkthroughButton } from "@/components/ReplayWalkthroughButton";
 import { getDataMode } from "@/lib/mode";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -67,6 +68,17 @@ export default async function SettingsPage() {
             initialStart={me?.quietHoursStart ?? null}
             initialEnd={me?.quietHoursEnd ?? null}
           />
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-neutral-900/5 bg-card p-5 shadow-card">
+        <h2 className="text-lg font-medium">Walkthrough</h2>
+        <p className="mt-1 text-sm text-neutral-700">
+          New here, or want a refresher? Replay the quick tour of how to find,
+          claim, and deliver a rescue.
+        </p>
+        <div className="mt-4">
+          <ReplayWalkthroughButton />
         </div>
       </section>
 
