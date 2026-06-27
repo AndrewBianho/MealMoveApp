@@ -4,6 +4,7 @@ import { cn } from "./cn";
 import { Clock, MapPin, ArrowRight } from "./icons";
 import { StatusBadge } from "./StatusBadge";
 import { NearbyVolunteers } from "./NearbyVolunteers";
+import { formatTimeLeft } from "@/lib/time";
 import type { Listing } from "@/lib/types";
 
 export type ListingCardAudience = "volunteer" | "restaurant" | "dropoff";
@@ -119,7 +120,7 @@ export function ListingCard({
     </span>
   ) : (
     <span
-      aria-label={spent ? "closed" : u.held ? u.word : `${u.word}, ${minutesLeft} minutes left`}
+      aria-label={spent ? "closed" : u.held ? u.word : `${u.word}, ${formatTimeLeft(minutesLeft, { long: true })} left`}
       className={cn("inline-flex items-center gap-2 font-mono text-[12px] font-semibold", u.text)}
     >
       <span
@@ -127,7 +128,7 @@ export function ListingCard({
         aria-hidden="true"
       />
       <span>{u.word}</span>
-      {u.minutes != null && <span className="tabular-nums">· {u.minutes}m</span>}
+      {u.minutes != null && <span className="tabular-nums">· {formatTimeLeft(u.minutes)}</span>}
     </span>
   );
 

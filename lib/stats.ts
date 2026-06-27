@@ -9,23 +9,27 @@ const LBS_PER_SERVING = 0.8;
 export async function getImpactStats(): Promise<ImpactStat[]> {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [delivered, completedPickups, pickupsThisWeek, restaurants, distinctVolunteers] =
-    await Promise.all([
-      prisma.foodListing.findMany({
-        where: { status: "delivered" },
-        select: { servings: true, weightLbs: true },
-      }),
-      prisma.pickup.findMany({
-        where: { deliveredAt: { not: null } },
-        select: { claimedAt: true, deliveredAt: true },
-      }),
-      prisma.pickup.count({ where: { claimedAt: { gte: weekAgo } } }),
-      prisma.restaurant.count(),
-      prisma.pickup.findMany({
-        distinct: ["volunteerId"],
-        select: { volunteerId: true },
-      }),
-    ]);
+  // Run sequentially, not Promise.all: this page is the app's heaviest fan-out,
+  // and parallel queries each check out a separate pooled connection at once —
+  // enough page views and they exhaust the connection pool (EMAXCONNSESSION).
+  // One connection at a time keeps the impact page from starving everything
+  // else; it's a stats screen, so the small latency cost is fine.
+  const delivered = await prisma.foodListing.findMany({
+    where: { status: "delivered" },
+    select: { servings: true, weightLbs: true },
+  });
+  const completedPickups = await prisma.pickup.findMany({
+    where: { deliveredAt: { not: null } },
+    select: { claimedAt: true, deliveredAt: true },
+  });
+  const pickupsThisWeek = await prisma.pickup.count({
+    where: { claimedAt: { gte: weekAgo } },
+  });
+  const restaurants = await prisma.restaurant.count();
+  const distinctVolunteers = await prisma.pickup.findMany({
+    distinct: ["volunteerId"],
+    select: { volunteerId: true },
+  });
 
   const mealsRescued = delivered.reduce((sum, l) => sum + l.servings, 0);
   const lbsRescued = Math.round(
@@ -55,30 +59,29 @@ export async function getRestaurantImpactStats(
 ): Promise<ImpactStat[]> {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [delivered, completedPickups, pickupsThisWeek, volunteers, dropOffs] =
-    await Promise.all([
-      prisma.foodListing.findMany({
-        where: { restaurantId, status: "delivered" },
-        select: { servings: true, weightLbs: true },
-      }),
-      prisma.pickup.findMany({
-        where: { deliveredAt: { not: null }, listing: { restaurantId } },
-        select: { claimedAt: true, deliveredAt: true },
-      }),
-      prisma.pickup.count({
-        where: { claimedAt: { gte: weekAgo }, listing: { restaurantId } },
-      }),
-      prisma.pickup.findMany({
-        where: { listing: { restaurantId } },
-        distinct: ["volunteerId"],
-        select: { volunteerId: true },
-      }),
-      prisma.foodListing.findMany({
-        where: { restaurantId, status: "delivered", dropOffId: { not: null } },
-        distinct: ["dropOffId"],
-        select: { dropOffId: true },
-      }),
-    ]);
+  // Sequential for the same reason as getImpactStats: one pooled connection at a
+  // time keeps the impact page off the connection-pool ceiling (EMAXCONNSESSION).
+  const delivered = await prisma.foodListing.findMany({
+    where: { restaurantId, status: "delivered" },
+    select: { servings: true, weightLbs: true },
+  });
+  const completedPickups = await prisma.pickup.findMany({
+    where: { deliveredAt: { not: null }, listing: { restaurantId } },
+    select: { claimedAt: true, deliveredAt: true },
+  });
+  const pickupsThisWeek = await prisma.pickup.count({
+    where: { claimedAt: { gte: weekAgo }, listing: { restaurantId } },
+  });
+  const volunteers = await prisma.pickup.findMany({
+    where: { listing: { restaurantId } },
+    distinct: ["volunteerId"],
+    select: { volunteerId: true },
+  });
+  const dropOffs = await prisma.foodListing.findMany({
+    where: { restaurantId, status: "delivered", dropOffId: { not: null } },
+    distinct: ["dropOffId"],
+    select: { dropOffId: true },
+  });
 
   const mealsRescued = delivered.reduce((sum, l) => sum + l.servings, 0);
   const lbsRescued = Math.round(

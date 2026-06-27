@@ -13,6 +13,7 @@ import { rankDropOffs, rankRestaurantsForDropOff } from "@/lib/recommend";
 import { claimListing } from "@/app/actions";
 import { geocodeClient } from "@/lib/geocode-client";
 import { RAMP } from "@/lib/rampColors";
+import { formatTimeLeft } from "@/lib/time";
 import { MAP_STYLES, createModeToggle, createHomeControl, type MapMode } from "@/lib/mapStyles";
 import { cn } from "./cn";
 import type { DropOffLocation, MapRestaurant } from "@/lib/types";
@@ -1490,7 +1491,7 @@ export function RescueMap({
                           <div className="mt-2 flex flex-wrap items-center gap-1.5">
                             <InfoChip tone={urgencyTone(activeRest.minutesLeft)}>
                               {activeRest.minutesLeft != null
-                                ? `${activeRest.minutesLeft} min left`
+                                ? `${formatTimeLeft(activeRest.minutesLeft)} left`
                                 : "all claimed"}
                             </InfoChip>
                             <span className="font-mono text-[11px] text-neutral-700">
