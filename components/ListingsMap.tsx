@@ -4,6 +4,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
 import type { Map as MapboxMap } from "mapbox-gl";
 import type { Listing } from "@/lib/types";
+import { cn } from "./cn";
 import { escapeHtml } from "@/lib/escapeHtml";
 import { RAMP } from "@/lib/rampColors";
 import { MAP_STYLES, createModeToggle, createHomeControl, type MapMode } from "@/lib/mapStyles";
@@ -57,7 +58,16 @@ function popupHtml(l: Located, distanceMi?: number): string {
     </div>`;
 }
 
-export function ListingsMap({ listings }: { listings: Listing[] }) {
+// `className` controls the map's height/shape, so the same map can be the full
+// 60vh panel in the toggle view or fill a tall sticky column in the wide
+// side-by-side layout. Defaults to the standalone panel height.
+export function ListingsMap({
+  listings,
+  className = "h-[60vh]",
+}: {
+  listings: Listing[];
+  className?: string;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap>();
   const [mode, setMode] = useState<MapMode>("satellite");
@@ -176,7 +186,7 @@ export function ListingsMap({ listings }: { listings: Listing[] }) {
 
   if (!TOKEN) {
     return (
-      <div className="grid h-[60vh] place-items-center rounded-2xl border border-dashed border-neutral-200 bg-card text-center">
+      <div className={cn("grid place-items-center rounded-2xl border border-dashed border-neutral-200 bg-card text-center", className)}>
         <div>
           <p className="text-sm text-neutral-700">The map needs a Mapbox token.</p>
           <p className="mt-1 font-mono text-xs text-neutral-700">
@@ -190,7 +200,10 @@ export function ListingsMap({ listings }: { listings: Listing[] }) {
   return (
     <div
       ref={ref}
-      className="h-[60vh] w-full overflow-hidden rounded-2xl border border-neutral-900/10 shadow-card"
+      className={cn(
+        "w-full overflow-hidden rounded-2xl border border-neutral-900/10 shadow-card",
+        className
+      )}
     />
   );
 }

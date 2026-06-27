@@ -32,6 +32,7 @@ import { OpenNowBadge } from "./RetrievalHoursDisplay";
 import { DropOffNotices } from "./DropOffNotices";
 import { RescueCelebration } from "./RescueCelebration";
 import { currentDayKey, formatDay } from "@/lib/hours";
+import { formatTimeLeft } from "@/lib/time";
 import type { Listing, ListingStatus, VolunteerImpact, DropOffNoticeView } from "@/lib/types";
 
 // The happy-path journey. expired / failed are terminal off-ramps and render
@@ -325,7 +326,7 @@ export function ListingDetail({
                     )}
                   >
                     <Clock className="h-3.5 w-3.5" />
-                    {listing.minutesLeft} min left
+                    {formatTimeLeft(listing.minutesLeft)} left
                   </span>
                 )}
               </div>
@@ -337,7 +338,7 @@ export function ListingDetail({
               <MetaRow icon={<Clock />}>
                 {terminal
                   ? `closed ${listing.expiresAt}`
-                  : `expires ${listing.expiresAt} · ${listing.minutesLeft} min left`}
+                  : `expires ${listing.expiresAt} · ${formatTimeLeft(listing.minutesLeft)} left`}
               </MetaRow>
               <MetaRow icon={<Users />}>~{listing.servings} servings</MetaRow>
               {listing.dropOff && (

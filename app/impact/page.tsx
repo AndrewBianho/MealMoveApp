@@ -27,10 +27,22 @@ export default async function ImpactPage() {
   // healthy — never restaurants or drop-offs. Reliability is non-punitive and
   // must not be exposed to partners who could use it to screen volunteers, so
   // we don't even fetch the named list unless an org admin is viewing.
-  const [stats, volunteers] = await Promise.all([
-    restaurant ? getRestaurantImpactStats(restaurant.id) : getImpactStats(),
-    isOrgAdmin ? getVolunteerReliability() : Promise.resolve([]),
-  ]);
+  //
+  // Fetched sequentially (not Promise.all) and behind a try/catch: the stats
+  // queries are connection-heavy, so we keep the page's peak connection use low
+  // and, if the database is briefly unreachable, show a calm retry note instead
+  // of throwing the whole route into the error boundary.
+  let stats: Awaited<ReturnType<typeof getImpactStats>> = [];
+  let volunteers: Awaited<ReturnType<typeof getVolunteerReliability>> = [];
+  let loadFailed = false;
+  try {
+    stats = restaurant
+      ? await getRestaurantImpactStats(restaurant.id)
+      : await getImpactStats();
+    if (isOrgAdmin) volunteers = await getVolunteerReliability();
+  } catch {
+    loadFailed = true;
+  }
 
   const heading = restaurant ? "Your restaurant's impact" : "Chapter impact";
 
@@ -45,13 +57,20 @@ export default async function ImpactPage() {
         )}
       </header>
 
-      <div className="mb-10 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-        {stats.map((s) => (
-          <MetricCard key={s.label} label={s.label} value={s.value} accent={metricAccent(s.label)} />
-        ))}
-      </div>
+      {loadFailed ? (
+        <div className="mb-10 rounded-2xl border border-neutral-200/60 bg-card p-6 text-sm text-neutral-700 shadow-card">
+          These numbers are taking a moment to load. Refresh the page in a few
+          seconds and they&apos;ll be back.
+        </div>
+      ) : (
+        <div className="mb-10 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+          {stats.map((s) => (
+            <MetricCard key={s.label} label={s.label} value={s.value} accent={metricAccent(s.label)} />
+          ))}
+        </div>
+      )}
 
-      {isOrgAdmin && (
+      {isOrgAdmin && !loadFailed && (
         <section>
           <h2 className="mb-1 text-lg font-medium">Volunteer reliability</h2>
           <p className="mb-4 text-sm text-neutral-700">

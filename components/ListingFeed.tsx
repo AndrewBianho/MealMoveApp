@@ -338,6 +338,17 @@ export function ListingFeed({
   const [sort, setSort] = useState<Sort>("closing soon");
   const [category, setCategory] = useState<CategoryChoice>("all types");
   const [view, setView] = useState<View>("list");
+  // On wide screens (lg+) the list and map sit side by side, so the List/Map
+  // toggle is moot there. Starts false so the server-rendered default is the
+  // single-column list (Mapbox stays out of the bundle until we know we're wide).
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const sync = () => setWide(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
   // "Claimed & closed" is tracking, not browsing — collapsed by default for
   // volunteers (who have a dedicated "My pickups" page), expanded for org admins
   // who use the feed for oversight.
@@ -449,6 +460,52 @@ export function ListingFeed({
     setClosedOpen(closedDefaultOpen);
   }, [closedDefaultOpen]);
 
+  const emptyState = (
+    <EmptyState
+      icon={
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M7 20c0-4 0-7 5-7" />
+          <path d="M12 13c0-3.5 2.5-6 6-6 0 3.5-2.5 6-6 6Z" />
+          <path d="M12 13c0-3-2-5.5-5-5.5C7 10.5 9 13 12 13Z" />
+        </svg>
+      }
+      title={`No ${filter === "all" ? "" : `${filter} `}listings right now`}
+      hint="Check back soon — new rescues post throughout the evening."
+    />
+  );
+
+  const listSections = (
+    <div className="space-y-9">
+      {claimable.length > 0 && (
+        <section>
+          <SectionHeader title="Available to claim" count={claimable.length} />
+          <ListingStack listings={claimable} onClaim={onClaim} />
+        </section>
+      )}
+      {comingUp.length > 0 && (
+        <section>
+          <SectionHeader title="Coming up" count={comingUp.length} />
+          <p className="-mt-2 mb-3.5 text-sm text-neutral-600">
+            Scheduled pickups you can plan around — each opens to claim at its
+            listed time.
+          </p>
+          <ListingStack listings={comingUp} />
+        </section>
+      )}
+      {unclaimable.length > 0 && (
+        <section>
+          <CollapsibleSectionHeader
+            title="Claimed & closed"
+            count={unclaimable.length}
+            open={closedOpen}
+            onToggle={() => setClosedOpen((o) => !o)}
+          />
+          {closedOpen && <ListingStack listings={unclaimable} />}
+        </section>
+      )}
+    </div>
+  );
+
   return (
     <div className={cn(isPending && "opacity-70 transition-opacity")}>
       <div className="mb-6 space-y-3">
@@ -464,59 +521,32 @@ export function ListingFeed({
             <span />
           )}
           <div className="flex items-center gap-3">
-            {view === "list" && (
+            {(wide || view === "list") && (
               <SortControl sort={sort} onChange={setSort} located={!!here} />
             )}
-            <ViewToggle view={view} onChange={setView} />
+            {/* Side by side on wide screens, so the toggle only matters below lg. */}
+            {!wide && <ViewToggle view={view} onChange={setView} />}
           </div>
         </div>
       </div>
 
-      {shown.length === 0 ? (
-        <EmptyState
-          icon={
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M7 20c0-4 0-7 5-7" />
-              <path d="M12 13c0-3.5 2.5-6 6-6 0 3.5-2.5 6-6 6Z" />
-              <path d="M12 13c0-3-2-5.5-5-5.5C7 10.5 9 13 12 13Z" />
-            </svg>
-          }
-          title={`No ${filter === "all" ? "" : `${filter} `}listings right now`}
-          hint="Check back soon — new rescues post throughout the evening."
-        />
+      {wide ? (
+        // Wide screens: the list and a persistent map ride side by side, so a
+        // volunteer can scan cards and place them on the map at the same time.
+        // The map sticks in view as the list scrolls past it.
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(360px,42%)] items-start gap-7">
+          <div>{shown.length === 0 ? emptyState : listSections}</div>
+          <div className="sticky top-20 h-[calc(100vh-7rem)]">
+            <ListingsMap listings={shown} className="h-full" />
+          </div>
+        </div>
+      ) : shown.length === 0 ? (
+        emptyState
       ) : view === "map" ? (
         // Map mirrors the active filters; pins carry their own popups/links.
         <ListingsMap listings={shown} />
       ) : (
-        <div className="space-y-9">
-          {claimable.length > 0 && (
-            <section>
-              <SectionHeader title="Available to claim" count={claimable.length} />
-              <ListingStack listings={claimable} onClaim={onClaim} />
-            </section>
-          )}
-          {comingUp.length > 0 && (
-            <section>
-              <SectionHeader title="Coming up" count={comingUp.length} />
-              <p className="-mt-2 mb-3.5 text-sm text-neutral-600">
-                Scheduled pickups you can plan around — each opens to claim at its
-                listed time.
-              </p>
-              <ListingStack listings={comingUp} />
-            </section>
-          )}
-          {unclaimable.length > 0 && (
-            <section>
-              <CollapsibleSectionHeader
-                title="Claimed & closed"
-                count={unclaimable.length}
-                open={closedOpen}
-                onToggle={() => setClosedOpen((o) => !o)}
-              />
-              {closedOpen && <ListingStack listings={unclaimable} />}
-            </section>
-          )}
-        </div>
+        listSections
       )}
 
       <Toast message={message} />
