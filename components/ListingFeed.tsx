@@ -326,6 +326,74 @@ function ListingStack({
   );
 }
 
+// Group scheduled listings by their parent recurring schedule, preserving the
+// incoming (soonest-first) order. One-off scheduled listings each form their own
+// singleton group, so a mixed list stays correctly time-ordered.
+function groupBySchedule(items: Listing[]): Listing[][] {
+  const groups: Listing[][] = [];
+  const byId = new Map<string, Listing[]>();
+  for (const l of items) {
+    if (l.recurringPostId) {
+      let g = byId.get(l.recurringPostId);
+      if (!g) {
+        g = [];
+        byId.set(l.recurringPostId, g);
+        groups.push(g);
+      }
+      g.push(l);
+    } else {
+      groups.push([l]);
+    }
+  }
+  return groups;
+}
+
+// One recurring schedule's upcoming occurrences. Only the soonest shows by
+// default — the rest fold behind a quiet expander so a daily/weekly schedule
+// doesn't flood the feed with near-identical cards. (Repeat occurrences share
+// title/source/servings; they differ only by when they open.)
+function RecurringGroup({ listings }: { listings: Listing[] }) {
+  const [open, setOpen] = useState(false);
+  const [first, ...rest] = listings;
+  const more = rest.length;
+  return (
+    <div className="flex flex-col gap-[18px]">
+      <ListingCard listing={first} />
+      {more > 0 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            className="-mt-1 flex items-center gap-2 self-start rounded-lg py-1 pl-1 pr-2 text-left text-[13px] font-semibold text-neutral-600 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+          >
+            <Chevron open={open} />
+            {open ? "Hide repeats" : `Show ${more} more ${more === 1 ? "time" : "times"} this schedule`}
+          </button>
+          {open && <ListingStack listings={rest} />}
+        </>
+      )}
+    </div>
+  );
+}
+
+// "Coming up" rendered as schedules, not raw occurrences: each recurring
+// schedule collapses to its next time with an expander for the rest.
+function ComingUpStack({ listings }: { listings: Listing[] }) {
+  const groups = useMemo(() => groupBySchedule(listings), [listings]);
+  return (
+    <div className="flex flex-col gap-[18px]">
+      {groups.map((g) =>
+        g.length === 1 ? (
+          <ListingCard key={g[0].id} listing={g[0]} />
+        ) : (
+          <RecurringGroup key={g[0].recurringPostId} listings={g} />
+        )
+      )}
+    </div>
+  );
+}
+
 export function ListingFeed({
   listings,
   canClaim = true,
@@ -448,6 +516,9 @@ export function ListingFeed({
   const comingUp = shown
     .filter((l) => l.status === "open" && l.scheduled)
     .sort((a, b) => (a.availableAt ?? 0) - (b.availableAt ?? 0));
+  // Count distinct schedules (one-offs count as one each), so the header reflects
+  // what's shown after collapsing — not the raw occurrence count.
+  const comingUpScheduleCount = groupBySchedule(comingUp).length;
   const unclaimable = shown.filter((l) => l.status !== "open");
 
   // Expand the collapsed tracking section when it's the point of the view — an
@@ -484,12 +555,12 @@ export function ListingFeed({
       )}
       {comingUp.length > 0 && (
         <section>
-          <SectionHeader title="Coming up" count={comingUp.length} />
+          <SectionHeader title="Coming up" count={comingUpScheduleCount} />
           <p className="-mt-2 mb-3.5 text-sm text-neutral-600">
             Scheduled pickups you can plan around — each opens to claim at its
             listed time.
           </p>
-          <ListingStack listings={comingUp} />
+          <ComingUpStack listings={comingUp} />
         </section>
       )}
       {unclaimable.length > 0 && (
