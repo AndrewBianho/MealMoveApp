@@ -39,10 +39,30 @@ export function LoginForm() {
       return;
     }
     setLoading(true);
-    const res = await signIn("credentials", { email, password, redirect: false });
+
+    // A failed sign-in has two very different causes that must read differently:
+    // genuinely wrong credentials, vs. the server/DB being unreachable. Auth.js
+    // only returns code "credentials" for an explicit authorize rejection (wrong
+    // email/password); a thrown error inside authorize — e.g. a database
+    // connection failure — comes back as a different error (CallbackRouteError)
+    // with no "credentials" code, and a network failure rejects outright. Only
+    // the first is the user's fault, so only it blames their credentials.
+    let res: Awaited<ReturnType<typeof signIn>> | undefined;
+    try {
+      res = await signIn("credentials", { email, password, redirect: false });
+    } catch {
+      setLoading(false);
+      setError("We're having trouble signing you in right now. Please try again in a moment.");
+      return;
+    }
     if (res?.error) {
       setLoading(false);
-      setError("That email and password don't match. Try again.");
+      const wrongCredentials = (res as { code?: string }).code === "credentials";
+      setError(
+        wrongCredentials
+          ? "That email and password don't match. Try again."
+          : "We're having trouble signing you in right now. Please try again in a moment."
+      );
       return;
     }
     // Show the payoff for a calm beat, then land on "/"; middleware bounces each
