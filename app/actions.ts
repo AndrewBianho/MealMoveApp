@@ -683,6 +683,7 @@ export async function postListing(input: {
   servings: number;
   minutes: number;
   weightLbs?: number;
+  carsNeeded?: number;
   notes?: string;
   imageUrl?: string;
   allergens?: string[];
@@ -724,6 +725,13 @@ export async function postListing(input: {
     weightLbs = w;
   }
 
+  // Cars suggested to carry the food. Bounded the same way as servings so a
+  // bad client value can't write nonsense; null when not provided.
+  let carsNeeded: number | null = null;
+  if (input.carsNeeded != null) {
+    carsNeeded = boundedInt(input.carsNeeded, 1, 99);
+  }
+
   const notes = input.notes?.trim().slice(0, NOTES_MAX) || null;
   const imageUrl = input.imageUrl?.trim().slice(0, IMAGE_URL_MAX) || null;
   const allergens = cleanAllergens(input.allergens);
@@ -734,6 +742,7 @@ export async function postListing(input: {
       title,
       servings,
       weightLbs,
+      carsNeeded,
       notes,
       imageUrl,
       allergens,

@@ -252,6 +252,7 @@ model FoodListing {
   title        String
   servings     Int
   weightLbs    Float? // actual weight if the restaurant provides it
+  carsNeeded   Int?           @map("trunksNeeded") // cars suggested to carry it (auto ~ceil(weight/60), overridable at post time)
   category     FoodCategory   @default(prepared)
   perishable   Boolean        @default(false)
   // Food-safety surfacing: allergens present (free-form labels) and how the food
