@@ -63,6 +63,7 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
     recurrence: l.recurringPost
       ? describeCadence(l.recurringPost.daysOfWeek) || undefined
       : undefined,
+    recurringPostId: l.recurringPostId ?? undefined,
     servings: l.servings,
     weightLbs: l.weightLbs ?? undefined,
     // Placeholder until the client knows where the volunteer is: ListingFeed

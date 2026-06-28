@@ -75,6 +75,9 @@ export interface Listing {
   availableLabel?: string;
   /** How the parent schedule recurs, e.g. "every day" / "weekdays" / "Mon, Wed". */
   recurrence?: string;
+  /** Parent recurring-schedule id, when this listing was materialized from one.
+   *  Lets the feed group repeat occurrences of the same schedule together. */
+  recurringPostId?: string;
   servings: number;
   /** Actual weight in pounds, when the restaurant provides it. */
   weightLbs?: number;
