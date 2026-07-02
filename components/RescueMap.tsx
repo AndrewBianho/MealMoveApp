@@ -807,7 +807,12 @@ export function RescueMap({
   // The core: marker visibility/highlight + route drawing, on any input change.
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || restMarkers.current.size === 0) return;
+    // Gate on having ANY pins to work with — restaurants OR drop-offs. Keying
+    // only on restaurants meant a map with drop-offs but no live pickups (e.g.
+    // every open listing has drifted expired/scheduled) went fully inert: even
+    // drop-off pins stopped responding to clicks.
+    if (!map || (restMarkers.current.size === 0 && dropMarkers.current.size === 0))
+      return;
     let cancelled = false;
 
     const routesSrc = () => map.getSource("routes") as GeoJSONSource | undefined;
