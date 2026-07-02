@@ -173,7 +173,9 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
   return (
     <>
       {/* Desktop: inline links */}
-      <nav className="ml-2 hidden items-center gap-1 md:flex">
+      {/* flex-wrap: the org-admin item set is wider than a 768–1024px viewport;
+          pills wrap inside the header (which grows) instead of overflowing it. */}
+      <nav className="ml-2 hidden flex-wrap items-center gap-1 md:flex">
         {items.map((item) => (
           <Link
             key={item.href}

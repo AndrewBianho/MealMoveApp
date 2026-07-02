@@ -53,8 +53,8 @@ export default async function PickupsPage() {
             Volunteers who asked you to join them — open one to accept.
           </p>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {invited.map((l) => (
-              <ListingCard key={l.id} listing={l} />
+            {invited.map((l, i) => (
+              <ListingCard key={l.id} listing={l} priorityImage={i === 0} />
             ))}
           </div>
         </section>
@@ -64,8 +64,8 @@ export default async function PickupsPage() {
         <h2 className="mb-4 text-lg font-medium">Active</h2>
         {active.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {active.map((l) => (
-              <ListingCard key={l.id} listing={l} />
+            {active.map((l, i) => (
+              <ListingCard key={l.id} listing={l} priorityImage={i === 0} />
             ))}
           </div>
         ) : (
@@ -87,8 +87,13 @@ export default async function PickupsPage() {
         <h2 className="mb-4 text-lg font-medium">History</h2>
         {past.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {past.map((l) => (
-              <ListingCard key={l.id} listing={l} />
+            {past.map((l, i) => (
+              <ListingCard
+                key={l.id}
+                listing={l}
+                // With few/no active cards, the first history photo is the LCP.
+                priorityImage={i === 0 && invited.length === 0 && active.length === 0}
+              />
             ))}
           </div>
         ) : (

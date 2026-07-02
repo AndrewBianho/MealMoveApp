@@ -249,11 +249,23 @@ export function ListingDetail({
     listing.status === "taken home";
   const isPrimary = Boolean(listing.mine) && !listing.iAmBuddy;
 
+  // The one action this screen exists for. On phones the inline "Next step"
+  // card sits below food safety / special requests / the status timeline, so a
+  // fixed bar pins the claim button above the tab bar ("every screen moves
+  // food" — the primary action never hides below the fold). md+ keeps only the
+  // inline card.
+  const showClaimBar = listing.status === "open" && canClaim;
+
   return (
-    <div className={cn(isPending && "opacity-70 transition-opacity")}>
+    <div
+      className={cn(
+        isPending && "opacity-70 transition-opacity",
+        showClaimBar && "pb-20 md:pb-0"
+      )}
+    >
       <Link
         href="/"
-        className="mb-4 inline-block text-sm text-neutral-700 hover:text-neutral-900"
+        className="-mx-1.5 mb-2 inline-block rounded px-1.5 py-2 text-sm text-neutral-700 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
       >
         ← Feed
       </Link>
@@ -816,6 +828,19 @@ export function ListingDetail({
           dropOff={listing.dropOff}
           onClose={() => setCelebration(null)}
         />
+      )}
+
+      {showClaimBar && (
+        <div className="fixed inset-x-0 bottom-[calc(3.875rem+env(safe-area-inset-bottom))] z-sticky border-t border-neutral-200/50 bg-neutral-50/90 px-4 py-3 backdrop-blur-md md:hidden">
+          <Button
+            variant="claim"
+            className="w-full"
+            onClick={onClaim}
+            disabled={isPending}
+          >
+            Claim pickup
+          </Button>
+        </div>
       )}
 
       <Toast message={message} />

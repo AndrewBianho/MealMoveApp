@@ -64,7 +64,7 @@ export function PasswordField({
           type="button"
           onClick={() => setReveal((r) => !r)}
           className={cn(
-            "absolute inset-y-0 right-2 my-auto h-7 rounded px-1.5 font-mono text-[11px]",
+            "absolute inset-y-0 right-1 my-auto h-9 rounded px-2 font-mono text-[11px]",
             "uppercase tracking-wide text-rescued-600 hover:underline",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
           )}

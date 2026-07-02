@@ -63,7 +63,7 @@ export function RetrievalHoursEditor({
         <RetrievalHoursDisplay hours={parsed} />
         <button
           onClick={() => setEditing(true)}
-          className="mt-1 text-xs font-medium text-rescued-600 hover:underline"
+          className="-mx-1 mt-1 inline-block rounded px-1 py-2 text-xs font-medium text-rescued-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
         >
           {parsed ? "Edit retrieval hours" : "Set your retrieval hours"}
         </button>

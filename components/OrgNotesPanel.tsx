@@ -103,7 +103,7 @@ export function OrgNotesPanel({
         )}
         <button
           onClick={() => setEditing(true)}
-          className="mt-2 text-xs font-medium text-clay-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+          className="-mx-1 mt-2 inline-block rounded px-1 py-2 text-xs font-medium text-clay-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
         >
           {isEmpty ? "Add notes" : "Edit notes"}
         </button>

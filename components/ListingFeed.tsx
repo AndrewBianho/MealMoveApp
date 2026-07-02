@@ -157,7 +157,7 @@ function CategoryFilter({
             aria-pressed={active}
             onClick={() => onChange(c)}
             className={cn(
-              "rounded-full px-3 py-1 font-mono text-[11px] transition-colors duration-150",
+              "rounded-full px-3 py-1.5 font-mono text-[11px] transition-colors duration-150",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",
               active
                 ? "bg-neutral-900 text-neutral-50"
@@ -200,7 +200,7 @@ function SortControl({
               onClick={() => onChange(s)}
               title={s === "nearest" && !located ? "Share your location to sort by distance" : undefined}
               className={cn(
-                "rounded-full px-3 py-1 text-[12.5px] font-semibold transition-colors duration-150",
+                "rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-colors duration-150",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",
                 active ? "bg-neutral-900 text-neutral-50" : "text-neutral-600 hover:text-neutral-900"
               )}
@@ -232,7 +232,7 @@ function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => voi
             aria-pressed={active}
             onClick={() => onChange(v)}
             className={cn(
-              "rounded-full px-3 py-1 text-[12.5px] font-semibold transition-colors duration-150",
+              "rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-colors duration-150",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",
               active ? "bg-neutral-900 text-neutral-50" : "text-neutral-600 hover:text-neutral-900"
             )}
@@ -308,9 +308,12 @@ function CollapsibleSectionHeader({
 function ListingStack({
   listings,
   onClaim,
+  lead = false,
 }: {
   listings: Listing[];
   onClaim?: (id: string) => void;
+  /** True for the stack that opens the page — its first photo is the LCP. */
+  lead?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-[18px]">
@@ -320,6 +323,7 @@ function ListingStack({
           listing={l}
           onClaim={onClaim}
           className={STAGGER[Math.min(i, STAGGER.length - 1)]}
+          priorityImage={lead && i === 0}
         />
       ))}
     </div>
@@ -550,7 +554,7 @@ export function ListingFeed({
       {claimable.length > 0 && (
         <section>
           <SectionHeader title="Available to claim" count={claimable.length} />
-          <ListingStack listings={claimable} onClaim={onClaim} />
+          <ListingStack listings={claimable} onClaim={onClaim} lead />
         </section>
       )}
       {comingUp.length > 0 && (

@@ -20,6 +20,9 @@ interface ListingCardProps {
   nearbyVolunteers?: number;
   /** Extra classes on the root — used for staggered entrance delays in the feed. */
   className?: string;
+  /** Eager-load the photo. Set on the first card of the lead section only — it's
+   *  the page's LCP element, and lazy-loading it delays the largest paint. */
+  priorityImage?: boolean;
 }
 
 const SPENT: Listing["status"][] = ["delivered", "expired", "failed"];
@@ -57,6 +60,7 @@ export function ListingCard({
   audience = "volunteer",
   nearbyVolunteers,
   className,
+  priorityImage = false,
 }: ListingCardProps) {
   const {
     id,
@@ -160,6 +164,7 @@ export function ListingCard({
             alt={title}
             fill
             sizes="232px"
+            priority={priorityImage}
             className={cn(
               "object-cover transition-transform duration-300 group-hover:scale-[1.03]",
               spent && "opacity-75 saturate-[0.7]"

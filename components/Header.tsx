@@ -24,7 +24,10 @@ export async function Header() {
   return (
     <>
       <header className="sticky top-0 z-sticky border-b border-neutral-200/50 bg-neutral-50/80 backdrop-blur-md">
-        <div className="relative mx-auto flex h-16 max-w-[1760px] items-center gap-4 px-6">
+        {/* min-h + wrap (not a fixed h-16): roles with many nav items (org
+            admin) overflow a single 768–1024px row; wrapping onto a second
+            row beats horizontal page scroll. One-row roles render identically. */}
+        <div className="relative mx-auto flex min-h-16 max-w-[1760px] flex-wrap items-center gap-x-4 gap-y-1 px-6 py-2">
           <Link href="/" className="group flex items-center gap-2.5">
             {/* The mark is a CSS mask filled with theme ink, so it renders crisp
                 in both Arctic (dark ink) and Forest (light ink) with no square. */}
@@ -43,7 +46,7 @@ export async function Header() {
             <Link
               href="/settings"
               title="You're viewing demo data — change in Settings"
-              className="rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-neutral-700 transition-colors hover:text-neutral-900"
+              className="rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wide text-neutral-700 transition-colors hover:text-neutral-900"
             >
               demo data
             </Link>

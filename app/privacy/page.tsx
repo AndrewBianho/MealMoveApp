@@ -224,7 +224,7 @@ export default function PrivacyPage() {
           Questions about your privacy or this policy? Reach us at{" "}
           <a
             href={`mailto:${CONTACT_EMAIL}`}
-            className="font-medium text-clay-800 underline-offset-2 hover:underline"
+            className="-mx-1 -my-2 inline-block px-1 py-2 font-medium text-clay-800 underline-offset-2 hover:underline"
           >
             {CONTACT_EMAIL}
           </a>
@@ -235,7 +235,7 @@ export default function PrivacyPage() {
       <div className="mt-12 border-t border-neutral-900/10 pt-6">
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wide text-rescued-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
+          className="-mx-1.5 -my-2 inline-flex items-center gap-1.5 rounded px-1.5 py-2 font-mono text-[11px] uppercase tracking-wide text-rescued-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
         >
           <span aria-hidden>←</span> back to Meal Move
         </Link>

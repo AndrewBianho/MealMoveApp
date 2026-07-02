@@ -122,7 +122,7 @@ export function LoginForm() {
           labelRight={
             <Link
               href="/forgot-password"
-              className="font-mono text-[11px] uppercase tracking-wide text-rescued-600 hover:underline"
+              className="-mx-1.5 -my-2 inline-block px-1.5 py-2 font-mono text-[11px] uppercase tracking-wide text-rescued-600 hover:underline"
             >
               Forgot?
             </Link>
@@ -132,7 +132,7 @@ export function LoginForm() {
         <button
           type="button"
           onClick={() => setRemember((r) => !r)}
-          className="flex items-center gap-2.5 text-left"
+          className="-my-2 flex items-center gap-2.5 rounded py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
           aria-pressed={remember}
         >
           <span
@@ -169,7 +169,7 @@ export function LoginForm() {
         New to Meal Move?{" "}
         <Link
           href="/signup"
-          className="font-bold text-rescued-600 hover:underline"
+          className="-mx-1 -my-2 inline-block px-1 py-2 font-bold text-rescued-600 hover:underline"
         >
           Create an account
         </Link>

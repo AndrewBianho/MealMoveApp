@@ -77,7 +77,7 @@ export function DropOffNoticeManager({
         {!open && (
           <button
             onClick={() => setOpen(true)}
-            className="text-xs font-medium text-clay-600 hover:underline"
+            className="-my-2 -mx-1 inline-block rounded px-1 py-2 text-xs font-medium text-clay-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
           >
             Post a change
           </button>

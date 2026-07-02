@@ -149,7 +149,7 @@ export function RecurringPostManager({
                     type="button"
                     onClick={() => togglePaused(s)}
                     disabled={isPending}
-                    className="rounded-full px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-neutral-700 transition-colors hover:bg-neutral-100"
+                    className="rounded-full px-2.5 py-2 font-mono text-[10px] uppercase tracking-wide text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
                   >
                     {s.active ? "Pause" : "Resume"}
                   </button>
@@ -158,7 +158,7 @@ export function RecurringPostManager({
                     onClick={() => remove(s)}
                     disabled={isPending}
                     aria-label={`Remove ${s.title} schedule`}
-                    className="grid h-7 w-7 place-items-center rounded-full text-neutral-600 transition-colors hover:bg-failed-50 hover:text-failed-600"
+                    className="grid h-9 w-9 place-items-center rounded-full text-neutral-600 transition-colors hover:bg-failed-50 hover:text-failed-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
                   >
                     <X />
                   </button>
@@ -211,7 +211,7 @@ export function RecurringPostManager({
               type="button"
               onClick={() => setDays(new Set(DAILY))}
               className={cn(
-                "rounded-full border px-3 py-1 text-xs transition-colors",
+                "rounded-full border px-3 py-1.5 text-xs transition-colors",
                 daysMatch(days, DAILY)
                   ? "border-neutral-900 bg-neutral-900 text-neutral-50"
                   : "border-neutral-200/60 text-neutral-700 hover:bg-neutral-100"
@@ -223,7 +223,7 @@ export function RecurringPostManager({
               type="button"
               onClick={() => setDays(new Set(WEEKDAYS))}
               className={cn(
-                "rounded-full border px-3 py-1 text-xs transition-colors",
+                "rounded-full border px-3 py-1.5 text-xs transition-colors",
                 daysMatch(days, WEEKDAYS)
                   ? "border-neutral-900 bg-neutral-900 text-neutral-50"
                   : "border-neutral-200/60 text-neutral-700 hover:bg-neutral-100"

@@ -40,7 +40,7 @@ export function BackToSignIn({ className }: { className?: string }) {
     <Link
       href="/login"
       className={
-        "inline-block font-bold text-rescued-600 underline-offset-2 hover:underline " +
+        "-mx-1 -my-2 inline-block px-1 py-2 font-bold text-rescued-600 underline-offset-2 hover:underline " +
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 " +
         "focus-visible:ring-offset-2 rounded " +
         (className ?? "")
