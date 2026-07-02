@@ -162,6 +162,11 @@ function ensurePinStyles() {
       opacity:.22;animation:mm-me-ping 2.6s cubic-bezier(0,0,.2,1) infinite;}
     @keyframes mm-me-ping{0%{transform:scale(.32);opacity:.4;}70%{opacity:0;}100%{transform:scale(1);opacity:0;}}
     @media (prefers-reduced-motion: reduce){.mm-pin-head,.mm-pin-head::before{transition:none;}.mm-me-pulse{animation:none;opacity:.15;}}
+    /* Lift the map's bottom controls + attribution above the selection sheet
+       (which floats over the map) so they stay reachable while a pin is picked.
+       --mm-sheet-h is set to the sheet's height in JS; 0 when nothing's open. */
+    .mm-map-shell .mapboxgl-ctrl-bottom-right,.mm-map-shell .mapboxgl-ctrl-bottom-left{transition:bottom .22s ease;bottom:var(--mm-sheet-h,0px);}
+    @media (prefers-reduced-motion: reduce){.mm-map-shell .mapboxgl-ctrl-bottom-right,.mm-map-shell .mapboxgl-ctrl-bottom-left{transition:none;}}
   `;
   document.head.appendChild(s);
 }
@@ -173,6 +178,31 @@ function boundsOf(pts: [number, number][]): [[number, number], [number, number]]
     [Math.min(...lngs), Math.min(...lats)],
     [Math.max(...lngs), Math.max(...lats)],
   ];
+}
+
+// Frame a journey into the part of the map NOT covered by the selection panel,
+// which now floats as a bottom sheet over the map (rather than shrinking it —
+// that resize used to blank the satellite tiles, reading as a jarring "reload"
+// on every click). We pad the bottom by roughly the sheet's height so the route
+// sits fully visible above it, and glide with `linear` (easeTo) instead of the
+// default fly-to arc — no zoom-out means the tiles already on screen mostly
+// stay, so the move is smooth and the route-draw animation is actually seen.
+// Padding is clamped well inside the canvas (mapbox throws "cannot fit within
+// canvas" if top+bottom ≥ height or left+right ≥ width).
+function fitToRoute(map: MapboxMap, pts: [number, number][]): void {
+  if (pts.length < 2) return;
+  const canvas = map.getCanvas();
+  const h = canvas.clientHeight;
+  const w = canvas.clientWidth;
+  const bottom = Math.min(Math.round(h * 0.42) + 16, Math.floor(h * 0.5));
+  const top = Math.min(56, Math.floor(h * 0.15));
+  const side = Math.min(48, Math.floor(w * 0.18));
+  map.fitBounds(boundsOf(pts), {
+    padding: { top, bottom, left: side, right: side },
+    maxZoom: 14,
+    linear: true,
+    duration: 620,
+  });
 }
 
 // Animate the active route "drawing in" via line-trim-offset (mapbox-gl ≥ 2.9):
@@ -978,10 +1008,8 @@ export function RescueMap({
           ...top3.map((x) => [x.dropOff.lng, x.dropOff.lat] as [number, number]),
           ...(destRef.current ? [destRef.current] : []),
         ];
-        // Sync the canvas to the (now panel-shrunk) map area before framing, so
-        // the route fits the visible map rather than the old full-height box.
-        map.resize();
-        if (pts.length > 1) map.fitBounds(boundsOf(pts), { padding: 80, maxZoom: 14 });
+        // Glide to frame every candidate journey above the docked bottom sheet.
+        fitToRoute(map, pts);
         return;
       }
 
@@ -1068,9 +1096,8 @@ export function RescueMap({
         ...top3.map((x) => [x.restaurant.lng, x.restaurant.lat] as [number, number]),
         ...(destRef.current ? [destRef.current] : []),
       ];
-      // Sync the canvas to the (now panel-shrunk) map area before framing.
-      map.resize();
-      if (pts.length > 1) map.fitBounds(boundsOf(pts), { padding: 80, maxZoom: 14 });
+      // Glide to frame every candidate journey above the docked bottom sheet.
+      fitToRoute(map, pts);
     };
 
     if (map.isStyleLoaded()) apply();
@@ -1103,6 +1130,16 @@ export function RescueMap({
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     panelRef.current.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "nearest" });
   }, [selected, panel]);
+
+  // Mirror the floating sheet's live height into a CSS var so the map's bottom
+  // controls/attribution lift to sit just above it (0 when nothing's selected).
+  // Re-runs as the panel's content resolves (drive times fill in → taller).
+  useEffect(() => {
+    const shell = container.current;
+    if (!shell) return;
+    const h = panel && panelRef.current ? panelRef.current.offsetHeight : 0;
+    shell.style.setProperty("--mm-sheet-h", `${h}px`);
+  }, [panel]);
 
   // Auto-hide the search/controls card while a pin is selected (the docked panel
   // needs the space); restore it when the selection clears.
@@ -1181,14 +1218,15 @@ export function RescueMap({
   })();
 
   return (
-    <div className="flex h-full w-full flex-col">
-      {/* MAP AREA — grows to fill; shrinks (flex-1) when the selection panel docks
-          below it, so the map and its routes stay fully on screen instead of
-          hiding under an overlay. */}
+    <div className="relative flex h-full w-full flex-col">
+      {/* MAP AREA — always fills the frame. The selection panel floats over it as
+          a bottom sheet (see below) rather than shrinking it: resizing the map on
+          every click forced a satellite-tile reload that flashed grey. Keeping the
+          canvas a fixed size means no resize, no reload — just a smooth glide. */}
       <div className="relative min-h-0 flex-1">
         {/* Sized with h/w-full (not inset-0): mapbox-gl.css forces the map element
             to position:relative, on which inset offsets wouldn't size it. */}
-        <div ref={container} className="h-full w-full" />
+        <div ref={container} className="mm-map-shell h-full w-full" />
 
         {/* Overlay is click-through (pointer-events-none) so map drag/zoom works in
             the gaps; the controls card re-enables events with pointer-events-auto. */}
@@ -1338,13 +1376,14 @@ export function RescueMap({
         </div>
       </div>
 
-      {/* Selection panel — docks BELOW the map (a flex sibling, not an overlay):
-          the map area above shrinks (flex-1) so the routes stay fully visible, and
-          the panel scrolls internally. Persists until "Show all" / re-clicking. */}
+      {/* Selection panel — floats over the map as a bottom sheet (absolute, not a
+          flex sibling): the map keeps its size so a click never resizes/reloads it.
+          fitToRoute pads the camera by ~the sheet's height so the route stays fully
+          visible above it. Scrolls internally; persists until "Show all" / re-click. */}
       {panel && (
         <div
           ref={panelRef}
-          className="max-h-[45vh] shrink-0 overflow-y-auto border-t border-neutral-900/10 bg-card px-4 py-3 shadow-[0_-6px_20px_rgba(51,52,44,0.12)] animate-fade-in"
+          className="absolute inset-x-0 bottom-0 z-20 max-h-[45vh] overflow-y-auto rounded-t-2xl border-t border-neutral-900/10 bg-card px-4 py-3 shadow-[0_-6px_20px_rgba(51,52,44,0.12)] animate-fade-in"
         >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
