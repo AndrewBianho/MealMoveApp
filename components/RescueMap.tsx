@@ -175,6 +175,56 @@ function boundsOf(pts: [number, number][]): [[number, number], [number, number]]
   ];
 }
 
+// Animate the active route "drawing in" via line-trim-offset (mapbox-gl ≥ 2.9):
+// the property hides the [p, 1] fraction of the line, so sweeping p from 0 → 1
+// reveals it start → end; the white casing draws in lockstep. Best-effort and
+// non-blocking — never throws, and if the property is unsupported it leaves the
+// line fully shown. Instant under reduced motion. Only a paint property changes,
+// so no tiles or sources reload.
+function drawActiveRoute(map: MapboxMap, cancelled: () => boolean): void {
+  const LAYERS = ["route-casing", "route-active"];
+  const setTrim = (p: number) => {
+    for (const id of LAYERS) {
+      try {
+        if (map.getLayer(id)) map.setPaintProperty(id, "line-trim-offset", [p, 1]);
+      } catch {
+        /* unsupported — leave fully drawn */
+      }
+    }
+  };
+  const reveal = () => {
+    for (const id of LAYERS) {
+      try {
+        if (map.getLayer(id)) map.setPaintProperty(id, "line-trim-offset", [0, 0]);
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+  const reduce =
+    typeof window !== "undefined" &&
+    !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  if (reduce) {
+    reveal();
+    return;
+  }
+  const DURATION = 650;
+  let start = 0;
+  setTrim(0); // start fully hidden
+  const tick = (now: number) => {
+    if (!start) start = now;
+    if (cancelled() || !map.getLayer("route-active")) {
+      reveal();
+      return;
+    }
+    const t = Math.min(1, (now - start) / DURATION);
+    setTrim(1 - Math.pow(1 - t, 3)); // easeOutCubic sweep
+    if (t < 1) requestAnimationFrame(tick);
+    else reveal();
+  };
+  requestAnimationFrame(tick);
+}
+
 const EMPTY: FeatureCollection = { type: "FeatureCollection", features: [] };
 
 // Add the route line layers (Google-Maps style: one bold blue active route, the
@@ -901,6 +951,8 @@ export function RescueMap({
         candidateEndpointsRef.current = { kind: "rest", ids };
         settleActive(ids, shortIdx >= 0 ? top3[shortIdx].dropOff.id : ids[0]);
         paintRoutes();
+        // Animate the chosen path drawing in (non-blocking; the panel already shows).
+        drawActiveRoute(map, () => cancelled || selectedRef.current?.id !== sel.id);
 
         setPanel({
           kind: "rest",
@@ -990,6 +1042,8 @@ export function RescueMap({
       candidateEndpointsRef.current = { kind: "drop", ids };
       settleActive(ids, shortIdx >= 0 ? top3[shortIdx].restaurant.id : ids[0]);
       paintRoutes();
+      // Animate the chosen path drawing in (non-blocking; the panel already shows).
+      drawActiveRoute(map, () => cancelled || selectedRef.current?.id !== sel.id);
 
       setPanel({
         kind: "drop",
