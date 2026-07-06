@@ -3,13 +3,14 @@ import { prisma } from "./prisma";
 import { parseStoredHours } from "./hours";
 import { describeCadence } from "./recurring";
 import { isDemo } from "./mode";
+import { pickupStage, LIVE_LISTING_STATUSES } from "./claims";
 import type { Listing, ListingStatus } from "./types";
 
 // Pull the relations the UI needs in one query.
 const listingInclude = {
   restaurant: true,
   dropOff: true,
-  pickup: { include: { volunteer: true, buddy: true } },
+  pickups: { include: { volunteer: true, buddy: true } },
   recurringPost: true,
 } satisfies Prisma.FoodListingInclude;
 
@@ -40,6 +41,21 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
   // A future listing (materialized from a recurring schedule) is "scheduled":
   // visible but not yet claimable until availableAt passes.
   const scheduled = !!l.availableAt && l.availableAt.getTime() > Date.now();
+  // The viewer's own claim, when they're on one (a multi-car listing carries
+  // one pickup per car); otherwise the first claim stands in for the shared
+  // fields (claimedBy, timestamps) so single-car behavior is unchanged.
+  const own = viewerId
+    ? l.pickups.find((p) => p.volunteerId === viewerId || p.buddyId === viewerId)
+    : undefined;
+  const pick = own ?? l.pickups[0];
+  // Per-viewer status: each car advances at its own pace while the listing
+  // status trails the slowest car (see lib/claims). A volunteer on a claim sees
+  // where *their* car is — e.g. "claimed" even while the listing is still
+  // "open" waiting on more cars.
+  const status: ListingStatus =
+    own && LIVE_LISTING_STATUSES.includes(l.status)
+      ? fromEnum(pickupStage(own))
+      : fromEnum(l.status);
   return {
     id: l.id,
     title: l.title,
@@ -70,9 +86,12 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
     // fills this in from the browser's geolocation (straight-line miles to the
     // restaurant's lat/lng). Stays "—" when location is denied or unavailable.
     distance: "—",
-    status: fromEnum(l.status),
-    claimedBy: l.pickup?.volunteer.name,
+    status,
+    carsNeeded: l.carsNeeded ?? undefined,
+    claimedCount: l.pickups.length,
+    claimedBy: pick?.volunteer.name,
     dropOff: l.dropOff?.name ?? undefined,
+    dropOffId: l.dropOffId ?? undefined,
     dropOffHours: parseStoredHours(l.dropOff?.retrievalHours) ?? undefined,
     lat: l.restaurant.lat,
     lng: l.restaurant.lng,
@@ -83,20 +102,19 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
     notes: l.notes ?? undefined,
     // Food photo wins; fall back to the restaurant's default image.
     imageUrl: l.imageUrl ?? l.restaurant.imageUrl ?? undefined,
-    claimedAt: l.pickup?.claimedAt.getTime(),
-    holdUntil: l.pickup?.holdUntil.getTime(),
-    takenHomeAt: l.pickup?.takenHomeAt?.getTime(),
-    deliverBy: l.pickup?.deliverBy?.getTime(),
-    lastCheckInAt: l.pickup?.lastCheckInAt?.getTime(),
-    photoAtPickupUrl: l.pickup?.photoAtPickupUrl ?? undefined,
-    photoAtDeliveryUrl: l.pickup?.photoAtDeliveryUrl ?? undefined,
-    rescueAccuracy: l.pickup?.rescueAccuracy ?? undefined,
-    mine:
-      viewerId != null &&
-      (l.pickup?.volunteerId === viewerId || l.pickup?.buddyId === viewerId),
-    primaryName: l.pickup?.volunteer.name,
-    buddyName: l.pickup?.buddy?.name ?? undefined,
-    iAmBuddy: viewerId != null && l.pickup?.buddyId === viewerId,
+    postedAt: l.postedAt.getTime(),
+    claimedAt: pick?.claimedAt.getTime(),
+    deliveredAt: pick?.deliveredAt?.getTime(),
+    holdUntil: pick?.holdUntil.getTime(),
+    takenHomeAt: pick?.takenHomeAt?.getTime(),
+    deliverBy: pick?.deliverBy?.getTime(),
+    photoAtPickupUrl: pick?.photoAtPickupUrl ?? undefined,
+    photoAtDeliveryUrl: pick?.photoAtDeliveryUrl ?? undefined,
+    rescueAccuracy: pick?.rescueAccuracy ?? undefined,
+    mine: own != null,
+    primaryName: pick?.volunteer.name,
+    buddyName: pick?.buddy?.name ?? undefined,
+    iAmBuddy: own?.buddyId === viewerId && viewerId != null,
   };
 }
 
@@ -118,7 +136,17 @@ export async function getListing(
     where: { id },
     include: listingInclude,
   });
-  return row ? serializeListing(row, viewerId) : null;
+  if (!row) return null;
+  const listing = serializeListing(row, viewerId);
+  // "Picked up" time for the lifecycle stepper. The Pickup row doesn't store
+  // the claimed → in_transit transition, but the audit log does.
+  const picked = await prisma.listingEvent.findFirst({
+    where: { listingId: id, type: "in_transit" },
+    orderBy: { at: "asc" },
+    select: { at: true },
+  });
+  if (picked) listing.pickedUpAt = picked.at.getTime();
+  return listing;
 }
 
 export async function getRestaurantDetail(id: string) {

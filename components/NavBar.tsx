@@ -10,23 +10,23 @@ import { cn } from "./cn";
 import { resetDemoOnLogout } from "@/app/actions";
 import type { Role } from "@prisma/client";
 
-// Reset the demo world (if the user is in it) before signing out, so the next
-// person meets a pristine showcase. The reset is best-effort — a failure must
-// never trap someone on the page, so we sign out regardless.
-async function signOutAndResetDemo() {
-  try {
-    await resetDemoOnLogout();
-  } catch {
+// Reset the demo world (if the user is in it) as we leave, so the next person
+// meets a pristine showcase. Fired in parallel with the sign-out rather than
+// awaited: reseeding the showcase is seconds of server work, and the person
+// leaving shouldn't sit through it. Best-effort by design — the request is
+// dispatched before the sign-out navigation and the server finishes it on its
+// own; a failure must never trap someone on the page.
+function signOutAndResetDemo() {
+  void resetDemoOnLogout().catch(() => {
     // ignore — signing out is what matters
-  }
-  await signOut({ callbackUrl: "/login" });
+  });
+  return signOut({ callbackUrl: "/login" });
 }
 
 type Item = { href: string; label: string; short?: string; icon: string };
 
 const FEED: Item = { href: "/", label: "Available", icon: "feed" };
 const MAP: Item = { href: "/map", label: "Map", icon: "map" };
-const PICKUPS: Item = { href: "/pickups", label: "My pickups", short: "My pickups", icon: "pickups" };
 const RESTAURANT: Item = { href: "/restaurant", label: "Restaurant", short: "Restaurant", icon: "restaurant" };
 const DROPOFF: Item = { href: "/dropoff", label: "Drop-off", icon: "dropoff" };
 const IMPACT: Item = { href: "/impact", label: "Impact", icon: "impact" };
@@ -36,7 +36,7 @@ const PARTNERS: Item = { href: "/admin/partners", label: "Partner notes", short:
 const HEALTH: Item = { href: "/admin/health", label: "Ops health", short: "Health", icon: "health" };
 
 const NAV_BY_ROLE: Record<Role, Item[]> = {
-  volunteer: [FEED, MAP, PICKUPS, IMPACT],
+  volunteer: [FEED, MAP, IMPACT],
   restaurant: [RESTAURANT, IMPACT],
   drop_off_admin: [DROPOFF, IMPACT],
   // Org admins oversee — they don't claim, so no "My pickups". They keep the
@@ -54,13 +54,6 @@ const ICONS: Record<string, React.ReactNode> = {
     <>
       <path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z" />
       <circle cx="12" cy="11" r="2.3" />
-    </>
-  ),
-  pickups: (
-    <>
-      <path d="M21 8 12 3 3 8l9 5 9-5z" />
-      <path d="M3 8v8l9 5 9-5V8" />
-      <path d="M12 13v8" />
     </>
   ),
   restaurant: (
@@ -157,6 +150,15 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
   useEffect(() => setMounted(true), []);
   const items = NAV_BY_ROLE[role] ?? [];
 
+  // Flips the button to "Signing out…" on the same click that starts the
+  // sign-out, so the tap always lands visibly even while the network works.
+  const [signingOut, setSigningOut] = useState(false);
+  function onSignOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    void signOutAndResetDemo();
+  }
+
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
@@ -218,10 +220,12 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
           <Avatar name={name} className="shadow-card" />
         </Link>
         <button
-          onClick={() => signOutAndResetDemo()}
-          className="rounded-full px-3 py-1.5 text-sm font-semibold text-neutral-700 transition duration-150 hover:bg-card hover:text-neutral-900 hover:shadow-card"
+          onClick={onSignOut}
+          disabled={signingOut}
+          aria-busy={signingOut}
+          className="rounded-full px-3 py-1.5 text-sm font-semibold text-neutral-700 transition duration-150 hover:bg-card hover:text-neutral-900 hover:shadow-card disabled:opacity-60"
         >
-          Sign out
+          {signingOut ? "Signing out…" : "Sign out"}
         </button>
       </div>
 
@@ -356,10 +360,12 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
             </button>
 
             <button
-              onClick={() => signOutAndResetDemo()}
-              className="mt-2 w-full rounded-xl border-t border-neutral-200/40 px-3 pt-3 text-left text-sm font-medium text-neutral-700 hover:text-neutral-900"
+              onClick={onSignOut}
+              disabled={signingOut}
+              aria-busy={signingOut}
+              className="mt-2 w-full rounded-xl border-t border-neutral-200/40 px-3 pt-3 text-left text-sm font-medium text-neutral-700 hover:text-neutral-900 disabled:opacity-60"
             >
-              Sign out
+              {signingOut ? "Signing out…" : "Sign out"}
             </button>
           </div>
         </div>

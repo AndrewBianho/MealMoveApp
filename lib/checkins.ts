@@ -1,6 +1,4 @@
 import { prisma } from "./prisma";
-import { dueNudgeCount } from "./checkin-marks";
-import { sendCheckInPush } from "./notify";
 import { isOnClaim } from "./buddies";
 
 // A structural slice of the Prisma client — just the methods these functions
@@ -11,72 +9,28 @@ type Db = Pick<
 >;
 
 /**
- * Fire any due check-up nudges for active claims. Idempotent: tracks how many
- * marks it has already dispatched via Pickup.nudgesSent, so repeated cron runs
- * never double-notify. Marks at 5 and 10 min; the 15-min auto-cancel is the
- * sweep's job, not ours.
- */
-export async function dispatchCheckIns(
-  db: Db = prisma,
-  now: number = Date.now(),
-  notify = sendCheckInPush
-): Promise<{ nudged: number }> {
-  const pickups = await db.pickup.findMany({
-    where: { listing: { status: "claimed" } },
-    include: { listing: true },
-  });
-
-  let nudged = 0;
-  for (const p of pickups) {
-    const due = dueNudgeCount(p.claimedAt.getTime(), now);
-    if (due <= p.nudgesSent) continue;
-    for (let markIndex = p.nudgesSent + 1; markIndex <= due; markIndex++) {
-      await notify({
-        pickupId: p.id,
-        listingId: p.listingId,
-        volunteerId: p.volunteerId,
-        listingTitle: p.listing.title,
-        markIndex,
-      });
-      nudged++;
-    }
-    await db.pickup.update({ where: { id: p.id }, data: { nudgesSent: due } });
-  }
-  return { nudged };
-}
-
-/**
  * Guard: load the active claim for this listing that this user is on — either
  * the primary volunteer or the buddy — or throw.
  */
 async function loadOwnedClaim(db: Db, userId: string, listingId: string) {
-  const pickup = await db.pickup.findUnique({
-    where: { listingId },
+  const pickup = await db.pickup.findFirst({
+    where: {
+      listingId,
+      OR: [{ volunteerId: userId }, { buddyId: userId }],
+    },
     include: { listing: true },
   });
-  if (!pickup || !isOnClaim(pickup, userId) || pickup.listing.status !== "claimed") {
+  // The claim stage ends at the pickup photo; the listing may still be "open"
+  // when it needs more cars than have claimed so far.
+  if (
+    !pickup ||
+    !isOnClaim(pickup, userId) ||
+    pickup.photoAtPickupUrl != null ||
+    !["open", "claimed"].includes(pickup.listing.status)
+  ) {
     throw new Error("This pickup is no longer active.");
   }
   return pickup;
-}
-
-/** Record a liveness confirmation. Does NOT extend the hold (liveness-only). */
-export async function confirmCheckInFor(
-  db: Db,
-  userId: string,
-  listingId: string,
-  now: number = Date.now()
-): Promise<void> {
-  await loadOwnedClaim(db, userId, listingId);
-  await db.$transaction([
-    db.pickup.update({
-      where: { listingId },
-      data: { lastCheckInAt: new Date(now) },
-    }),
-    db.listingEvent.create({
-      data: { listingId, type: "checked_in", actorId: userId },
-    }),
-  ]);
 }
 
 /**
@@ -96,7 +50,7 @@ export async function releaseClaimFor(
   // The buddy steps off — primary still has it, food unaffected.
   if (pickup.buddyId === userId) {
     await db.$transaction([
-      db.pickup.update({ where: { listingId }, data: { buddyId: null } }),
+      db.pickup.update({ where: { id: pickup.id }, data: { buddyId: null } }),
       db.listingEvent.create({
         data: { listingId, type: "buddy_withdrawn", actorId: userId },
       }),
@@ -109,7 +63,7 @@ export async function releaseClaimFor(
   if (pickup.buddyId) {
     await db.$transaction([
       db.pickup.update({
-        where: { listingId },
+        where: { id: pickup.id },
         data: { volunteerId: pickup.buddyId, buddyId: null },
       }),
       db.listingEvent.create({
@@ -124,16 +78,24 @@ export async function releaseClaimFor(
     return;
   }
 
-  // Sole volunteer — reopen the listing for everyone, and cancel any pending
-  // buddy invite so a stale one can't later attach a buddy to whoever re-claims.
+  // Sole volunteer on this claim — drop the claim and reopen the listing (a
+  // multi-car listing simply falls back under capacity, so "open" is right
+  // either way), and cancel this volunteer's pending buddy invites so a stale
+  // one can't later attach a buddy to whoever re-claims. Other cars' claims
+  // and invites on the same listing are untouched. When no other car remains,
+  // the drop-off choice leaves with the claim — the destination is the
+  // claiming volunteer's decision, so the next claimer picks their own.
+  const otherCars = await db.pickup.count({
+    where: { listingId, id: { not: pickup.id } },
+  });
   await db.$transaction([
-    db.pickup.delete({ where: { listingId } }),
+    db.pickup.delete({ where: { id: pickup.id } }),
     db.foodListing.update({
       where: { id: listingId },
-      data: { status: "open" },
+      data: { status: "open", ...(otherCars === 0 ? { dropOffId: null } : {}) },
     }),
     db.buddyInvite.updateMany({
-      where: { listingId, status: "pending" },
+      where: { listingId, inviterId: userId, status: "pending" },
       data: { status: "cancelled", respondedAt: new Date() },
     }),
     db.listingEvent.create({

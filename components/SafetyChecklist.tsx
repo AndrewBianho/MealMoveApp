@@ -24,11 +24,18 @@ export function SafetyChecklist({
     onChange({ ...answers, [key]: !answers[key] });
   }
 
+  const confirmed = SAFETY_QUESTIONS.filter((q) => answers[q.key]).length;
+
   return (
     <div className="mb-3 animate-fade-in rounded-xl border border-neutral-200/60 bg-card p-4">
       <div className="mb-2 flex items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold">Quick food-safety check</p>
+          <p className="text-sm font-semibold">
+            Quick food-safety check
+            <span className="ml-2 font-mono text-[11px] font-normal text-neutral-500 tabular-nums">
+              {confirmed}/{SAFETY_QUESTIONS.length} confirmed
+            </span>
+          </p>
           <p className="text-[13px] text-neutral-700">
             Tick what applies — it travels with the pickup.
           </p>

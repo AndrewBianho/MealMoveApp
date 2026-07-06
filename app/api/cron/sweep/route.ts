@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { runSweep, materializeSchedules } from "@/lib/sweep";
-import { dispatchCheckIns } from "@/lib/checkins";
 import { escalateBroadcasts } from "@/lib/broadcast";
 
 export const dynamic = "force-dynamic";
@@ -15,10 +14,7 @@ export async function GET(req: Request) {
   // Top up future scheduled listings from active recurring posts first (these
   // carry future expiries, so the sweep below won't touch them).
   const materialized = await materializeSchedules();
-  // Sweep FIRST so any just-expired hold is released before the nudge pass —
-  // a claim that's both due for a nudge and past its hold is released, not nudged.
   const swept = await runSweep();
-  const checkins = await dispatchCheckIns();
   // Escalate AFTER the sweep so just-expired listings are already out of the
   // pool — we only broadcast food that's still claimable. Reach widens as each
   // listing's window narrows; dedupe keeps it to one ping per volunteer/band.
@@ -27,7 +23,6 @@ export async function GET(req: Request) {
     ok: true,
     ...materialized,
     ...swept,
-    ...checkins,
     broadcasts,
   });
 }

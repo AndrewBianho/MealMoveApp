@@ -86,6 +86,18 @@ export function Calendar(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function Car(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M5 11l1.5-4.5A2 2 0 0 1 8.4 5h7.2a2 2 0 0 1 1.9 1.5L19 11" />
+      <path d="M4 11h16a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-1M3 17a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1" />
+      <circle cx="7" cy="17" r="2" />
+      <circle cx="17" cy="17" r="2" />
+      <path d="M9 17h6" />
+    </Base>
+  );
+}
+
 export function X(props: SVGProps<SVGSVGElement>) {
   return (
     <Base {...props}>

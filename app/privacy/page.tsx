@@ -93,7 +93,7 @@ export default function PrivacyPage() {
           <li>
             <strong className="font-semibold">Notification tokens.</strong> If
             you turn on push notifications, we store the device token your
-            browser provides so we can send the nudges you asked for.
+            browser provides so we can send the notifications you asked for.
           </li>
         </ul>
       </Section>
@@ -117,8 +117,8 @@ export default function PrivacyPage() {
           <li>To run the service: posting, claiming, and coordinating rescues.</li>
           <li>To show reliability so the operation stays trustworthy.</li>
           <li>
-            To send the notifications you opt into, such as check-in nudges,
-            buddy invites, and drop-off arrival notices.
+            To send the notifications you opt into, such as buddy invites and
+            drop-off arrival notices.
           </li>
           <li>To keep accounts secure and prevent abuse.</li>
           <li>To support the chapter and respond to your requests.</li>

@@ -75,31 +75,50 @@ export async function runSweep(): Promise<{
   let released = 0;
   let expired = 0;
 
-  // 1) Auto-release flaked claims.
-  const flaked = await prisma.foodListing.findMany({
-    where: { status: "claimed", pickup: { holdUntil: { lt: now } } },
-    include: { pickup: true },
+  // 1) Auto-release flaked claims. Per-pickup: a multi-car listing can carry
+  //    several claims, and one lapsing shouldn't touch the others. A claim is
+  //    still in its hold stage until the pickup photo lands; the listing may be
+  //    "open" (waiting on more cars) or "claimed" (full).
+  const flaked = await prisma.pickup.findMany({
+    where: {
+      holdUntil: { lt: now },
+      photoAtPickupUrl: null,
+      listing: { status: { in: ["open", "claimed"] } },
+    },
   });
-  for (const listing of flaked) {
-    if (!listing.pickup) continue;
-    const volunteerId = listing.pickup.volunteerId;
+  for (const pickup of flaked) {
+    // When this was the last car on the listing, the drop-off choice is
+    // released too — the destination belongs to the claim, and whoever claims
+    // next picks their own.
+    const otherCars = await prisma.pickup.count({
+      where: { listingId: pickup.listingId, id: { not: pickup.id } },
+    });
     await prisma.$transaction([
-      prisma.pickup.delete({ where: { listingId: listing.id } }),
+      prisma.pickup.delete({ where: { id: pickup.id } }),
+      // Dropping a claim always puts the listing back under capacity.
       prisma.foodListing.update({
-        where: { id: listing.id },
-        data: { status: "open" },
+        where: { id: pickup.listingId },
+        data: {
+          status: "open",
+          ...(otherCars === 0 ? { dropOffId: null } : {}),
+        },
       }),
-      // Cancel any pending buddy invite so a stale one can't later attach a
-      // buddy to whoever re-claims this re-opened listing.
+      // Cancel this volunteer's pending buddy invites so a stale one can't
+      // later attach a buddy to whoever re-claims. Other cars' invites on the
+      // same listing are untouched.
       prisma.buddyInvite.updateMany({
-        where: { listingId: listing.id, status: "pending" },
+        where: {
+          listingId: pickup.listingId,
+          inviterId: pickup.volunteerId,
+          status: "pending",
+        },
         data: { status: "cancelled", respondedAt: now },
       }),
       prisma.listingEvent.create({
         data: {
-          listingId: listing.id,
+          listingId: pickup.listingId,
           type: "released",
-          actorId: volunteerId,
+          actorId: pickup.volunteerId,
           meta: { reason: "hold_expired" },
         },
       }),

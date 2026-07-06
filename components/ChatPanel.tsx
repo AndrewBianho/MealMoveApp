@@ -32,8 +32,8 @@ function clock(iso: string): string {
 
 /**
  * The shared coordination thread for a claim — volunteer, restaurant, and
- * drop-off in one conversation. Polls the chat route (same idiom as check-ins)
- * rather than holding a socket open; goes read-only once the claim ends.
+ * drop-off in one conversation. Polls the chat route rather than holding a
+ * socket open; goes read-only once the claim ends.
  */
 export function ChatPanel({
   listingId,

@@ -11,14 +11,42 @@ import {
 
 const t0 = 1_000_000_000_000;
 
+// The claim's stage now lives on the pickup row (photo/taken-home/delivered
+// stamps), not the listing status — seed the stamps that match the fixture's
+// listing status so the old status-driven fixtures keep describing the same
+// scenario.
+function stageStamps(status?: string) {
+  switch (status) {
+    case "in_transit":
+      return { photoAtPickupUrl: "https://x/seed.jpg" };
+    case "taken_home":
+      return { photoAtPickupUrl: "https://x/seed.jpg", takenHomeAt: new Date(t0) };
+    case "delivered":
+      return { photoAtPickupUrl: "https://x/seed.jpg", deliveredAt: new Date(t0) };
+    default:
+      return {};
+  }
+}
+
 function txDb(pickupRow: any) {
+  const pickup: any = {
+    id: "pk1",
+    buddyId: null,
+    photoAtPickupUrl: null,
+    takenHomeAt: null,
+    deliveredAt: null,
+    ...stageStamps(pickupRow.listing?.status),
+    ...pickupRow,
+    listing: { carsNeeded: null, ...pickupRow.listing },
+  };
+  pickup.listing.pickups = [pickup];
   const calls: any = { pickup: null, listing: null, events: [], messages: [] };
   const db: any = {
     pickup: {
-      findUnique: async () => pickupRow,
+      findFirst: async () => pickup,
       update: async ({ data }: any) => {
         calls.pickup = { ...(calls.pickup ?? {}), ...data };
-        return pickupRow;
+        return pickup;
       },
     },
     foodListing: {

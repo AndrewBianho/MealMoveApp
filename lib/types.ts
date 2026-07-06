@@ -36,6 +36,21 @@ export interface DropOffLocation {
   retrievalHours?: RetrievalHours;
 }
 
+/** A candidate destination the claiming volunteer picks from on the listing
+ *  detail page — only eligible locations, nearest first (see lib/recommend). */
+export interface DropOffChoice {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  /** Straight-line miles from the restaurant. */
+  miles: number;
+  refrigerated: boolean;
+  retrievalHours?: RetrievalHours;
+  /** Standing restrictions worth reading before choosing (allergens, access…). */
+  notes?: string;
+}
+
 /** A restaurant on the map, summarizing its active (open/claimed) listings. */
 export interface MapRestaurant {
   id: string;
@@ -84,10 +99,18 @@ export interface Listing {
   /** Distance label, e.g. "0.4 mi". */
   distance: string;
   status: ListingStatus;
+  /** How many volunteer cars this pickup needs (1 when absent). */
+  carsNeeded?: number;
+  /** How many cars have claimed so far — an open multi-car listing shows
+   *  "x of N cars claimed" until it fills. */
+  claimedCount?: number;
   /** Volunteer who claimed it, when claimed/in transit/delivered. */
   claimedBy?: string;
   /** Drop-off destination, shown once claimed. */
   dropOff?: string;
+  /** Chosen drop-off id — set at claim time (destination-first claiming);
+   *  absent while the listing is still waiting on its first claim. */
+  dropOffId?: string;
   /** The drop-off's structured retrieval hours, for the open-now badge. */
   dropOffHours?: RetrievalHours;
   /** Source restaurant coordinates, for the map (present on DB-backed data). */
@@ -103,16 +126,21 @@ export interface Listing {
   notes?: string;
   /** Food photo, falling back to the restaurant's default image. */
   imageUrl?: string;
+  /** Epoch ms when the listing was posted — the first lifecycle step. */
+  postedAt?: number;
   /** Epoch ms when the active claim was made (present when claimed/in transit). */
   claimedAt?: number;
+  /** Epoch ms when the volunteer picked the food up (claimed → in transit).
+   *  Sourced from the `in_transit` ListingEvent; filled in by the pickups page. */
+  pickedUpAt?: number;
+  /** Epoch ms when the food was delivered. */
+  deliveredAt?: number;
   /** Epoch ms of the 15-min auto-release deadline. */
   holdUntil?: number;
   /** Epoch ms when the volunteer took the food home to deliver the next day. */
   takenHomeAt?: number;
   /** Epoch ms of the gentle next-day deadline for a taken-home pickup. */
   deliverBy?: number;
-  /** Epoch ms of the volunteer's last check-up confirmation, if any. */
-  lastCheckInAt?: number;
   /** Proof photo captured at pickup (claimed → in transit). */
   photoAtPickupUrl?: string;
   /** Proof photo captured at the drop-off (in transit → delivered). */

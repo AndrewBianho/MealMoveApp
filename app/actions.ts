@@ -12,7 +12,9 @@ import { passwordValid } from "@/lib/password";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { geocodeAddress } from "@/lib/geocode";
 import { cleanOrgNotes, type OrgNotesInput } from "@/lib/orgNotes";
-import { confirmCheckInFor, releaseClaimFor } from "@/lib/checkins";
+import { releaseClaimFor } from "@/lib/checkins";
+import { claimsNeeded } from "@/lib/claims";
+import { findActiveClaimFor } from "@/lib/activeClaim";
 import {
   startDeliveryWithPhotoFor,
   markDeliveredWithPhotoFor,
@@ -453,17 +455,23 @@ async function currentUserId(): Promise<string> {
 
 function refreshViews(listingId?: string) {
   revalidatePath("/");
-  revalidatePath("/pickups");
+  revalidatePath("/impact");
   revalidatePath("/restaurant");
   revalidatePath("/dropoff");
   if (listingId) revalidatePath(`/listings/${listingId}`);
 }
 
 /**
- * Claim an open listing. A transaction guards against two volunteers grabbing
- * the same listing, and stamps a 15-minute hold the expiry cron enforces.
+ * Claim an open listing. A transaction guards against volunteers over-filling
+ * the listing, and stamps a 15-minute hold the expiry cron enforces. A listing
+ * that needs several cars (carsNeeded) takes one claim per volunteer and only
+ * leaves the open feed once enough people have claimed.
+ *
+ * Destination-first: a claim can't start without a drop-off decided. The first
+ * claimer picks one (validated against what the location can take in); later
+ * cars on a multi-car listing inherit the same destination.
  */
-export async function claimListing(listingId: string) {
+export async function claimListing(listingId: string, dropOffId?: string) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Not authenticated.");
   // Claiming is a volunteer action. Org admins oversee the operation (stats,
@@ -473,13 +481,59 @@ export async function claimListing(listingId: string) {
   }
   const volunteerId = session.user.id;
   await prisma.$transaction(async (tx) => {
-    const listing = await tx.foodListing.findUnique({ where: { id: listingId } });
+    const listing = await tx.foodListing.findUnique({
+      where: { id: listingId },
+      include: { pickups: { select: { volunteerId: true, buddyId: true } } },
+    });
     if (!listing || listing.status !== "open") {
       throw new Error("This listing is no longer available.");
     }
     // Scheduled/future listings are visible but locked until they go live.
     if (listing.availableAt && listing.availableAt > new Date()) {
       throw new Error("This pickup isn't open yet.");
+    }
+    const needed = claimsNeeded(listing.carsNeeded);
+    if (listing.pickups.length >= needed) {
+      throw new Error("This listing is no longer available.");
+    }
+    if (
+      listing.pickups.some(
+        (p) => p.volunteerId === volunteerId || p.buddyId === volunteerId
+      )
+    ) {
+      throw new Error("You're already on this pickup.");
+    }
+    // One rescue at a time: a volunteer with a live claim anywhere (either
+    // seat) can't take another until it's delivered or released.
+    const active = await findActiveClaimFor(tx, volunteerId, listingId);
+    if (active) {
+      throw new Error(
+        `One rescue at a time — you're already on "${active.title}". Deliver or release it first.`
+      );
+    }
+    // Resolve the destination. Once set (by the first car, or a legacy row) it
+    // stands for every later claim; otherwise the caller must have picked one,
+    // and it has to actually be able to take this food — the same eligibility
+    // rules lib/recommend uses to rank the picker.
+    let chosenDropOffId = listing.dropOffId;
+    if (!chosenDropOffId) {
+      if (!dropOffId) {
+        throw new Error("Pick a drop-off before claiming.");
+      }
+      const dropOff = await tx.dropOff.findUnique({ where: { id: dropOffId } });
+      if (!dropOff || dropOff.demo !== listing.demo) {
+        throw new Error("That drop-off isn't available.");
+      }
+      if (!dropOff.acceptedCategories.includes(listing.category)) {
+        throw new Error(`${dropOff.name} can't take ${listing.category} food.`);
+      }
+      if (listing.perishable && !dropOff.refrigerated) {
+        throw new Error(`${dropOff.name} isn't refrigerated — this food needs cold storage.`);
+      }
+      if (dropOff.capacity < listing.servings) {
+        throw new Error(`${dropOff.name} can't hold this many servings.`);
+      }
+      chosenDropOffId = dropOff.id;
     }
     await tx.pickup.create({
       data: {
@@ -488,21 +542,20 @@ export async function claimListing(listingId: string) {
         holdUntil: new Date(Date.now() + HOLD_MINUTES * 60_000),
       },
     });
+    // Stamp the destination; only the claim that fills the last car seat closes
+    // the listing — until then it stays open so the remaining cars can still be
+    // claimed (delivering to the same drop-off).
     await tx.foodListing.update({
       where: { id: listingId },
-      data: { status: "claimed" },
+      data: {
+        dropOffId: chosenDropOffId,
+        ...(listing.pickups.length + 1 >= needed ? { status: "claimed" as const } : {}),
+      },
     });
     await tx.listingEvent.create({
       data: { listingId, type: "claimed", actorId: volunteerId },
     });
   });
-  refreshViews(listingId);
-}
-
-/** Record a "still on it" check-up confirmation for the caller's claim. */
-export async function confirmCheckIn(listingId: string) {
-  const userId = await currentUserId();
-  await confirmCheckInFor(prisma, userId, listingId);
   refreshViews(listingId);
 }
 

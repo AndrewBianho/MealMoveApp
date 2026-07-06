@@ -9,11 +9,13 @@ type Db = Pick<
 >;
 
 // A claim is "active" — open to buddy changes — while it's being worked.
-const ACTIVE_STATUSES = ["claimed", "in_transit"];
+// "open" is included because a multi-car listing stays open while it waits for
+// more volunteers, and its existing claims can already take buddies.
+const ACTIVE_STATUSES = ["open", "claimed", "in_transit"];
 
 /**
  * Is this user on the claim — either the primary volunteer or the buddy? The
- * single source of truth the per-claim guards (photos, check-ins, chat) share,
+ * single source of truth the per-claim guards (photos, releases, chat) share,
  * so both seats get the same access.
  */
 export function isOnClaim(
@@ -25,15 +27,19 @@ export function isOnClaim(
 
 /**
  * Volunteers the primary can invite to buddy this pickup: every volunteer except
- * the inviter, the current buddy, and anyone already holding a pending invite.
+ * the inviter, anyone already on one of the listing's claims (a multi-car
+ * listing can have several), and anyone already holding a pending invite.
  */
 export async function invitableVolunteers(
   db: Db,
   listingId: string,
   inviterId: string
 ): Promise<{ id: string; name: string }[]> {
-  const [pickup, pending] = await Promise.all([
-    db.pickup.findUnique({ where: { listingId }, select: { buddyId: true } }),
+  const [pickups, pending] = await Promise.all([
+    db.pickup.findMany({
+      where: { listingId },
+      select: { volunteerId: true, buddyId: true },
+    }),
     db.buddyInvite.findMany({
       where: { listingId, status: "pending" },
       select: { inviteeId: true },
@@ -41,7 +47,10 @@ export async function invitableVolunteers(
   ]);
 
   const exclude = new Set<string>([inviterId]);
-  if (pickup?.buddyId) exclude.add(pickup.buddyId);
+  for (const p of pickups) {
+    if (p.volunteerId) exclude.add(p.volunteerId);
+    if (p.buddyId) exclude.add(p.buddyId);
+  }
   for (const i of pending) exclude.add(i.inviteeId);
 
   return db.user.findMany({
@@ -66,14 +75,18 @@ export async function inviteBuddyFor(
 ): Promise<{ id: string }> {
   if (inviteeId === inviterId) throw new Error("You can't invite yourself.");
 
-  const pickup = await db.pickup.findUnique({
+  // A multi-car listing carries one claim per car; the invite hangs off the
+  // inviter's own claim.
+  const pickups = await db.pickup.findMany({
     where: { listingId },
     include: { listing: true },
   });
-  if (!pickup || !ACTIVE_STATUSES.includes(pickup.listing.status)) {
+  const anyPickup = pickups[0];
+  if (!anyPickup || !ACTIVE_STATUSES.includes(anyPickup.listing.status)) {
     throw new Error("This pickup is no longer active.");
   }
-  if (pickup.volunteerId !== inviterId) {
+  const pickup = pickups.find((p) => p.volunteerId === inviterId);
+  if (!pickup) {
     throw new Error("Only the volunteer who claimed this can invite a buddy.");
   }
   if (pickup.buddyId) throw new Error("This pickup already has a buddy.");
@@ -86,9 +99,10 @@ export async function inviteBuddyFor(
     throw new Error("You can only invite a volunteer.");
   }
 
-  // One outstanding invite at a time, so the UI shows a single clear pending state.
+  // One outstanding invite per claim, so the UI shows a single clear pending
+  // state. Scoped to this inviter — other cars' invites don't block.
   const outstanding = await db.buddyInvite.findFirst({
-    where: { listingId, status: "pending" },
+    where: { listingId, inviterId, status: "pending" },
   });
   if (outstanding && outstanding.inviteeId !== inviteeId) {
     throw new Error("You already have a pending buddy invite for this pickup.");
@@ -151,8 +165,12 @@ export async function respondToInviteFor(
     return;
   }
 
-  const pickup = await db.pickup.findUnique({
-    where: { listingId: invite.listingId },
+  // The invite is only valid while its inviter still holds a claim on the
+  // listing. If the claim was released and re-claimed (or the primary changed)
+  // since the invite went out, it's stale — don't let it graft a buddy onto a
+  // pickup the current volunteer never invited anyone to.
+  const pickup = await db.pickup.findFirst({
+    where: { listingId: invite.listingId, volunteerId: invite.inviterId },
     include: { listing: true },
   });
   if (!pickup || !ACTIVE_STATUSES.includes(pickup.listing.status)) {
@@ -162,17 +180,30 @@ export async function respondToInviteFor(
   if (pickup.volunteerId === inviteeId) {
     throw new Error("You're already on this pickup.");
   }
-  // The invite is only valid while its inviter is still the claim's primary. If
-  // the claim was released and re-claimed (or the primary changed) since the
-  // invite went out, it's stale — don't let it graft a buddy onto a pickup the
-  // current volunteer never invited anyone to.
   if (pickup.volunteerId !== invite.inviterId) {
     throw new Error("This invite is no longer available.");
   }
 
+  // One rescue at a time — buddying is a seat on a claim like any other, so a
+  // volunteer already on a live pickup elsewhere can't join this one.
+  const elsewhere = await db.pickup.findFirst({
+    where: {
+      OR: [{ volunteerId: inviteeId }, { buddyId: inviteeId }],
+      deliveredAt: null,
+      listingId: { not: invite.listingId },
+      listing: { status: { in: ["open", "claimed", "in_transit", "taken_home"] } },
+    },
+    select: { id: true },
+  });
+  if (elsewhere) {
+    throw new Error(
+      "One rescue at a time — finish or release your current pickup before joining another."
+    );
+  }
+
   await db.$transaction([
     db.pickup.update({
-      where: { listingId: invite.listingId },
+      where: { id: pickup.id },
       data: { buddyId: inviteeId },
     }),
     db.buddyInvite.update({
@@ -195,7 +226,7 @@ export async function cancelInviteFor(
   now: number = Date.now()
 ): Promise<void> {
   const invite = await db.buddyInvite.findFirst({
-    where: { listingId, status: "pending" },
+    where: { listingId, inviterId, status: "pending" },
   });
   if (!invite || invite.inviterId !== inviterId) {
     throw new Error("There's no invite to cancel.");

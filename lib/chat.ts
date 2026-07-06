@@ -7,8 +7,9 @@ type Db = Pick<typeof prisma, "message">;
 
 const MAX_BODY = 2000;
 // taken_home stays active: the volunteer and drop-off still coordinate the
-// next-day delivery.
-const ACTIVE_STATUSES = ["claimed", "in_transit", "taken_home"];
+// next-day delivery. "open" is included because a multi-car listing stays open
+// while it waits for more volunteers — its existing claims already coordinate.
+const ACTIVE_STATUSES = ["open", "claimed", "in_transit", "taken_home"];
 
 /** The fields of the acting user that decide chat access. */
 export interface ChatUser {
@@ -17,13 +18,14 @@ export interface ChatUser {
   restaurantId: string | null;
 }
 
-/** The fields of a listing's claim that decide chat access. */
+/** The fields of a listing's claims that decide chat access. */
 export interface ChatListing {
   id: string;
   restaurantId: string;
   dropOffId: string | null;
   status: string;
-  pickup: { volunteerId: string; buddyId: string | null } | null;
+  // One claim per car on a multi-car listing.
+  pickups: { volunteerId: string; buddyId: string | null }[];
 }
 
 /**
@@ -42,10 +44,9 @@ export function canAccessChat(user: ChatUser, listing: ChatListing): boolean {
     case "org_admin":
       return true;
     case "volunteer":
-      // Either seat on the claim — the primary volunteer or the buddy.
-      return (
-        listing.pickup?.volunteerId === user.id ||
-        listing.pickup?.buddyId === user.id
+      // Either seat on any of the listing's claims — a primary or a buddy.
+      return listing.pickups.some(
+        (p) => p.volunteerId === user.id || p.buddyId === user.id
       );
     case "restaurant":
       return (
@@ -58,8 +59,16 @@ export function canAccessChat(user: ChatUser, listing: ChatListing): boolean {
   }
 }
 
-/** Chat is open only while the claim is active; otherwise it's read-only. */
-export function isChatActive(listing: Pick<ChatListing, "status">): boolean {
+/**
+ * Chat is open only while a claim is active; otherwise it's read-only. An
+ * "open" listing only counts once someone has claimed — a multi-car listing
+ * stays open while it waits for more volunteers, but with zero claims there's
+ * no one to coordinate with yet.
+ */
+export function isChatActive(
+  listing: Pick<ChatListing, "status"> & { pickups?: ChatListing["pickups"] }
+): boolean {
+  if (listing.status === "open") return (listing.pickups?.length ?? 0) > 0;
   return ACTIVE_STATUSES.includes(listing.status);
 }
 

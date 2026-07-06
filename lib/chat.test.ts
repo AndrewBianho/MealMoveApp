@@ -18,7 +18,7 @@ function listing(over: Partial<ChatListing> = {}): ChatListing {
     restaurantId: "r1",
     dropOffId: "d1",
     status: "claimed",
-    pickup: { volunteerId: "vol1", buddyId: null },
+    pickups: [{ volunteerId: "vol1", buddyId: null }],
     ...over,
   };
 }
@@ -39,7 +39,7 @@ test("canAccessChat: the buddy on the claim is in", () => {
   assert.equal(
     canAccessChat(
       user({ id: "vol2" }),
-      listing({ pickup: { volunteerId: "vol1", buddyId: "vol2" } })
+      listing({ pickups: [{ volunteerId: "vol1", buddyId: "vol2" }] })
     ),
     true
   );
@@ -66,7 +66,7 @@ test("canAccessChat: drop-off admin is in when a drop-off is assigned, out other
 
 test("canAccessChat: org admin is always in", () => {
   assert.equal(
-    canAccessChat(user({ role: "org_admin" }), listing({ pickup: null })),
+    canAccessChat(user({ role: "org_admin" }), listing({ pickups: [] })),
     true
   );
 });
@@ -76,6 +76,17 @@ test("isChatActive: true for claimed/in_transit, false once it ends", () => {
   assert.equal(isChatActive({ status: "in_transit" }), true);
   assert.equal(isChatActive({ status: "delivered" }), false);
   assert.equal(isChatActive({ status: "expired" }), false);
+});
+
+test("isChatActive: an open listing is active only once someone claimed", () => {
+  assert.equal(isChatActive({ status: "open", pickups: [] }), false);
+  assert.equal(
+    isChatActive({
+      status: "open",
+      pickups: [{ volunteerId: "vol1", buddyId: null }],
+    }),
+    true
+  );
 });
 
 function fakeDb() {

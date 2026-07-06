@@ -10,7 +10,6 @@ import type {
 import type { Feature, FeatureCollection } from "geojson";
 import Link from "next/link";
 import { rankDropOffs, rankRestaurantsForDropOff } from "@/lib/recommend";
-import { claimListing } from "@/app/actions";
 import { geocodeClient } from "@/lib/geocode-client";
 import { RAMP } from "@/lib/rampColors";
 import { formatTimeLeft } from "@/lib/time";
@@ -362,8 +361,6 @@ export function RescueMap({
   // below needs the room) and returns when the selection is cleared; the X / the
   // collapsed "search" pill let the user override either way.
   const [searchOpen, setSearchOpen] = useState(true);
-  const [claimState, setClaimState] = useState<"idle" | "claiming" | "done" | "error">("idle");
-  const [claimMsg, setClaimMsg] = useState<string | null>(null);
   // Bumped after a base-style swap finishes, so the line-drawing effect re-runs
   // and repaints routes onto the freshly re-added sources.
   const [styleVersion, setStyleVersion] = useState(0);
@@ -490,27 +487,6 @@ export function RescueMap({
     } else {
       setShowDrop((v) => !v);
       if (showDrop) setSelected((s) => (s?.kind === "drop" ? null : s));
-    }
-  }
-
-  // Claim the restaurant's soonest-expiring open listing (the pickup). The map's
-  // data is a per-load snapshot, so on success we surface a link into My pickups
-  // rather than mutate the markers in place.
-  // Returns whether the claim succeeded, so the raw-DOM popup button (which can't
-  // read React state) can give its own inline feedback on the error path. On
-  // success the server action refreshes the route, which usually rebuilds the
-  // map and closes the popup — but the panel keeps the durable "claimed" state.
-  async function onClaim(listingId: string): Promise<boolean> {
-    setClaimState("claiming");
-    setClaimMsg(null);
-    try {
-      await claimListing(listingId);
-      setClaimState("done");
-      return true;
-    } catch (e) {
-      setClaimState("error");
-      setClaimMsg(e instanceof Error ? e.message : "Couldn't claim this pickup.");
-      return false;
     }
   }
 
@@ -1147,12 +1123,6 @@ export function RescueMap({
     setSearchOpen(!selected);
   }, [selected]);
 
-  // Reset the claim button whenever the chosen pickup changes.
-  useEffect(() => {
-    setClaimState("idle");
-    setClaimMsg(null);
-  }, [selected, activeRoute]);
-
   if (!TOKEN) {
     return (
       <div className="grid h-[60vh] place-items-center rounded-2xl border border-dashed border-neutral-200 bg-card text-center">
@@ -1652,18 +1622,15 @@ export function RescueMap({
             {(claimable || gmapsUrl) && (
               <div className="mt-3 flex flex-col gap-2 sm:flex-row">
                 {claimable && (
-                  <button
-                    type="button"
-                    onClick={() => activeRest?.listingId && onClaim(activeRest.listingId)}
-                    disabled={claimState === "claiming" || claimState === "done"}
-                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-2.5 text-sm font-bold text-neutral-50 shadow-card transition hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 disabled:opacity-60 disabled:hover:translate-y-0"
+                  // Claiming is destination-first: the drop-off is chosen on
+                  // the listing's detail page, so the map hands off there
+                  // rather than claiming in place.
+                  <Link
+                    href={`/listings/${activeRest?.listingId}`}
+                    className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-4 py-2.5 text-sm font-bold text-neutral-50 shadow-card transition hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-lift focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
                   >
-                    {claimState === "claiming"
-                      ? "Claiming…"
-                      : claimState === "done"
-                        ? "Claimed ✓"
-                        : "Claim pickup"}
-                  </button>
+                    Claim pickup →
+                  </Link>
                 )}
                 {gmapsUrl && (
                   <a
@@ -1681,17 +1648,6 @@ export function RescueMap({
               </div>
             )}
 
-            {claimState === "done" && (
-              <Link
-                href="/pickups"
-                className="mt-2 block text-center font-mono text-[11px] text-rescued-600 hover:underline"
-              >
-                View in my pickups →
-              </Link>
-            )}
-            {claimState === "error" && (
-              <p className="mt-2 text-center font-mono text-[11px] text-failed-600">{claimMsg}</p>
-            )}
           </div>
         )}
     </div>

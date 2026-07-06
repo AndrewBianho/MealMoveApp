@@ -2,8 +2,12 @@ import { ListingDetail } from "@/components/ListingDetail";
 import { getListing } from "@/lib/listings";
 import { getActiveDropOffNotices } from "@/lib/dropoffNotices";
 import { canAccessChat } from "@/lib/chat";
+import { getDropOffs } from "@/lib/map";
+import { rankDropOffs } from "@/lib/recommend";
+import { findActiveClaimFor } from "@/lib/activeClaim";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import type { DropOffChoice } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -21,11 +25,61 @@ export default async function ListingDetailPage({
   // heading there should see "closing early / fridge down" up front.
   const listingRow = await prisma.foodListing.findUnique({
     where: { id: params.id },
-    select: { dropOffId: true },
+    select: {
+      dropOffId: true,
+      status: true,
+      category: true,
+      perishable: true,
+      servings: true,
+      restaurant: { select: { lat: true, lng: true } },
+      // The chosen destination's pin for the side map, once a claim set it.
+      dropOff: { select: { id: true, name: true, lat: true, lng: true } },
+    },
   });
   const dropOffNotices = listingRow?.dropOffId
     ? await getActiveDropOffNotices(listingRow.dropOffId)
     : [];
+
+  // Destination-first claiming: an open listing with no drop-off yet needs the
+  // claiming volunteer to pick one. Offer only locations that can actually take
+  // this food (category, refrigeration, capacity), nearest to the restaurant
+  // first — the same ranking the map recommendation uses.
+  let dropOffChoices: DropOffChoice[] = [];
+  if (canClaim && listingRow && listingRow.status === "open" && !listingRow.dropOffId) {
+    const dropOffs = await getDropOffs();
+    dropOffChoices = rankDropOffs(
+      {
+        id: params.id,
+        name: "",
+        lat: listingRow.restaurant.lat,
+        lng: listingRow.restaurant.lng,
+        servings: listingRow.servings,
+        categories: [listingRow.category],
+        perishable: listingRow.perishable,
+        count: 1,
+      },
+      dropOffs
+    )
+      .filter((x) => x.eligible)
+      .map((x) => ({
+        id: x.dropOff.id,
+        name: x.dropOff.name,
+        lat: x.dropOff.lat,
+        lng: x.dropOff.lng,
+        miles: x.miles,
+        refrigerated: x.dropOff.refrigerated,
+        retrievalHours: x.dropOff.retrievalHours,
+        notes: x.dropOff.notes,
+      }));
+  }
+
+  // One rescue at a time: if the viewer is already on a live claim elsewhere,
+  // this page shows a gentle "finish that one first" notice instead of the
+  // claim flow (the server action enforces the same rule).
+  const activeElsewhere =
+    viewerId && canClaim && listingRow?.status === "open"
+      ? await findActiveClaimFor(prisma, viewerId, params.id)
+      : null;
 
   // Decide chat access server-side: it depends on the user's role + restaurantId
   // (not carried in the JWT session) and the claim's parties.
@@ -55,7 +109,7 @@ export default async function ListingDetailPage({
           restaurantId: true,
           dropOffId: true,
           status: true,
-          pickup: { select: { volunteerId: true, buddyId: true } },
+          pickups: { select: { volunteerId: true, buddyId: true } },
         },
       }),
       prisma.buddyInvite.findFirst({
@@ -63,7 +117,9 @@ export default async function ListingDetailPage({
         include: { inviter: { select: { name: true } } },
       }),
       prisma.buddyInvite.findFirst({
-        where: { listingId: params.id, status: "pending" },
+        // Scoped to this viewer's own invite — on a multi-car listing each
+        // primary only sees the invite they sent.
+        where: { listingId: params.id, inviterId: viewerId, status: "pending" },
         include: { invitee: { select: { name: true } } },
       }),
     ]);
@@ -74,7 +130,7 @@ export default async function ListingDetailPage({
     );
     if (mine) incomingInvite = { id: mine.id, inviterName: mine.inviter.name };
     // Only the primary should see the outgoing-invite state.
-    if (pending && ctx?.pickup?.volunteerId === viewerId) {
+    if (pending && ctx?.pickups?.some((p) => p.volunteerId === viewerId)) {
       outgoingInvite = { inviteeName: pending.invitee.name };
     }
   }
@@ -89,6 +145,9 @@ export default async function ListingDetailPage({
         incomingInvite={incomingInvite}
         outgoingInvite={outgoingInvite}
         dropOffNotices={dropOffNotices}
+        dropOffChoices={dropOffChoices}
+        activeElsewhere={activeElsewhere}
+        chosenDropOffPin={listingRow?.dropOff ?? null}
         canPrimeNotifications={canPrimeNotifications}
       />
     </main>

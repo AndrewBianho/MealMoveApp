@@ -1,8 +1,16 @@
 import { MetricCard, metricAccent } from "@/components/MetricCard";
 import { ReliabilityMeter } from "@/components/ReliabilityMeter";
-import { getImpactStats, getRestaurantImpactStats, getVolunteerReliability } from "@/lib/stats";
+import { PickupSections } from "@/components/PickupSections";
+import {
+  getImpactStats,
+  getRestaurantImpactStats,
+  getVolunteerReliability,
+  getVolunteerImpact,
+} from "@/lib/stats";
+import { getListings } from "@/lib/listings";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import type { VolunteerImpact } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +18,20 @@ export default async function ImpactPage() {
   const session = await auth();
   const role = session?.user?.role;
   const isOrgAdmin = role === "org_admin";
+  const isVolunteer = role === "volunteer";
+
+  // A volunteer's page leads with their own harvest — lifetime numbers, then
+  // the past pickups behind them ("My pickups" merged into this page; what's
+  // in flight lives on the feed now).
+  let myImpact: VolunteerImpact | null = null;
+  let myPast: Awaited<ReturnType<typeof getListings>> = [];
+  if (isVolunteer && session?.user?.id) {
+    myImpact = await getVolunteerImpact(session.user.id);
+    const all = await getListings(session.user.id);
+    myPast = all.filter(
+      (l) => l.mine && ["delivered", "expired", "failed"].includes(l.status)
+    );
+  }
 
   // A restaurant sees its own impact, not the whole chapter's. Resolve the
   // restaurant this member belongs to and scope the stats to it.
@@ -44,18 +66,86 @@ export default async function ImpactPage() {
     loadFailed = true;
   }
 
-  const heading = restaurant ? "Your restaurant's impact" : "Chapter impact";
+  const heading = restaurant
+    ? "Your restaurant's impact"
+    : isVolunteer
+      ? "Your impact"
+      : "Chapter impact";
+
+  // The stats arrive in a stable order: the food story first (meals, lbs,
+  // hours), then the operation around it. Grouping them gives the page a
+  // hierarchy — what was rescued leads, who's moving it supports.
+  const foodMoved = stats.slice(0, 3);
+  const operation = stats.slice(3);
 
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">
-      <header className="mb-6">
+      <header className="mb-8">
         <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">{heading}</h1>
-        {restaurant && (
-          <p className="mt-1 text-sm text-neutral-700">
-            What {restaurant.name} has helped rescue and move into the community.
-          </p>
-        )}
+        <p className="mt-1 max-w-[72ch] text-sm text-neutral-700">
+          {restaurant
+            ? `What ${restaurant.name} has helped rescue and move into the community.`
+            : isVolunteer
+              ? "Your harvest so far, and the pickups behind it."
+              : "Every number here is food that reached people instead of the bin."}
+        </p>
       </header>
+
+      {myImpact && (
+        <div className="mb-10 max-w-4xl space-y-8">
+          <section>
+            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-wide text-neutral-600">
+              your harvest so far
+            </h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <MetricCard
+                label="meals rescued"
+                value={String(myImpact.mealsRescued)}
+                accent={metricAccent("meals rescued")}
+              />
+              <MetricCard
+                label="lbs saved"
+                value={String(myImpact.lbsSaved)}
+                accent={metricAccent("lbs saved")}
+              />
+              <MetricCard
+                label="rescues completed"
+                value={String(myImpact.pickupsCompleted)}
+                accent={metricAccent("rescues completed")}
+              />
+            </div>
+            {myImpact.attempts > 0 && (
+              <div className="mt-4 max-w-sm rounded-xl border border-neutral-200/40 bg-card p-5">
+                <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+                  your reliability
+                </p>
+                <ReliabilityMeter
+                  name="Completed rescues"
+                  pct={myImpact.completionRate}
+                />
+              </div>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-wide text-neutral-600">
+              past pickups
+            </h2>
+            {myPast.length > 0 ? (
+              <PickupSections active={[]} past={myPast} hadInvites={false} />
+            ) : (
+              <p className="text-sm text-neutral-700">
+                No completed pickups yet — your finished rescues will collect
+                here.
+              </p>
+            )}
+          </section>
+
+          <h2 className="border-t border-neutral-200/50 pt-8 text-lg font-medium">
+            Chapter impact
+          </h2>
+        </div>
+      )}
 
       {loadFailed ? (
         <div className="mb-10 rounded-2xl border border-neutral-200/60 bg-card p-6 text-sm text-neutral-700 shadow-card">
@@ -63,10 +153,27 @@ export default async function ImpactPage() {
           seconds and they&apos;ll be back.
         </div>
       ) : (
-        <div className="mb-10 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-          {stats.map((s) => (
-            <MetricCard key={s.label} label={s.label} value={s.value} accent={metricAccent(s.label)} />
-          ))}
+        <div className="mb-10 max-w-4xl space-y-8">
+          <section>
+            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-wide text-neutral-600">
+              food moved
+            </h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {foodMoved.map((s) => (
+                <MetricCard key={s.label} label={s.label} value={s.value} accent={metricAccent(s.label)} />
+              ))}
+            </div>
+          </section>
+          <section>
+            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-wide text-neutral-600">
+              {restaurant ? "your rescue network" : "who's moving it"}
+            </h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {operation.map((s) => (
+                <MetricCard key={s.label} label={s.label} value={s.value} accent={metricAccent(s.label)} />
+              ))}
+            </div>
+          </section>
         </div>
       )}
 

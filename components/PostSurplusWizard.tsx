@@ -442,12 +442,20 @@ function QuantityStep({
                 {isAuto ? (weight > 0 ? "Suggested from the weight" : "Add the weight first") : "Manually set"}
               </p>
             </div>
-            <CounterButtons
-              value={carsShown}
-              min={1}
-              onChange={(v) => onCars(Math.max(1, v))}
-              ariaLabel="Cars needed"
-            />
+            <div className="flex items-center gap-2.5">
+              <span
+                aria-live="polite"
+                className="min-w-8 text-center text-[15px] font-semibold tabular-nums text-neutral-900"
+              >
+                {carsShown}
+              </span>
+              <CounterButtons
+                value={carsShown}
+                min={1}
+                onChange={(v) => onCars(Math.max(1, v))}
+                ariaLabel="Cars needed"
+              />
+            </div>
           </div>
           {!isAuto && (
             <button

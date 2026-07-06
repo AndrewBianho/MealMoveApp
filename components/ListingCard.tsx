@@ -11,8 +11,10 @@ export type ListingCardAudience = "volunteer" | "restaurant" | "dropoff";
 
 interface ListingCardProps {
   listing: Listing;
-  /** When provided and the listing is open, the body shows a claim button. */
-  onClaim?: (id: string) => void;
+  /** True when the viewer can claim pickups — an open listing then shows the
+   *  "More details" link to the detail page, where the drop-off is chosen and
+   *  the claim happens. */
+  claimable?: boolean;
   /** Who's viewing — tunes which facts/lines show. Defaults to the volunteer view. */
   audience?: ListingCardAudience;
   /** Volunteers active near the pickup. Shown to the restaurant on open cards as
@@ -56,7 +58,7 @@ function urgency(listing: Listing) {
 
 export function ListingCard({
   listing,
-  onClaim,
+  claimable = false,
   audience = "volunteer",
   nearbyVolunteers,
   className,
@@ -83,6 +85,8 @@ export function ListingCard({
 
   const scheduled = !!listing.scheduled;
   const spent = SPENT.includes(status);
+  const carsNeeded = listing.carsNeeded ?? 1;
+  const claimedCount = listing.claimedCount ?? 0;
   const u = urgency(listing);
   const img = imageUrl ?? DEFAULT_IMAGE;
   const isPlaceholder = !imageUrl;
@@ -202,6 +206,41 @@ export function ListingCard({
               <span className="font-bold text-neutral-900">{distance}</span> away
             </>
           )}
+          {/* A big haul needs several cars. A volunteer decides on the open
+              seats ("2 of 3 cars still needed"); a restaurant/admin watches the
+              fill ("1 of 3 cars claimed"). */}
+          {carsNeeded > 1 && (status === "open" || scheduled) && (
+            <>
+              <span className="mx-1.5 text-neutral-300">·</span>
+              {audience === "volunteer" ? (
+                claimedCount > 0 ? (
+                  <>
+                    <span className="font-bold text-neutral-900">
+                      {carsNeeded - claimedCount} of {carsNeeded}
+                    </span>{" "}
+                    cars still needed
+                  </>
+                ) : (
+                  <>
+                    <span className="font-bold text-neutral-900">{carsNeeded}</span>{" "}
+                    cars needed
+                  </>
+                )
+              ) : claimedCount > 0 ? (
+                <>
+                  <span className="font-bold text-neutral-900">
+                    {claimedCount} of {carsNeeded}
+                  </span>{" "}
+                  cars claimed
+                </>
+              ) : (
+                <>
+                  <span className="font-bold text-neutral-900">{carsNeeded}</span> cars
+                  needed
+                </>
+              )}
+            </>
+          )}
         </p>
 
         {/* Scannability — food type + handling, so the feed reads by category at
@@ -244,7 +283,7 @@ export function ListingCard({
               <Clock className="text-[0.95em]" />
               opens {availableLabel}
             </span>
-          ) : status === "open" && onClaim ? (
+          ) : status === "open" && claimable ? (
             <Link
               href={`/listings/${id}`}
               className={cn(

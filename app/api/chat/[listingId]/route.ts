@@ -35,7 +35,7 @@ async function loadContext(listingId: string) {
       restaurantId: true,
       dropOffId: true,
       status: true,
-      pickup: { select: { volunteerId: true, buddyId: true } },
+      pickups: { select: { volunteerId: true, buddyId: true } },
     },
   });
 

@@ -1,0 +1,114 @@
+import { ListingFeed } from "@/components/ListingFeed";
+import { ListingCard } from "@/components/ListingCard";
+import { PickupTimelineCard } from "@/components/PickupTimelineCard";
+import { FirstRescueTracker } from "@/components/FirstRescueTracker";
+import { getListings } from "@/lib/listings";
+import { getVolunteerOnboarding } from "@/lib/onboarding";
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
+
+// Reads live data per request (and after revalidation from server actions).
+export const dynamic = "force-dynamic";
+
+const LIVE = ["claimed", "in transit", "taken home"];
+
+export default async function FeedPage() {
+  const session = await auth();
+  const viewerId = session?.user?.id;
+  const listings = await getListings(viewerId);
+  const canClaim = session?.user?.role !== "org_admin";
+
+  // The viewer's rescue in flight, if any. One rescue at a time: while this is
+  // live they can't claim another, so it leads the page — the next step lives
+  // here, not in the feed below.
+  let current = listings.find((l) => l.mine && LIVE.includes(l.status));
+  if (current) {
+    // "Picked up" time for the card's lifecycle timeline (see lib/listings).
+    const picked = await prisma.listingEvent.findFirst({
+      where: { listingId: current.id, type: "in_transit" },
+      orderBy: { at: "asc" },
+      select: { at: true },
+    });
+    if (picked) current = { ...current, pickedUpAt: picked.at.getTime() };
+  }
+
+  // Pickups this volunteer has been invited to buddy — tap through to accept.
+  const invites = viewerId
+    ? await prisma.buddyInvite.findMany({
+        where: { inviteeId: viewerId, status: "pending" },
+        select: { listingId: true },
+      })
+    : [];
+  const invitedIds = new Set(invites.map((i) => i.listingId));
+  const invited = listings.filter((l) => invitedIds.has(l.id));
+
+  // First-run activation: only volunteers see the first-rescue tracker, and only
+  // until they complete their first rescue.
+  const onboarding =
+    session?.user?.role === "volunteer"
+      ? await getVolunteerOnboarding(session.user.id)
+      : null;
+
+  // Meals claimable right now (open + live), for the sub-line.
+  const openNow = listings.filter((l) => l.status === "open" && !l.scheduled).length;
+
+  return (
+    <main className="mx-auto max-w-[720px] px-6 py-10 sm:px-8 lg:max-w-[1200px]">
+      <header className="mb-7 lg:max-w-2xl">
+        <h1 className="font-display text-[36px] font-medium leading-[1.05] tracking-tight text-balance">
+          Available pickups
+        </h1>
+        <p className="mt-2 text-[15px] font-medium text-neutral-600">
+          {current
+            ? "You've got a rescue in flight — finish it to claim the next one."
+            : openNow > 0
+              ? `${openNow} surplus ${openNow === 1 ? "meal" : "meals"} near you, ready to rescue.`
+              : "No open pickups right now — new surplus posts throughout the evening."}
+        </p>
+      </header>
+
+      {current && (
+        <section className="mb-8 lg:max-w-2xl">
+          <div className="mb-3.5 flex items-center gap-2">
+            <h2 className="text-[15px] font-semibold text-neutral-800">
+              Your current rescue
+            </h2>
+            <span className="font-mono text-[11px] text-neutral-500">
+              one at a time
+            </span>
+          </div>
+          <PickupTimelineCard listing={current} priorityImage />
+        </section>
+      )}
+
+      {invited.length > 0 && (
+        <section className="mb-8 lg:max-w-2xl">
+          <div className="mb-1 flex items-center gap-2">
+            <h2 className="text-[15px] font-semibold text-neutral-800">
+              Buddy invites
+            </h2>
+            <span className="font-mono text-[11px] text-neutral-500">
+              {invited.length}
+            </span>
+          </div>
+          <p className="mb-3.5 text-sm text-neutral-700">
+            Someone asked you to join their rescue — open one to accept.
+          </p>
+          <div className="flex flex-col gap-[18px]">
+            {invited.map((l) => (
+              <ListingCard key={l.id} listing={l} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {onboarding?.show && (
+        <div className="lg:max-w-2xl">
+          <FirstRescueTracker step={onboarding.step} active={onboarding.active} />
+        </div>
+      )}
+
+      <ListingFeed listings={listings} canClaim={canClaim} />
+    </main>
+  );
+}

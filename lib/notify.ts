@@ -1,4 +1,3 @@
-import { CHECK_IN_MARKS } from "./checkin-marks";
 import type { PrismaClient } from "@prisma/client";
 import { prisma } from "./prisma";
 import { dispatchToUser, type NotifyPayload } from "./notify-dispatch";
@@ -22,15 +21,6 @@ export async function restaurantMemberIds(
   return members.map((m) => m.id);
 }
 
-export interface CheckInPush {
-  pickupId: string;
-  listingId: string;
-  volunteerId: string;
-  listingTitle: string;
-  /** 1-based nudge index: 1 → the 5-min mark, 2 → the 10-min mark. */
-  markIndex: number;
-}
-
 export interface BuddyInvitePush {
   inviteId: string;
   listingId: string;
@@ -48,27 +38,6 @@ export interface DropOffPickupNotice {
 
 function emailButton(label: string, path: string): string {
   return `<p><a href="${absoluteUrl(path)}">${label}</a></p>`;
-}
-
-export function buildCheckInPayload(push: CheckInPush): NotifyPayload {
-  const minutes = CHECK_IN_MARKS[push.markIndex - 1];
-  const title = escapeHtml(push.listingTitle);
-  return {
-    title: "Still on for your pickup?",
-    body: `Tap to check in on "${push.listingTitle}".`,
-    url: `/listings/${push.listingId}`,
-    email: {
-      subject: "Checking in on your Meal Move pickup",
-      html:
-        `<p>You're ${minutes} minutes into your hold on "${title}". ` +
-        `Tap below to confirm you're still on for it.</p>` +
-        emailButton("Open the pickup", `/listings/${push.listingId}`),
-    },
-  };
-}
-
-export async function sendCheckInPush(push: CheckInPush): Promise<void> {
-  await dispatchToUser(push.volunteerId, buildCheckInPayload(push));
 }
 
 export function buildBuddyInvitePayload(push: BuddyInvitePush): NotifyPayload {

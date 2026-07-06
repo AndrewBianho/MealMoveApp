@@ -10,7 +10,12 @@ import {
   setRecurringPostActive,
   deleteRecurringPost,
 } from "@/app/actions";
-import { describeSchedule, WEEKDAY_LABELS } from "@/lib/recurring";
+import {
+  describeSchedule,
+  minutesToClock,
+  occurrencesWithin,
+  WEEKDAY_LABELS,
+} from "@/lib/recurring";
 import type { RecurringPostView } from "@/lib/types";
 
 // Pickup-window options, mirroring the one-off post form.
@@ -21,8 +26,37 @@ const WINDOWS = [
   { label: "3 hours", minutes: 180 },
 ];
 
+// Day-set presets — shortcuts into the same day strip, never stored as a
+// separate "mode" (the day set stays the single source of truth).
 const DAILY = [0, 1, 2, 3, 4, 5, 6];
 const WEEKDAYS = [1, 2, 3, 4, 5];
+const WEEKENDS = [0, 6];
+const PRESETS = [
+  { label: "Daily", days: DAILY },
+  { label: "Weekdays", days: WEEKDAYS },
+  { label: "Weekends", days: WEEKENDS },
+];
+
+// "When is the next one, from right now?" — the concrete answer a restaurant
+// scans a schedule card for. 8-day horizon always contains the next firing.
+function nextOccurrenceLabel(s: RecurringPostView): string | null {
+  const next = occurrencesWithin(
+    {
+      daysOfWeek: s.daysOfWeek,
+      timeOfDay: s.timeOfDay,
+      windowMinutes: s.windowMinutes,
+    },
+    8
+  )[0];
+  if (!next) return null;
+  const days = Math.round(
+    (new Date(next.availableAt).setHours(0, 0, 0, 0) -
+      new Date().setHours(0, 0, 0, 0)) /
+      86_400_000
+  );
+  const day = days === 0 ? "today" : days === 1 ? "tomorrow" : WEEKDAY_LABELS[next.availableAt.getDay()];
+  return `next ${day} ${minutesToClock(s.timeOfDay)}`;
+}
 
 // "HH:MM" (from <input type="time">) ↔ minutes-from-midnight.
 function clockToMinutes(hhmm: string): number {
@@ -137,12 +171,45 @@ export function RecurringPostManager({
                   <p className="truncate text-sm font-medium text-neutral-900">
                     {s.title}
                   </p>
-                  <p className="mt-0.5 flex items-center gap-1.5 font-mono text-[11px] text-neutral-700">
-                    <Clock className="text-[0.95em]" />
-                    {describeSchedule(s.daysOfWeek, s.timeOfDay)}
-                    <span className="text-neutral-500">·</span>
-                    {s.servings} servings
-                  </p>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                    {/* Week strip — the whole cadence in one glance. */}
+                    <span
+                      className="flex items-center gap-[3px]"
+                      aria-label={describeSchedule(s.daysOfWeek, s.timeOfDay)}
+                    >
+                      {WEEKDAY_LABELS.map((label, d) => {
+                        const on = s.daysOfWeek.includes(d);
+                        return (
+                          <span
+                            key={d}
+                            aria-hidden="true"
+                            className={cn(
+                              "grid h-5 w-5 place-items-center rounded-[5px] font-mono text-[10px] leading-none",
+                              on
+                                ? "bg-rescued-100 font-semibold text-rescued-800"
+                                : "bg-neutral-100 text-neutral-400"
+                            )}
+                          >
+                            {label[0]}
+                          </span>
+                        );
+                      })}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="flex items-center gap-1.5 font-mono text-[11px] text-neutral-700"
+                    >
+                      <Clock className="text-[0.95em]" />
+                      {minutesToClock(s.timeOfDay)}
+                      <span className="text-neutral-500">·</span>
+                      {s.servings} servings
+                    </span>
+                  </div>
+                  {s.active && nextOccurrenceLabel(s) && (
+                    <p className="mt-1 font-mono text-[11px] text-clay-800">
+                      {nextOccurrenceLabel(s)}
+                    </p>
+                  )}
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <button
@@ -207,30 +274,22 @@ export function RecurringPostManager({
         <div>
           <span className={labelCls}>Repeats on</span>
           <div className="mb-2 flex gap-1.5">
-            <button
-              type="button"
-              onClick={() => setDays(new Set(DAILY))}
-              className={cn(
-                "rounded-full border px-3 py-1.5 text-xs transition-colors",
-                daysMatch(days, DAILY)
-                  ? "border-neutral-900 bg-neutral-900 text-neutral-50"
-                  : "border-neutral-200/60 text-neutral-700 hover:bg-neutral-100"
-              )}
-            >
-              Daily
-            </button>
-            <button
-              type="button"
-              onClick={() => setDays(new Set(WEEKDAYS))}
-              className={cn(
-                "rounded-full border px-3 py-1.5 text-xs transition-colors",
-                daysMatch(days, WEEKDAYS)
-                  ? "border-neutral-900 bg-neutral-900 text-neutral-50"
-                  : "border-neutral-200/60 text-neutral-700 hover:bg-neutral-100"
-              )}
-            >
-              Weekdays
-            </button>
+            {PRESETS.map((p) => (
+              <button
+                key={p.label}
+                type="button"
+                onClick={() => setDays(new Set(p.days))}
+                aria-pressed={daysMatch(days, p.days)}
+                className={cn(
+                  "rounded-full border px-3 py-1.5 text-xs transition-colors",
+                  daysMatch(days, p.days)
+                    ? "border-neutral-900 bg-neutral-900 text-neutral-50"
+                    : "border-neutral-200/60 text-neutral-700 hover:bg-neutral-100"
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
           </div>
           <div className="flex gap-1">
             {WEEKDAY_LABELS.map((label, d) => {

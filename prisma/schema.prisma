@@ -276,7 +276,9 @@ model FoodListing {
   recurringPostId String?
   postedAt     DateTime       @default(now())
   expiresAt    DateTime // real timestamp — "minutes left" is derived from this
-  pickup       Pickup?
+  // One Pickup per claiming volunteer. Most listings need one car; a listing
+  // with carsNeeded > 1 stays open until that many volunteers have claimed.
+  pickups      Pickup[]
   events       ListingEvent[]
   messages     Message[]
   buddyInvites BuddyInvite[]
@@ -289,7 +291,10 @@ model FoodListing {
 model Pickup {
   id          String      @id @default(cuid())
   listing     FoodListing @relation(fields: [listingId], references: [id])
-  listingId   String      @unique
+  // NOT unique: a listing that needs several cars (FoodListing.carsNeeded)
+  // carries one Pickup per claiming volunteer. One claim per volunteer per
+  // listing; lib/claims aggregates the pickups back into the listing status.
+  listingId   String
   volunteer   User        @relation(fields: [volunteerId], references: [id])
   volunteerId String
   // Optional second volunteer doing this pickup together — the buddy. If the
@@ -302,8 +307,6 @@ model Pickup {
   deliveredAt DateTime?
   takenHomeAt DateTime? // set when the volunteer kept the food to deliver next day
   deliverBy   DateTime? // gentle next-day deadline for a taken-home pickup (display + nudge)
-  lastCheckInAt DateTime? // last "still on it" confirmation; suppresses re-prompting
-  nudgesSent    Int       @default(0) // count of 5-min check-up nudges the cron has dispatched (0–2)
   // Proof photos the volunteer captures — required to advance the claim.
   photoAtPickupUrl   String? // food photo taken leaving the restaurant (claimed → in_transit)
   photoAtDeliveryUrl String? // food photo taken at the drop-off (in_transit → delivered)
@@ -317,6 +320,8 @@ model Pickup {
   rescueAccuracy     RescueAccuracy?
   rescueAccuracyNote String?
 
+  @@unique([listingId, volunteerId]) // one claim per volunteer per listing
+  @@index([listingId])
   @@index([volunteerId])
   @@index([buddyId])
 }

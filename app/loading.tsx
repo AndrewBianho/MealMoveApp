@@ -1,4 +1,6 @@
-// Calm route-transition fallback: a slow sage spinner on the cream surface.
+// Shape-agnostic fallback for routes without their own skeleton (auth forms,
+// settings, static pages): a calm sage spinner instead of placeholder boxes,
+// so a light page never flashes a skeleton that mismatches its real layout.
 // The motion is decorative — the global prefers-reduced-motion rule stills it,
 // and the mono "loading" label plus the sr-only text carry the state without it.
 export default function Loading() {

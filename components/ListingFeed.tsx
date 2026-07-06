@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { cn } from "./cn";
 import dynamic from "next/dynamic";
 import { ListingCard } from "./ListingCard";
@@ -17,9 +18,8 @@ const ListingsMap = dynamic(
     ),
   }
 );
-import { Toast, useToast } from "./Toast";
+import { StatusFilterSelect } from "./StatusFilterSelect";
 import { useGeolocation } from "./useGeolocation";
-import { claimListing } from "@/app/actions";
 import { haversineMiles, formatMiles } from "@/lib/distance";
 import type { Listing, ListingStatus, FoodCategory } from "@/lib/types";
 
@@ -39,80 +39,6 @@ const STAGGER = [
 type Filter = "all" | "open" | "coming up" | "claimed" | "in transit" | "delivered";
 
 const FILTERS: Filter[] = ["all", "open", "coming up", "claimed", "in transit", "delivered"];
-
-// Each filter wears the status's semantic hue as a dot, so the filter row speaks
-// the same color language as the cards/map (sage = open & delivered/rescued,
-// honey = claimed, plum = in transit). "all" is the neutral aggregate; "coming
-// up" wears clay — the same accent the cards use for a scheduled listing.
-const FILTER_DOT: Record<Filter, string> = {
-  all: "bg-neutral-400",
-  open: "bg-rescued-600",
-  "coming up": "bg-clay-600",
-  claimed: "bg-urgent-600",
-  "in transit": "bg-transit-600",
-  delivered: "bg-rescued-600",
-};
-
-// Short, sentence-case labels for the pill row. The dropdown's fuller phrasing
-// isn't needed when the dot + count already carry context.
-const PILL_LABEL: Record<Filter, string> = {
-  all: "all",
-  open: "open",
-  "coming up": "coming up",
-  claimed: "claimed",
-  "in transit": "in transit",
-  delivered: "delivered",
-};
-
-// Filter pills (nav-pill spec: fully round, ink fill when active, rescued focus
-// ring). Each pairs the status dot with a mono count, so the row reads the same
-// color language as the cards.
-function FilterPills({
-  filter,
-  counts,
-  onChange,
-}: {
-  filter: Filter;
-  counts: Record<string, number>;
-  onChange: (f: Filter) => void;
-}) {
-  return (
-    <div role="group" aria-label="Filter listings" className="flex flex-wrap gap-2">
-      {FILTERS.map((f) => {
-        const active = f === filter;
-        return (
-          <button
-            key={f}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onChange(f)}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-semibold transition-all duration-150",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50",
-              active
-                ? "border-neutral-900 bg-neutral-900 text-neutral-50"
-                : "border-neutral-200 bg-card text-neutral-700 hover:border-neutral-300 hover:shadow-card"
-            )}
-          >
-            <span
-              className={cn("h-[7px] w-[7px] rounded-full", FILTER_DOT[f])}
-              aria-hidden="true"
-            />
-            {PILL_LABEL[f]}
-            <span
-              className={cn(
-                "font-mono text-[11px] tabular-nums",
-                active ? "text-neutral-400" : "text-neutral-500"
-              )}
-            >
-              {counts[f] ?? 0}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
 
 type Sort = "closing soon" | "nearest" | "most meals";
 const SORTS: Sort[] = ["closing soon", "nearest", "most meals"];
@@ -307,11 +233,13 @@ function CollapsibleSectionHeader({
 // Single-column stack — wide horizontal cards, one per row, in a calm rhythm.
 function ListingStack({
   listings,
-  onClaim,
+  claimable = false,
   lead = false,
 }: {
   listings: Listing[];
-  onClaim?: (id: string) => void;
+  /** True when the viewer can claim — open cards then link to the detail page
+   *  (where the drop-off is chosen and the claim happens). */
+  claimable?: boolean;
   /** True for the stack that opens the page — its first photo is the LCP. */
   lead?: boolean;
 }) {
@@ -321,7 +249,7 @@ function ListingStack({
         <ListingCard
           key={l.id}
           listing={l}
-          onClaim={onClaim}
+          claimable={claimable}
           className={STAGGER[Math.min(i, STAGGER.length - 1)]}
           priorityImage={lead && i === 0}
         />
@@ -352,10 +280,46 @@ function groupBySchedule(items: Listing[]): Listing[][] {
   return groups;
 }
 
+// One future occurrence as a compact row — repeats of a schedule differ only
+// by when they open, so date + time + servings is the whole story. Full cards
+// are for the soonest occurrence only.
+function RepeatRow({ listing }: { listing: Listing }) {
+  const d = listing.availableAt ? new Date(listing.availableAt) : null;
+  return (
+    <li>
+      <Link
+        href={`/listings/${listing.id}`}
+        className="flex items-center gap-3.5 px-4 py-2.5 transition-colors hover:bg-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-rescued-400"
+      >
+        {d && (
+          <span className="flex w-11 shrink-0 flex-col items-center rounded-xl bg-neutral-100 py-1">
+            <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+              {d.toLocaleDateString([], { weekday: "short" })}
+            </span>
+            <span className="font-display text-[17px] font-semibold leading-tight text-neutral-900">
+              {d.getDate()}
+            </span>
+          </span>
+        )}
+        <span className="min-w-0 flex-1 text-[13.5px] text-neutral-700">
+          opens{" "}
+          {d
+            ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+            : listing.availableLabel}
+        </span>
+        <span className="shrink-0 font-mono text-[12.5px] text-neutral-600">
+          <span className="font-bold text-neutral-900">{listing.servings}</span>{" "}
+          servings
+        </span>
+      </Link>
+    </li>
+  );
+}
+
 // One recurring schedule's upcoming occurrences. Only the soonest shows by
-// default — the rest fold behind a quiet expander so a daily/weekly schedule
-// doesn't flood the feed with near-identical cards. (Repeat occurrences share
-// title/source/servings; they differ only by when they open.)
+// default — the rest fold behind a quiet expander, and expand as compact
+// date rows rather than repeated near-identical cards, so a daily schedule
+// never floods the feed.
 function RecurringGroup({ listings }: { listings: Listing[] }) {
   const [open, setOpen] = useState(false);
   const [first, ...rest] = listings;
@@ -374,7 +338,13 @@ function RecurringGroup({ listings }: { listings: Listing[] }) {
             <Chevron open={open} />
             {open ? "Hide repeats" : `Show ${more} more ${more === 1 ? "time" : "times"} this schedule`}
           </button>
-          {open && <ListingStack listings={rest} />}
+          {open && (
+            <ul className="-mt-1 animate-fade-up divide-y divide-neutral-200/60 overflow-hidden rounded-2xl border border-neutral-200/70 bg-card shadow-card">
+              {rest.map((l) => (
+                <RepeatRow key={l.id} listing={l} />
+              ))}
+            </ul>
+          )}
         </>
       )}
     </div>
@@ -425,17 +395,6 @@ export function ListingFeed({
   // volunteers (who have a dedicated "My pickups" page), expanded for org admins
   // who use the feed for oversight.
   const [closedOpen, setClosedOpen] = useState(!canClaim);
-  const { message, show } = useToast();
-  const [isPending, startTransition] = useTransition();
-
-  function handleClaim(id: string) {
-    const target = listings.find((l) => l.id === id);
-    startTransition(async () => {
-      await claimListing(id);
-      show(`Claimed — head to ${target?.source ?? "pickup"}.`);
-    });
-  }
-  const onClaim = canClaim ? handleClaim : undefined;
 
   // Real "how far" once the browser shares a location: straight-line miles from
   // the volunteer to each listing's restaurant. Until then (or if denied) the
@@ -554,7 +513,7 @@ export function ListingFeed({
       {claimable.length > 0 && (
         <section>
           <SectionHeader title="Available to claim" count={claimable.length} />
-          <ListingStack listings={claimable} onClaim={onClaim} lead />
+          <ListingStack listings={claimable} claimable={canClaim} lead />
         </section>
       )}
       {comingUp.length > 0 && (
@@ -582,19 +541,14 @@ export function ListingFeed({
   );
 
   return (
-    <div className={cn(isPending && "opacity-70 transition-opacity")}>
+    <div>
       <div className="mb-6 space-y-3">
-        <FilterPills filter={filter} counts={counts} onChange={setFilter} />
         <div className="flex flex-wrap items-center justify-between gap-3">
-          {availableCategories.length >= 2 ? (
-            <CategoryFilter
-              available={availableCategories}
-              choice={activeCategory}
-              onChange={setCategory}
-            />
-          ) : (
-            <span />
-          )}
+          <StatusFilterSelect
+            value={filter}
+            options={FILTERS.map((f) => ({ value: f, label: f, count: counts[f] ?? 0 }))}
+            onChange={(v) => setFilter(v as Filter)}
+          />
           <div className="flex items-center gap-3">
             {(wide || view === "list") && (
               <SortControl sort={sort} onChange={setSort} located={!!here} />
@@ -603,6 +557,13 @@ export function ListingFeed({
             {!wide && <ViewToggle view={view} onChange={setView} />}
           </div>
         </div>
+        {availableCategories.length >= 2 && (
+          <CategoryFilter
+            available={availableCategories}
+            choice={activeCategory}
+            onChange={setCategory}
+          />
+        )}
       </div>
 
       {wide ? (
@@ -623,8 +584,6 @@ export function ListingFeed({
       ) : (
         listSections
       )}
-
-      <Toast message={message} />
     </div>
   );
 }

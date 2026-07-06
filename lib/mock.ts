@@ -175,7 +175,9 @@ export const LISTINGS: Listing[] = [
     weightLbs: 18,
     distance: "0.6 mi",
     status: "taken home",
-    claimedBy: "You",
+    // One live pickup per volunteer — "You" already carries PU-4825, so this
+    // (and the two other overflow claims below) belong to their own people.
+    claimedBy: "Alex P.",
     dropOff: "Community Fridge — 4th & Elm",
     category: "prepared",
     perishable: true,
@@ -308,7 +310,7 @@ export const LISTINGS: Listing[] = [
     weightLbs: 20,
     distance: "0.3 mi",
     status: "in transit",
-    claimedBy: "Priya R.",
+    claimedBy: "Noah S.",
     dropOff: "Grace Kitchen",
     category: "prepared",
     perishable: true,
@@ -324,7 +326,7 @@ export const LISTINGS: Listing[] = [
     weightLbs: 44,
     distance: "1.4 mi",
     status: "in transit",
-    claimedBy: "Marcus L.",
+    claimedBy: "Maya R.",
     dropOff: "Campus Pantry — Student Union",
     category: "beverages",
     perishable: false,

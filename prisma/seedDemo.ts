@@ -92,6 +92,23 @@ export async function seedDemo(prisma: PrismaClient) {
     dropOffId.set(d.name, created.id);
   }
 
+  // One rescue at a time: the app rejects a second live claim per volunteer,
+  // so the demo world must honor the same rule or its data becomes
+  // unreachable through the UI. Fail loudly if a fixture edit breaks it.
+  const liveByVolunteer = new Map<string, number>();
+  for (const l of LISTINGS) {
+    if (l.claimedBy && ["claimed", "in transit", "taken home"].includes(l.status)) {
+      liveByVolunteer.set(l.claimedBy, (liveByVolunteer.get(l.claimedBy) ?? 0) + 1);
+    }
+  }
+  liveByVolunteer.forEach((count, name) => {
+    if (count > 1) {
+      throw new Error(
+        `Demo fixture breaks the one-rescue-at-a-time rule: ${name} has ${count} live claims.`
+      );
+    }
+  });
+
   // Volunteers (everyone who has claimed something, plus "You"). Upserted so a
   // reset re-creates them without colliding on email. Seeded accounts default to
   // the demo world so logging in as one lands straight in the sample data.
@@ -203,7 +220,10 @@ export async function seedDemo(prisma: PrismaClient) {
         demo: true,
         status,
         restaurantId: restaurantId.get(l.source)!,
-        dropOffId: l.dropOff ? dropOffId.get(l.dropOff)! : null,
+        // Destination-first claiming: the drop-off is the claiming volunteer's
+        // choice, so unclaimed demo listings stay destination-less — the
+        // showcase then exercises the picker on the detail page.
+        dropOffId: hasClaim && l.dropOff ? dropOffId.get(l.dropOff)! : null,
         postedAt,
         expiresAt,
         events: { create: { type: "posted", at: postedAt } },

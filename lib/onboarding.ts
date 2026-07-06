@@ -33,24 +33,26 @@ export async function getVolunteerOnboarding(
   if (completed > 0) return DONE;
 
   // Their current claim, if any. taken_home counts as "has the food" (step 2):
-  // a deferred drop-off is still an in-flight rescue, not a fresh claim.
+  // a deferred drop-off is still an in-flight rescue, not a fresh claim. The
+  // listing may still be "open" when it needs more cars than have claimed, so
+  // the step reads off the volunteer's own pickup, not the listing status.
   const active = await prisma.pickup.findFirst({
     where: {
       deliveredAt: null,
       OR: [{ volunteerId: userId }, { buddyId: userId }],
-      listing: { status: { in: ["claimed", "in_transit", "taken_home"] } },
+      listing: { status: { in: ["open", "claimed", "in_transit", "taken_home"] } },
     },
     orderBy: { claimedAt: "desc" },
     select: {
-      listing: {
-        select: { id: true, status: true, restaurant: { select: { name: true } } },
-      },
+      photoAtPickupUrl: true,
+      listing: { select: { id: true, restaurant: { select: { name: true } } } },
     },
   });
 
   if (!active) return { show: true, step: 0, active: null };
 
-  const step: OnboardingStep = active.listing.status === "claimed" ? 1 : 2;
+  // Their car has the food once the pickup photo lands.
+  const step: OnboardingStep = active.photoAtPickupUrl ? 2 : 1;
   return {
     show: true,
     step,

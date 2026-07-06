@@ -24,6 +24,13 @@ function fakeDb(opts: any = {}) {
   const db: any = {
     pickup: {
       findUnique: async () => opts.pickup ?? null,
+      // The `listingId: { not: … }` shape is the one-rescue-at-a-time guard
+      // looking for a live claim elsewhere; everything else wants this claim.
+      findFirst: async ({ where }: any = {}) =>
+        where?.listingId?.not !== undefined
+          ? opts.claimElsewhere ?? null
+          : opts.pickup ?? null,
+      findMany: async () => (opts.pickup ? [opts.pickup] : []),
       update: async ({ data }: any) => {
         calls.pickupUpdates.push(data);
         if (opts.pickup) Object.assign(opts.pickup, data);
@@ -223,6 +230,19 @@ test("respondToInviteFor: accepting rejects a stale invite from a former primary
     () => respondToInviteFor(db, "volB", "inv1", true, t0),
     /no longer available/
   );
+});
+
+test("respondToInviteFor: accepting rejects an invitee already on a live pickup elsewhere", async () => {
+  const { db, calls } = fakeDb({
+    invite: { id: "inv1", inviterId: "volA", inviteeId: "volB", listingId: "ls1", status: "pending" },
+    pickup: { volunteerId: "volA", buddyId: null, listing: { status: "claimed" } },
+    claimElsewhere: { id: "pk9" },
+  });
+  await assert.rejects(
+    () => respondToInviteFor(db, "volB", "inv1", true, t0),
+    /One rescue at a time/
+  );
+  assert.equal(calls.pickupUpdates.length, 0);
 });
 
 test("cancelInviteFor: the inviter pulls back an outstanding invite", async () => {

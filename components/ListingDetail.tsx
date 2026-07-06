@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useTransition } from "react";
+import dynamic from "next/dynamic";
+import { useMemo, useState, useTransition } from "react";
 import { Button } from "./Button";
 import { StatusBadge } from "./StatusBadge";
 import { Toast, useToast } from "./Toast";
-import { Clock, MapPin, Users } from "./icons";
+import { ArrowRight, Car, Clock, MapPin, Users } from "./icons";
 import { cn } from "./cn";
 import {
   claimListing,
@@ -18,7 +19,6 @@ import {
   releaseClaim,
   recordRescueAccuracy,
 } from "@/app/actions";
-import { CheckInPrompt } from "./CheckInPrompt";
 import { NotificationPrimeCard } from "./NotificationPrimeCard";
 import { ChatPanel } from "./ChatPanel";
 import { Avatar } from "./Avatar";
@@ -31,13 +31,33 @@ import type { RescueAccuracy } from "@/lib/accuracy";
 import { OpenNowBadge } from "./RetrievalHoursDisplay";
 import { DropOffNotices } from "./DropOffNotices";
 import { RescueCelebration } from "./RescueCelebration";
-import { currentDayKey, formatDay } from "@/lib/hours";
+import { currentDayKey, formatDay, isOpenNow } from "@/lib/hours";
 import { formatTimeLeft } from "@/lib/time";
-import type { Listing, ListingStatus, VolunteerImpact, DropOffNoticeView } from "@/lib/types";
+import { milesBetween } from "@/lib/geo";
+import type {
+  DropOffChoice,
+  DropOffNoticeView,
+  Listing,
+  ListingStatus,
+  VolunteerImpact,
+} from "@/lib/types";
 
 // The happy-path journey. expired / failed are terminal off-ramps and render
 // their own banner rather than a step.
 const JOURNEY: ListingStatus[] = ["open", "claimed", "in transit", "delivered"];
+
+// Lazy — keep Mapbox (and its CSS) out of the detail bundle on phones; the side
+// map only exists at lg+, mirroring the feed's wide side-by-side layout.
+const ListingsMap = dynamic(
+  () => import("./ListingsMap").then((m) => m.ListingsMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-full animate-pulse rounded-2xl border border-neutral-200/60 bg-neutral-100" />
+    ),
+  }
+);
+import type { MapDropOffPin } from "./ListingsMap";
 
 const STEP_LABEL: Record<string, string> = {
   open: "Posted",
@@ -45,6 +65,38 @@ const STEP_LABEL: Record<string, string> = {
   "in transit": "In transit",
   delivered: "Delivered",
 };
+
+// Progress fill spans dot-center to dot-center: the full span is 75% of the
+// row (12.5% inset each side), so each completed step adds a quarter — the
+// same geometry as PickupTimelineCard's timeline.
+const STEP_FILL: Record<number, string> = { 0: "w-0", 1: "w-1/4", 2: "w-2/4", 3: "w-3/4" };
+
+// "1:05 PM" today, "Thu, 1:05 PM" otherwise — matching the deliverBy labels.
+function stepStamp(ms?: number): string {
+  if (!ms) return "";
+  const d = new Date(ms);
+  return d.toDateString() === new Date().toDateString()
+    ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+    : d.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
+}
+
+function StepCheck() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="9"
+      height="9"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={4}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
 
 const TEMP_LABEL: Record<NonNullable<Listing["tempHandling"]>, string> = {
   hot: "hot",
@@ -88,6 +140,9 @@ export function ListingDetail({
   incomingInvite = null,
   outgoingInvite = null,
   dropOffNotices = [],
+  dropOffChoices = [],
+  chosenDropOffPin = null,
+  activeElsewhere = null,
   canPrimeNotifications = false,
 }: {
   listing: Listing | null;
@@ -104,6 +159,16 @@ export function ListingDetail({
   outgoingInvite?: { inviteeName: string } | null;
   /** Active service notices for this listing's drop-off (closing early, etc.). */
   dropOffNotices?: DropOffNoticeView[];
+  /** Eligible destinations for destination-first claiming, nearest first —
+   * present while the listing is open and no drop-off has been chosen yet. */
+  dropOffChoices?: DropOffChoice[];
+  /** The already-chosen destination's pin, once a claim set it — the side map
+   * shows it next to the pickup. */
+  chosenDropOffPin?: MapDropOffPin | null;
+  /** The viewer's live claim on another listing, if any. One rescue at a time:
+   * while set, the claim flow here is replaced by a "finish that one first"
+   * notice (the server action enforces the same rule). */
+  activeElsewhere?: { listingId: string; title: string } | null;
 }) {
   const { message, show } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -116,6 +181,30 @@ export function ListingDetail({
   const [primeOpen, setPrimeOpen] = useState(false);
   // Dismissible food-safety checklist answers, captured with the pickup proof.
   const [safety, setSafety] = useState<SafetyAnswers>({});
+  // Destination-first claiming: the drop-off the volunteer picked, required
+  // before the claim can go through (null until they choose).
+  const [chosenDropOff, setChosenDropOff] = useState<string | null>(null);
+
+  // Destination-first: an open listing with no drop-off yet needs the volunteer
+  // to pick one before claiming. Derived ahead of the null guard so the map
+  // memos below satisfy the rules of hooks.
+  const needsDropOff = Boolean(
+    listing &&
+      listing.status === "open" &&
+      canClaim &&
+      !activeElsewhere &&
+      !listing.dropOffId
+  );
+  // Pins for the side map — the pickup plus either the destination choices
+  // (while picking) or the already-chosen drop-off. Memoized so selecting a
+  // choice restyles the halo instead of rebuilding the map.
+  const mapListings = useMemo(() => (listing ? [listing] : []), [listing]);
+  const mapDropOffs = useMemo<MapDropOffPin[]>(() => {
+    if (needsDropOff) {
+      return dropOffChoices.map((d) => ({ id: d.id, name: d.name, lat: d.lat, lng: d.lng }));
+    }
+    return chosenDropOffPin ? [chosenDropOffPin] : [];
+  }, [needsDropOff, dropOffChoices, chosenDropOffPin]);
 
   if (!listing) {
     return (
@@ -148,12 +237,31 @@ export function ListingDetail({
         minute: "2-digit",
       })
     : null;
+  // Per-step timestamps for the lifecycle stepper (nulls stay blank).
+  const stepTimes = [
+    listing.postedAt,
+    listing.claimedAt,
+    listing.pickedUpAt,
+    listing.deliveredAt,
+  ];
+  // Whether the chosen drop-off is open right now — drives the closed pill,
+  // the warning banner, and the in-transit guidance. null = no hours on file.
+  const dropOffOpen = listing.dropOffHours ? isOpenNow(listing.dropOffHours) : null;
+  // Straight-line pickup → drop-off miles for the route overlay on the map.
+  const routeMiles =
+    listing.lat != null && listing.lng != null && chosenDropOffPin
+      ? milesBetween(listing.lat, listing.lng, chosenDropOffPin.lat, chosenDropOffPin.lng)
+      : null;
 
   function onClaim() {
     startTransition(async () => {
-      await claimListing(id);
-      if (canPrimeNotifications) setPrimeOpen(true);
-      show("Claimed — it's yours for the next fifteen minutes.");
+      try {
+        await claimListing(id, chosenDropOff ?? undefined);
+        if (canPrimeNotifications) setPrimeOpen(true);
+        show("Claimed — it's yours for the next fifteen minutes.");
+      } catch (e) {
+        show(e instanceof Error ? e.message : "Couldn't claim this pickup.");
+      }
     });
   }
   function onPickupPhoto(url: string | null) {
@@ -248,13 +356,23 @@ export function ListingDetail({
     listing.status === "in transit" ||
     listing.status === "taken home";
   const isPrimary = Boolean(listing.mine) && !listing.iAmBuddy;
+  // Footer escape hatches: buddy invites while no buddy/invite exists; cancel
+  // only while the claim can still be released (pre-photo, see checkins).
+  const canInviteBuddy =
+    isPrimary && !listing.buddyName && !outgoingInvite && !pickerOpen;
+  const canCancel = listing.status === "claimed" && Boolean(listing.mine);
 
   // The one action this screen exists for. On phones the inline "Next step"
   // card sits below food safety / special requests / the status timeline, so a
   // fixed bar pins the claim button above the tab bar ("every screen moves
   // food" — the primary action never hides below the fold). md+ keeps only the
   // inline card.
-  const showClaimBar = listing.status === "open" && canClaim;
+  // No pinned mobile bar while blocked by another live claim — the "Next step"
+  // card explains and links there instead of dangling a dead action.
+  const showClaimBar = listing.status === "open" && canClaim && !activeElsewhere;
+  // A listing whose destination is already set (another car on a multi-car
+  // haul chose it) claims straight away; otherwise a choice must be made first.
+  const claimReady = !needsDropOff || chosenDropOff != null;
 
   return (
     <div
@@ -305,7 +423,101 @@ export function ListingDetail({
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+      {/* Handoff layout: a narrow action panel on the left — stepper, facts,
+          phase content, and actions in one stack — with the map filling the
+          rest of the viewport at lg+. */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,472px)_minmax(0,1fr)]">
+        <div className="space-y-6">
+      {/* Lifecycle stepper — the pickup's whole story in one horizontal bar on
+          top of the panel: mono timestamps over dots over labels on four equal
+          columns, the sage fill running dot-center to dot-center
+          (PickupTimelineCard's timeline recipe). Terminal freezes in neutral. */}
+      <div
+        aria-label={`Pickup progress: ${listing.status}`}
+        className="rounded-2xl border border-neutral-200/40 bg-card px-3 pb-3 pt-4 sm:px-5"
+      >
+        <div className="flex">
+          {JOURNEY.map((step, i) => (
+            <div
+              key={step}
+              className={cn(
+                "min-h-[12px] flex-1 text-center font-mono text-[10.5px] font-bold tabular-nums",
+                !terminal && i <= currentStep ? "text-neutral-900" : "text-neutral-400"
+              )}
+            >
+              {i <= currentStep ? stepStamp(stepTimes[i]) : ""}
+            </div>
+          ))}
+        </div>
+        <div className="relative my-2 flex items-center">
+          <div
+            aria-hidden
+            className="absolute inset-x-[12.5%] top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-neutral-200"
+          />
+          <div
+            aria-hidden
+            className={cn(
+              "absolute left-[12.5%] top-1/2 h-[3px] -translate-y-1/2 rounded-full transition-[width] duration-300",
+              terminal ? "bg-neutral-300" : "bg-rescued-600",
+              STEP_FILL[Math.max(currentStep, 0)]
+            )}
+          />
+          {JOURNEY.map((step, i) => {
+            const done = !terminal && i <= currentStep;
+            const active =
+              !terminal && listing.status !== "delivered" && i === currentStep + 1;
+            return (
+              <div key={step} className="relative z-[1] flex flex-1 justify-center">
+                <span className="relative flex h-4 w-4 items-center justify-center">
+                  {active && (
+                    <span
+                      aria-hidden
+                      className="absolute -inset-1 rounded-full bg-rescued-400/25 motion-safe:animate-pulse"
+                    />
+                  )}
+                  <span
+                    className={cn(
+                      "relative flex h-4 w-4 items-center justify-center rounded-full border-2 text-white",
+                      done
+                        ? "border-rescued-600 bg-rescued-600"
+                        : terminal && i <= currentStep
+                          ? "border-neutral-400 bg-neutral-400"
+                          : active
+                            ? "border-rescued-400 bg-card"
+                            : "border-neutral-200 bg-card"
+                    )}
+                  >
+                    {i <= currentStep && <StepCheck />}
+                  </span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex">
+          {JOURNEY.map((step, i) => (
+            <div
+              key={step}
+              className={cn(
+                "flex-1 text-center text-[11px] font-semibold leading-tight",
+                !terminal && i <= currentStep
+                  ? "text-neutral-700"
+                  : !terminal && i === currentStep + 1
+                    ? "text-neutral-600"
+                    : "text-neutral-400"
+              )}
+            >
+              {STEP_LABEL[step]}
+            </div>
+          ))}
+        </div>
+        {heldOvernight && (
+          <p className="mt-2 text-center font-mono text-[11px] text-transit-800">
+            held overnight{deliverByLabel ? ` · deliver by ${deliverByLabel}` : ""}
+          </p>
+        )}
+      </div>
+
         {/* Main */}
         <div className="overflow-hidden rounded-2xl border border-neutral-200/40 bg-card">
           <div
@@ -345,34 +557,110 @@ export function ListingDetail({
               <StatusBadge status={listing.status} />
             </div>
 
-            <div className="space-y-2.5">
-              <MetaRow icon={<MapPin />}>{listing.source}</MetaRow>
-              <MetaRow icon={<Clock />}>
-                {terminal
-                  ? `closed ${listing.expiresAt}`
-                  : `expires ${listing.expiresAt} · ${formatTimeLeft(listing.minutesLeft)} left`}
-              </MetaRow>
-              <MetaRow icon={<Users />}>~{listing.servings} servings</MetaRow>
-              {listing.dropOff && (
-                <MetaRow icon={<MapPin />}>
-                  → drop at {listing.dropOff}
+            <MetaRow icon={<MapPin />}>
+              {listing.source}
+              <span className="text-neutral-300">·</span>
+              <span>
+                <span className="font-semibold text-neutral-900">
+                  ~{listing.servings}
+                </span>{" "}
+                servings
+              </span>
+            </MetaRow>
+
+            {/* Facts grid — the decision facts as hairline-divided cells, each
+                a mono micro-label over its value (pickup-detail handoff). */}
+            <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-neutral-200/60 bg-neutral-200/60">
+              <div className="bg-neutral-50 px-3.5 py-3">
+                <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+                  {terminal ? "closed" : "expires"}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-neutral-800 tabular-nums">
+                  {listing.expiresAt}
+                  {!terminal && (
+                    <span className="font-normal text-neutral-600">
+                      {" "}
+                      · {formatTimeLeft(listing.minutesLeft)} left
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div className="bg-neutral-50 px-3.5 py-3">
+                {(listing.carsNeeded ?? 1) > 1 ? (
+                  <>
+                    <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+                      cars
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-neutral-800">
+                      {listing.status === "open"
+                        ? `${(listing.carsNeeded ?? 1) - (listing.claimedCount ?? 0)} of ${listing.carsNeeded} still needed`
+                        : `${listing.carsNeeded} cars`}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+                      food
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-neutral-800">
+                      {listing.category ?? "surplus"}
+                      {listing.tempHandling && (
+                        <span className="font-normal text-neutral-600">
+                          {" "}
+                          · keep {TEMP_LABEL[listing.tempHandling]}
+                        </span>
+                      )}
+                    </p>
+                  </>
+                )}
+              </div>
+              <div className="col-span-2 bg-neutral-50 px-3.5 py-3">
+                <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+                  drop-off
+                </p>
+                <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-neutral-800">
+                  {listing.dropOff ?? (
+                    <span className="font-normal text-neutral-600">
+                      chosen by the claiming volunteer
+                    </span>
+                  )}
                   {listing.dropOffHours && (
-                    <span className="ml-2 inline-flex items-center gap-2 align-middle">
+                    <span className="inline-flex items-center gap-2">
                       <OpenNowBadge hours={listing.dropOffHours} />
-                      <span className="font-mono text-xs text-neutral-700">
+                      <span className="font-mono text-xs font-normal text-neutral-700">
                         today {formatDay(listing.dropOffHours[currentDayKey()])}
                       </span>
                     </span>
                   )}
-                </MetaRow>
+                </p>
+              </div>
+            </div>
+
+            {/* Drop-off closed right now and this rescue is in flight — the one
+                honey warning the handoff calls for; take-home is the fallback. */}
+            {listing.mine &&
+              ["claimed", "in transit"].includes(listing.status) &&
+              dropOffOpen === false && (
+                <div className="mt-3 flex gap-2.5 rounded-xl bg-urgent-50 px-4 py-3">
+                  <span aria-hidden className="mt-px text-urgent-800">
+                    ⚠
+                  </span>
+                  <p className="text-[13px] leading-relaxed text-urgent-800">
+                    {listing.dropOff ?? "The drop-off"} is closed right now.
+                    Message them to confirm, or keep it safe at home if no one
+                    answers.
+                  </p>
+                </div>
               )}
-              {listing.claimedBy && listing.status !== "open" && (
+
+            {listing.claimedBy && listing.status !== "open" && (
+              <div className="mt-3">
                 <MetaRow icon={<Users />}>
                   claimed by {listing.claimedBy}
                   {listing.buddyName && ` + ${listing.buddyName}`}
                 </MetaRow>
-              )}
-            </div>
+              </div>
+            )}
 
             {(listing.allergens?.length || listing.tempHandling) && (
               <div className="mt-4 rounded-md bg-neutral-100 px-4 py-3 text-sm text-neutral-800">
@@ -452,72 +740,132 @@ export function ListingDetail({
           </div>
         </div>
 
-        {/* Side: timeline + actions */}
+        {/* Side: actions */}
         <aside className="space-y-6">
-          <div className="rounded-2xl border border-neutral-200/40 bg-card p-5">
-            <p className="mb-4 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
-              Status
-            </p>
-            <ol className="space-y-0">
-              {JOURNEY.map((step, i) => {
-                const done = !terminal && i <= currentStep;
-                const isLast = i === JOURNEY.length - 1;
-                return (
-                  <li key={step} className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <span
-                        className={cn(
-                          "grid h-5 w-5 place-items-center rounded-full border text-[10px]",
-                          done
-                            ? "border-rescued-600 bg-rescued-600 text-white"
-                            : "border-neutral-200 bg-card text-neutral-600"
-                        )}
-                      >
-                        {done ? "✓" : i + 1}
-                      </span>
-                      {!isLast && (
-                        <span
-                          className={cn(
-                            "my-1 w-px flex-1",
-                            done ? "bg-rescued-200" : "bg-neutral-200"
-                          )}
-                        />
-                      )}
-                    </div>
-                    <span
-                      className={cn(
-                        "pb-4 text-sm",
-                        done ? "text-neutral-900" : "text-neutral-600"
-                      )}
-                    >
-                      {STEP_LABEL[step]}
-                      {heldOvernight && step === "in transit" && (
-                        <span className="mt-0.5 block font-mono text-[11px] text-transit-800">
-                          held overnight{deliverByLabel ? ` · deliver by ${deliverByLabel}` : ""}
-                        </span>
-                      )}
-                    </span>
-                  </li>
-                );
-              })}
-            </ol>
-          </div>
-
           {!terminal && (
             <div className="rounded-2xl border border-neutral-200/40 bg-card p-5">
               <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
                 Next step
               </p>
               {listing.status === "open" &&
-                (canClaim ? (
-                  <Button
-                    variant="claim"
-                    className="w-full"
-                    onClick={onClaim}
-                    disabled={isPending}
-                  >
-                    Claim pickup
-                  </Button>
+                (canClaim && activeElsewhere ? (
+                  <div className="rounded-xl bg-neutral-100 px-4 py-3 text-sm text-neutral-700">
+                    <p>
+                      One rescue at a time — you&apos;re already on{" "}
+                      <span className="font-medium text-neutral-900">
+                        {activeElsewhere.title}
+                      </span>
+                      . Deliver or release it before claiming another.
+                    </p>
+                    <Link
+                      href={`/listings/${activeElsewhere.listingId}`}
+                      className="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-clay-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+                    >
+                      Go to your current pickup
+                      <ArrowRight className="text-[1.05em]" />
+                    </Link>
+                  </div>
+                ) : canClaim ? (
+                  <>
+                    {needsDropOff && (
+                      <div id="dropoff-picker" className="mb-4">
+                        <p className="mb-2.5 text-[13px] text-neutral-700">
+                          First, pick where you&apos;ll take it — every rescue
+                          starts with a destination.
+                        </p>
+                        {dropOffChoices.length === 0 ? (
+                          <p className="rounded-xl bg-neutral-100 px-4 py-3 text-sm text-neutral-700">
+                            No drop-off can take this food right now — check
+                            back soon.
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            {dropOffChoices.map((d, i) => {
+                              const sel = chosenDropOff === d.id;
+                              return (
+                                <button
+                                  key={d.id}
+                                  type="button"
+                                  aria-pressed={sel}
+                                  onClick={() => setChosenDropOff(d.id)}
+                                  disabled={isPending}
+                                  className={cn(
+                                    "w-full rounded-xl border-2 px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",
+                                    sel
+                                      ? "border-rescued-400 bg-rescued-50"
+                                      : "border-neutral-200 bg-card hover:border-neutral-400/60"
+                                  )}
+                                >
+                                  <span className="flex items-center justify-between gap-3">
+                                    <span className="text-sm font-medium text-neutral-900">
+                                      {d.name}
+                                    </span>
+                                    <span
+                                      aria-hidden
+                                      className={cn(
+                                        "grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px]",
+                                        sel
+                                          ? "border-rescued-600 bg-rescued-600 text-white"
+                                          : "border-neutral-200 bg-card text-transparent"
+                                      )}
+                                    >
+                                      ✓
+                                    </span>
+                                  </span>
+                                  <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] text-neutral-700">
+                                    <span className="tabular-nums">
+                                      {d.miles.toFixed(1)} mi from pickup
+                                    </span>
+                                    {i === 0 && (
+                                      <span className="rounded-full bg-rescued-100 px-2 py-0.5 text-[10px] uppercase tracking-wide text-rescued-800">
+                                        nearest
+                                      </span>
+                                    )}
+                                    {d.retrievalHours && (
+                                      <>
+                                        <OpenNowBadge hours={d.retrievalHours} />
+                                        <span>
+                                          today{" "}
+                                          {formatDay(d.retrievalHours[currentDayKey()])}
+                                        </span>
+                                      </>
+                                    )}
+                                  </span>
+                                  {d.notes && (
+                                    <span className="mt-1 block text-[12px] text-neutral-600">
+                                      {d.notes}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {!needsDropOff && listing.dropOff && (
+                      <p className="mb-3 text-[13px] text-neutral-700">
+                        Delivering to{" "}
+                        <span className="font-medium text-neutral-900">
+                          {listing.dropOff}
+                        </span>{" "}
+                        — the destination is already set for this rescue.
+                      </p>
+                    )}
+                    <Button
+                      variant="claim"
+                      className="w-full"
+                      onClick={onClaim}
+                      disabled={isPending || !claimReady}
+                    >
+                      Claim pickup
+                    </Button>
+                    {needsDropOff && !chosenDropOff && dropOffChoices.length > 0 && (
+                      <p className="mt-2 text-center font-mono text-[11px] text-neutral-600">
+                        choose a drop-off above to claim
+                      </p>
+                    )}
+                  </>
                 ) : (
                   <p className="rounded-xl bg-neutral-100 px-4 py-3 text-sm text-neutral-700">
                     Org admins oversee rescues — claiming is for volunteers.
@@ -535,66 +883,6 @@ export function ListingDetail({
                       uploadKey={`pickup:${id}`}
                       onChange={onPickupPhoto}
                     />
-                    {confirmCancel ? (
-                      <div className="mt-3 animate-fade-in rounded-md bg-failed-50 px-4 py-3">
-                        <p className="text-sm font-medium text-failed-800">
-                          Cancel this pickup?
-                        </p>
-                        <p className="mt-0.5 text-[13px] text-failed-800/80">
-                          {listing.iAmBuddy
-                            ? "You'll step off — your buddy keeps the pickup."
-                            : listing.buddyName
-                              ? `${listing.buddyName} will take over so the rescue still happens.`
-                              : "It goes back on the feed so someone else can grab it."}
-                        </p>
-                        <div className="mt-3 flex gap-2">
-                          <Button
-                            variant="danger"
-                            className="flex-1"
-                            onClick={onCancelPickup}
-                            disabled={isPending}
-                          >
-                            Cancel pickup
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            className="flex-1"
-                            onClick={() => setConfirmCancel(false)}
-                            disabled={isPending}
-                          >
-                            Keep it
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="mt-4 border-t border-neutral-200/50 pt-4">
-                        <p className="mb-2 text-[13px] text-neutral-700">
-                          Can&apos;t make it after all?
-                        </p>
-                        <Button
-                          variant="secondary"
-                          className="flex w-full items-center justify-center gap-2"
-                          onClick={() => setConfirmCancel(true)}
-                          disabled={isPending}
-                        >
-                          <svg
-                            viewBox="0 0 24 24"
-                            width="16"
-                            height="16"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth={1.8}
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            aria-hidden="true"
-                          >
-                            <circle cx="12" cy="12" r="9" />
-                            <path d="m15 9-6 6M9 9l6 6" />
-                          </svg>
-                          Cancel pickup
-                        </Button>
-                      </div>
-                    )}
                   </>
                 ) : (
                   <p className="text-sm text-neutral-700">
@@ -605,6 +893,22 @@ export function ListingDetail({
               {listing.status === "in transit" &&
                 (listing.mine ? (
                   <>
+                    <div className="mb-4 flex gap-2.5 rounded-xl bg-rescued-50 px-4 py-3">
+                      <span aria-hidden className="mt-px text-rescued-800">
+                        <Car />
+                      </span>
+                      <div>
+                        <p className="text-sm font-semibold text-rescued-800">
+                          You&apos;re on the way
+                        </p>
+                        <p className="mt-0.5 text-[13px] leading-relaxed text-neutral-700">
+                          Head to {listing.dropOff ?? "the drop-off"} — follow
+                          the route on the map.
+                          {dropOffOpen === false &&
+                            " It's closed right now, so message ahead before you arrive."}
+                        </p>
+                      </div>
+                    </div>
                     <ImageUploadField
                       label="Delivery photo"
                       optional={false}
@@ -643,15 +947,16 @@ export function ListingDetail({
                         </div>
                       </div>
                     ) : (
-                      <div className="mt-4 border-t border-neutral-200/50 pt-4">
-                        <p className="mb-2 text-[13px] text-neutral-700">
-                          Drop-off closed, or out of time today?
-                        </p>
-                        <Button
-                          variant="secondary"
-                          className="flex w-full items-center justify-center gap-2"
+                      <div className="mt-4">
+                        <button
+                          type="button"
                           onClick={() => setConfirmTakeHome(true)}
                           disabled={isPending}
+                          className={cn(
+                            "flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold transition-all duration-200",
+                            "bg-card text-urgent-800 shadow-[inset_0_0_0_2px_rgb(var(--urgent-200))] hover:-translate-y-0.5 hover:bg-urgent-50",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50 disabled:hover:translate-y-0"
+                          )}
                         >
                           <svg
                             viewBox="0 0 24 24"
@@ -659,15 +964,20 @@ export function ListingDetail({
                             height="16"
                             fill="none"
                             stroke="currentColor"
-                            strokeWidth={1.8}
+                            strokeWidth={2}
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             aria-hidden="true"
                           >
-                            <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+                            <path d="M3 9.5 12 3l9 6.5" />
+                            <path d="M5 10v10h14V10" />
+                            <path d="M9 20v-6h6v6" />
                           </svg>
-                          Take it home for tomorrow
-                        </Button>
+                          Take it home instead
+                        </button>
+                        <p className="mt-1.5 text-center text-[12px] text-neutral-600">
+                          Drop-off closed? Keep it safe until they reopen.
+                        </p>
                       </div>
                     )}
                   </>
@@ -709,9 +1019,30 @@ export function ListingDetail({
                   </p>
                 ))}
               {listing.status === "delivered" && (
-                <p className="text-sm text-neutral-700">
-                  Complete — nothing more to do. 🌱
-                </p>
+                <div className="rounded-xl bg-rescued-50 px-4 py-5 text-center">
+                  <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-rescued-600 text-white">
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="18"
+                      height="18"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2.6}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </span>
+                  <p className="mt-3 font-display text-lg font-medium text-neutral-900">
+                    Delivered — thank you
+                  </p>
+                  <p className="mt-1 text-[13px] text-neutral-700">
+                    ~{listing.servings} servings reached{" "}
+                    {listing.dropOff ?? "the drop-off"}.
+                  </p>
+                </div>
               )}
             </div>
           )}
@@ -724,7 +1055,8 @@ export function ListingDetail({
             />
           )}
 
-          {onClaimActive && (listing.buddyName || isPrimary) && (
+          {onClaimActive &&
+            (listing.buddyName || pickerOpen || outgoingInvite) && (
             <div className="rounded-2xl border border-neutral-200/40 bg-card p-5">
               {listing.buddyName ? (
                 <>
@@ -777,47 +1109,135 @@ export function ListingDetail({
                     </button>
                   </div>
                 </>
-              ) : (
-                <>
-                  <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
-                    Buddy
-                  </p>
-                  <p className="mb-3 flex items-start gap-2 text-[13px] text-neutral-700">
-                    <span className="mt-0.5 text-neutral-600">
-                      <Users />
-                    </span>
-                    Doing this with someone? Invite a buddy so you&apos;ve got
-                    each other&apos;s backs.
-                  </p>
-                  <Button
-                    variant="secondary"
-                    className="w-full"
-                    onClick={() => setPickerOpen(true)}
-                    disabled={isPending}
-                  >
-                    Invite a buddy
-                  </Button>
-                </>
-              )}
+              ) : null}
             </div>
           )}
-
-          {listing.status === "claimed" &&
-            listing.mine &&
-            listing.claimedAt != null &&
-            listing.holdUntil != null && (
-              <CheckInPrompt
-                listingId={listing.id}
-                claimedAt={listing.claimedAt}
-                holdUntil={listing.holdUntil}
-                lastCheckInAt={listing.lastCheckInAt}
-              />
-            )}
 
           {canChat && viewerId && listing.claimedAt != null && (
             <ChatPanel listingId={listing.id} viewerId={viewerId} />
           )}
+
+          {/* Footer secondary — the two quiet escape hatches as a half-width
+              pair under everything (pickup-detail handoff): invite a buddy,
+              and cancel while the claim can still be released (pre-photo). */}
+          {listing.mine &&
+            onClaimActive &&
+            (canInviteBuddy || canCancel || confirmCancel) && (
+            <div className="border-t border-neutral-200/50 pt-4">
+              {confirmCancel ? (
+                <div className="animate-fade-in rounded-md bg-failed-50 px-4 py-3">
+                  <p className="text-sm font-medium text-failed-800">
+                    Cancel this pickup?
+                  </p>
+                  <p className="mt-0.5 text-[13px] text-failed-800/80">
+                    {listing.iAmBuddy
+                      ? "You'll step off — your buddy keeps the pickup."
+                      : listing.buddyName
+                        ? `${listing.buddyName} will take over so the rescue still happens.`
+                        : "It goes back on the feed so someone else can grab it."}
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <Button
+                      variant="danger"
+                      className="flex-1"
+                      onClick={onCancelPickup}
+                      disabled={isPending}
+                    >
+                      Cancel pickup
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="flex-1"
+                      onClick={() => setConfirmCancel(false)}
+                      disabled={isPending}
+                    >
+                      Keep it
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2.5">
+                  {canInviteBuddy && (
+                    <Button
+                      variant="secondary"
+                      className="flex flex-1 items-center justify-center gap-2 px-4 py-2 text-[13px]"
+                      onClick={() => setPickerOpen(true)}
+                      disabled={isPending}
+                    >
+                      <Users />
+                      Invite a buddy
+                    </Button>
+                  )}
+                  {canCancel && (
+                    <Button
+                      variant="danger"
+                      className="flex-1 px-4 py-2 text-[13px]"
+                      onClick={() => setConfirmCancel(true)}
+                      disabled={isPending}
+                    >
+                      Cancel pickup
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </aside>
+        </div>
+
+        {/* Side map — lg+ only, sticky like the feed's. While picking, the
+            drop-off choices show as clay flag pins (tap one to select it); once
+            the destination is set, only it rides beside the pickup pin. */}
+        <div className="hidden lg:block">
+          <div className="sticky top-20 h-[calc(100vh-7rem)]">
+            <div className="relative h-full">
+              <ListingsMap
+                listings={mapListings}
+                dropOffs={mapDropOffs}
+                selectedDropOffId={needsDropOff ? chosenDropOff : listing.dropOffId ?? null}
+                onSelectDropOff={needsDropOff ? setChosenDropOff : undefined}
+                className="h-full"
+              />
+              {/* Route overlay — once the destination is set, the journey as a
+                  glassy card over the map: pickup → drop-off with the
+                  straight-line miles (pickup-detail handoff). */}
+              {!terminal && listing.dropOff && chosenDropOffPin && (
+                <div className="pointer-events-none absolute left-4 top-4 z-[1] max-w-[280px] rounded-2xl border border-neutral-200/60 bg-card/95 px-4 py-3.5 shadow-card backdrop-blur-sm">
+                  <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+                    your route{routeMiles != null && ` · ${routeMiles.toFixed(1)} mi`}
+                  </p>
+                  <div className="mt-2.5 flex items-center gap-2.5">
+                    <span
+                      aria-hidden
+                      className="h-[9px] w-[9px] shrink-0 rounded-full bg-rescued-600 ring-[3px] ring-rescued-100"
+                    />
+                    <span className="truncate text-[13px] font-semibold text-neutral-800">
+                      {listing.source}
+                    </span>
+                  </div>
+                  <span
+                    aria-hidden
+                    className="ml-1 block h-3.5 w-px border-l border-dashed border-neutral-300"
+                  />
+                  <div className="flex items-center gap-2.5">
+                    <span
+                      aria-hidden
+                      className="h-[9px] w-[9px] shrink-0 rounded-full bg-neutral-900"
+                    />
+                    <span className="truncate text-[13px] font-semibold text-neutral-800">
+                      {listing.dropOff}
+                    </span>
+                    {dropOffOpen === false && (
+                      <span className="shrink-0 rounded-full bg-urgent-50 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wide text-urgent-800">
+                        closed
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {celebration && (
@@ -835,10 +1255,21 @@ export function ListingDetail({
           <Button
             variant="claim"
             className="w-full"
-            onClick={onClaim}
+            onClick={() => {
+              // Destination first: until a drop-off is picked, the pinned CTA
+              // walks the volunteer to the picker instead of dead-ending on a
+              // disabled button.
+              if (!claimReady) {
+                document
+                  .getElementById("dropoff-picker")
+                  ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                return;
+              }
+              onClaim();
+            }}
             disabled={isPending}
           >
-            Claim pickup
+            {claimReady ? "Claim pickup" : "Choose a drop-off"}
           </Button>
         </div>
       )}
