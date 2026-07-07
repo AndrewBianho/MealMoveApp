@@ -27,7 +27,8 @@ type Item = { href: string; label: string; short?: string; icon: string };
 
 const FEED: Item = { href: "/", label: "Available", icon: "feed" };
 const MAP: Item = { href: "/map", label: "Map", icon: "map" };
-const RESTAURANT: Item = { href: "/restaurant", label: "Restaurant", short: "Restaurant", icon: "restaurant" };
+const POST_SURPLUS: Item = { href: "/restaurant", label: "Post surplus", short: "Post", icon: "restaurant" };
+const MY_LISTINGS: Item = { href: "/restaurant/listings", label: "Your listings", short: "Listings", icon: "listings" };
 const DROPOFF: Item = { href: "/dropoff", label: "Drop-off", icon: "dropoff" };
 const IMPACT: Item = { href: "/impact", label: "Impact", icon: "impact" };
 const MEMBERS: Item = { href: "/admin/users", label: "Members", icon: "members" };
@@ -37,12 +38,12 @@ const HEALTH: Item = { href: "/admin/health", label: "Ops health", short: "Healt
 
 const NAV_BY_ROLE: Record<Role, Item[]> = {
   volunteer: [FEED, MAP, IMPACT],
-  restaurant: [RESTAURANT, IMPACT],
+  restaurant: [POST_SURPLUS, MY_LISTINGS, IMPACT],
   drop_off_admin: [DROPOFF, IMPACT],
   // Org admins oversee — they don't claim, so no "My pickups". They keep the
-  // feed/map (visibility), the restaurant console (special posts), impact (the
-  // in-depth stats), and members.
-  org_admin: [FEED, MAP, RESTAURANT, DROPOFF, IMPACT, HEALTH, RELIABILITY, PARTNERS, MEMBERS],
+  // feed/map (visibility), the restaurant surface (special posts + tracking),
+  // impact (the in-depth stats), and members.
+  org_admin: [FEED, MAP, POST_SURPLUS, MY_LISTINGS, DROPOFF, IMPACT, HEALTH, RELIABILITY, PARTNERS, MEMBERS],
 };
 
 // Line icons for the mobile bottom bar / more-sheet, keyed by Item.icon.
@@ -61,6 +62,12 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M4 3v6a2 2 0 0 0 4 0V3" />
       <path d="M6 9v12" />
       <path d="M18 3c-1.7 0-3 2.2-3 5s1.1 4 3 4v9" />
+    </>
+  ),
+  listings: (
+    <>
+      <path d="M8.5 6h12M8.5 12h12M8.5 18h12" />
+      <path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01" />
     </>
   ),
   dropoff: (
@@ -159,8 +166,19 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
     void signOutAndResetDemo();
   }
 
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
+  // Prefix match, except when a more specific sibling item also matches — with
+  // nested tabs (/restaurant and /restaurant/listings) only the deepest match
+  // lights up.
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    if (!pathname.startsWith(href)) return false;
+    return !items.some(
+      (i) =>
+        i.href.length > href.length &&
+        i.href.startsWith(href) &&
+        pathname.startsWith(i.href)
+    );
+  };
 
   const roleLabel = role.replace(/_/g, " ");
 

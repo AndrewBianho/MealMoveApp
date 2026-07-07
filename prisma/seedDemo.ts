@@ -97,8 +97,13 @@ export async function seedDemo(prisma: PrismaClient) {
   // unreachable through the UI. Fail loudly if a fixture edit breaks it.
   const liveByVolunteer = new Map<string, number>();
   for (const l of LISTINGS) {
-    if (l.claimedBy && ["claimed", "in transit", "taken home"].includes(l.status)) {
+    // "open" counts too: a multi-car listing's early claims are live holds.
+    // A buddy seat is also a live claim (either seat blocks a second rescue).
+    if (l.claimedBy && ["open", "claimed", "in transit", "taken home"].includes(l.status)) {
       liveByVolunteer.set(l.claimedBy, (liveByVolunteer.get(l.claimedBy) ?? 0) + 1);
+      if (l.buddyName) {
+        liveByVolunteer.set(l.buddyName, (liveByVolunteer.get(l.buddyName) ?? 0) + 1);
+      }
     }
   }
   liveByVolunteer.forEach((count, name) => {
@@ -114,7 +119,10 @@ export async function seedDemo(prisma: PrismaClient) {
   // the demo world so logging in as one lands straight in the sample data.
   const volunteerId = new Map<string, string>();
   const names = Array.from(
-    new Set<string>(["You", ...(LISTINGS.map((l) => l.claimedBy).filter(Boolean) as string[])])
+    new Set<string>([
+      "You",
+      ...(LISTINGS.flatMap((l) => [l.claimedBy, l.buddyName]).filter(Boolean) as string[]),
+    ])
   );
   for (let i = 0; i < names.length; i++) {
     const name = names[i];
@@ -179,17 +187,22 @@ export async function seedDemo(prisma: PrismaClient) {
     // A taken-home pickup was claimed yesterday and is still chilling overnight
     // for a next-day drop — deliverBy is tomorrow at 8 PM (mirrors the action).
     const takenHome = status === "taken_home";
+    const inTransit = status === "in_transit";
     const hasClaim = Boolean(l.claimedBy);
 
     // When the volunteer claimed it. Delivered pickups get a realistic claim →
     // delivery span (25–54 min, deterministic) so "hours driven" reads as real
-    // road time; taken-home was claimed ~18h ago; others claimed at the anchor.
+    // road time; taken-home was claimed ~18h ago; in-transit ~20 min ago (so
+    // the pickup photo + departure sit believably in the past); others claimed
+    // at the anchor.
     const driveMin = 25 + (l.servings % 30);
     const claimAt = delivered
       ? new Date(anchor.getTime() - driveMin * 60_000)
       : takenHome
         ? new Date(anchor.getTime() - 18 * 60 * 60_000)
-        : anchor;
+        : inTransit
+          ? new Date(anchor.getTime() - 20 * 60_000)
+          : anchor;
 
     // Realistic posting→claim gap (4–29 min, deterministic) so the ops "median
     // time to claim" reads as real minutes, not 0. Unclaimed listings were just
@@ -219,6 +232,7 @@ export async function seedDemo(prisma: PrismaClient) {
         notes: l.notes ?? null,
         demo: true,
         status,
+        carsNeeded: l.carsNeeded ?? null,
         restaurantId: restaurantId.get(l.source)!,
         // Destination-first claiming: the drop-off is the claiming volunteer's
         // choice, so unclaimed demo listings stay destination-less — the
@@ -244,16 +258,25 @@ export async function seedDemo(prisma: PrismaClient) {
           ? ("partly" as const)
           : ("yes" as const)
         : null;
+      // Anything past the claimed stage carries its pickup proof photo (the
+      // photo is what advances a claim), and a completed safety checklist so
+      // the detail page's "n/3 confirmed" reads as done, not skipped.
+      const pastClaim = delivered || inTransit || takenHome;
       await prisma.pickup.create({
         data: {
           listingId: listing.id,
           volunteerId: actorId,
+          buddyId: l.buddyName ? volunteerId.get(l.buddyName)! : null,
           claimedAt: claimAt,
           holdUntil: new Date(claimAt.getTime() + 15 * 60_000),
           deliveredAt: delivered ? anchor : null,
           takenHomeAt,
           deliverBy: takenHome ? deliverBy : null,
-          photoAtPickupUrl: takenHome ? l.imageUrl ?? null : null,
+          photoAtPickupUrl: pastClaim ? l.imageUrl ?? null : null,
+          photoAtDeliveryUrl: delivered ? l.imageUrl ?? null : null,
+          safetyChecklist: pastClaim
+            ? { tempKept: true, underTwoHours: true, sealed: true }
+            : undefined,
           rescueAccuracy: accuracy,
           rescueAccuracyNote:
             accuracy === "partly" ? "A couple of trays were already gone." : null,
@@ -262,12 +285,45 @@ export async function seedDemo(prisma: PrismaClient) {
       await prisma.listingEvent.create({
         data: { listingId: listing.id, type: "claimed", actorId, at: claimAt },
       });
+      // The claimed → in_transit transition lives only in the event log; the
+      // lifecycle stepper reads it back as "Picked up", so in-flight and
+      // delivered rescues need one.
+      if (inTransit || delivered) {
+        await prisma.listingEvent.create({
+          data: {
+            listingId: listing.id,
+            type: "in_transit",
+            actorId,
+            at: new Date(claimAt.getTime() + 8 * 60_000),
+          },
+        });
+      }
       if (status === "delivered" || status === "failed" || status === "taken_home") {
         // delivered/taken-home happened after the claim; a failed claim is
         // stamped at the listing's expiry.
         const at = delivered ? anchor : takenHome ? takenHomeAt! : expiresAt;
         await prisma.listingEvent.create({
           data: { listingId: listing.id, type: status, actorId, at },
+        });
+      }
+      // Seed the coordination thread on "You"'s in-flight rescue so the chat
+      // shows a real back-and-forth (volunteer ↔ drop-off) out of the box.
+      if (inTransit && l.claimedBy === "You") {
+        await prisma.message.create({
+          data: {
+            listingId: listing.id,
+            senderId: actorId,
+            body: "On my way — about 10 minutes out with the pizza.",
+            createdAt: new Date(claimAt.getTime() + 10 * 60_000),
+          },
+        });
+        await prisma.message.create({
+          data: {
+            listingId: listing.id,
+            senderId: dropOffAdmin.id,
+            body: "Perfect — come to the side door on Elm, we'll prop it open for you.",
+            createdAt: new Date(claimAt.getTime() + 12 * 60_000),
+          },
         });
       }
     }

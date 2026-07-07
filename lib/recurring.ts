@@ -1,9 +1,13 @@
 // Recurrence helpers for a restaurant's standing surplus schedule. Pure and
 // framework-free (no prisma) so they're shared by the server generator
 // (lib/sweep materializeSchedules) and the client console preview. Times are
-// resolved in server local time; daysOfWeek uses JS getDay(): 0 = Sunday … 6 =
-// Saturday — so "daily" is all 7, "weekly" is a single day, and "specific days"
-// is any subset.
+// resolved in the org's home timezone (ORG_TIMEZONE) — a restaurant's
+// "8:00 PM" means 8 PM on campus, no matter where the code runs. Resolving in
+// server-local time made the deployed cron (UTC) and local/dev runs generate
+// *different instants* for the same firing, duplicating every occurrence in
+// the feed. daysOfWeek uses JS getDay(): 0 = Sunday … 6 = Saturday — so
+// "daily" is all 7, "weekly" is a single day, and "specific days" is any
+// subset, evaluated against the org-timezone calendar.
 
 export const WEEKDAY_LABELS = [
   "Sun",
@@ -54,6 +58,12 @@ export function describeCadence(daysOfWeek: number[]): string {
     .join(", ");
 }
 
+// How far ahead a recurring schedule reaches, everywhere: the sweep
+// materializes (and prunes) listings to this horizon, and every listing view
+// hides scheduled occurrences beyond it — so even rows written by an older,
+// longer-horizon deploy never surface.
+export const SCHEDULE_HORIZON_DAYS = 7;
+
 export interface ScheduleRule {
   daysOfWeek: number[];
   timeOfDay: number; // minutes from local midnight
@@ -80,15 +90,16 @@ export function occurrencesWithin(
   const days = new Set(rule.daysOfWeek);
   const out: Occurrence[] = [];
   for (let i = 0; i <= horizonDays; i++) {
-    const day = new Date(now);
-    day.setDate(day.getDate() + i);
-    if (!days.has(day.getDay())) continue;
-    const availableAt = new Date(day);
-    availableAt.setHours(
+    // The calendar date `i` days out, as the org's wall clock sees it.
+    const { y, mo, d } = wallClock(new Date(now.getTime() + i * 86_400_000));
+    // Weekday of a calendar date is timezone-free once the date is fixed.
+    if (!days.has(new Date(Date.UTC(y, mo - 1, d)).getUTCDay())) continue;
+    const availableAt = orgInstant(
+      y,
+      mo,
+      d,
       Math.floor(rule.timeOfDay / 60),
-      rule.timeOfDay % 60,
-      0,
-      0
+      rule.timeOfDay % 60
     );
     const expiresAt = new Date(
       availableAt.getTime() + rule.windowMinutes * 60_000
@@ -97,6 +108,48 @@ export function occurrencesWithin(
     out.push({ availableAt, expiresAt });
   }
   return out.sort((a, b) => a.availableAt.getTime() - b.availableAt.getTime());
+}
+
+// The chapter's home timezone. The org is a single campus (Malvern, PA), so
+// schedule wall-clock times all resolve here — if the app ever hosts chapters
+// in other zones, this becomes a per-org setting.
+export const ORG_TIMEZONE = "America/New_York";
+
+/** What the org's wall clock/calendar reads at a given instant. */
+function wallClock(instant: Date): {
+  y: number;
+  mo: number;
+  d: number;
+  h: number;
+  mi: number;
+} {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: ORG_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(instant);
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value);
+  // Intl renders midnight as "24" with hour12: false — normalize to 0.
+  return { y: get("year"), mo: get("month"), d: get("day"), h: get("hour") % 24, mi: get("minute") };
+}
+
+/** The instant at which the org's wall clock reads the given date and time. */
+function orgInstant(y: number, mo: number, d: number, h: number, mi: number): Date {
+  // Start from the same wall time read as UTC, then correct by the zone's
+  // offset at that moment. Two passes so a DST boundary between the guess and
+  // the target converges.
+  const target = Date.UTC(y, mo - 1, d, h, mi, 0, 0);
+  let guess = target;
+  for (let i = 0; i < 2; i++) {
+    const w = wallClock(new Date(guess));
+    const asUtc = Date.UTC(w.y, w.mo - 1, w.d, w.h, w.mi, 0, 0);
+    guess += target - asUtc;
+  }
+  return new Date(guess);
 }
 
 /** Validate a day set: 1–7 distinct weekdays in 0–6. Returns a sorted copy. */

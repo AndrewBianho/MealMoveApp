@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import { parseStoredHours } from "./hours";
-import { describeCadence } from "./recurring";
+import { describeCadence, SCHEDULE_HORIZON_DAYS } from "./recurring";
 import { isDemo } from "./mode";
 import { pickupStage, LIVE_LISTING_STATUSES } from "./claims";
 import type { Listing, ListingStatus } from "./types";
@@ -118,10 +118,27 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
   };
 }
 
+// Scheduled occurrences are only shown within the schedule horizon — anything
+// further out stays hidden on every surface (volunteer feed, restaurant
+// listings, drop-off views), even if an older deploy materialized rows beyond
+// it. Immediate posts have no availableAt and always pass.
+function withinScheduleHorizon(): Prisma.FoodListingWhereInput {
+  return {
+    OR: [
+      { availableAt: null },
+      {
+        availableAt: {
+          lte: new Date(Date.now() + SCHEDULE_HORIZON_DAYS * 86_400_000),
+        },
+      },
+    ],
+  };
+}
+
 export async function getListings(viewerId?: string): Promise<Listing[]> {
   // Scope the feed to the viewer's world — demo and real never mix.
   const rows = await prisma.foodListing.findMany({
-    where: { demo: await isDemo() },
+    where: { demo: await isDemo(), ...withinScheduleHorizon() },
     include: listingInclude,
     orderBy: { expiresAt: "asc" },
   });
@@ -153,7 +170,7 @@ export async function getRestaurantDetail(id: string) {
   const restaurant = await prisma.restaurant.findUnique({ where: { id } });
   if (!restaurant) return null;
   const rows = await prisma.foodListing.findMany({
-    where: { restaurantId: id },
+    where: { restaurantId: id, ...withinScheduleHorizon() },
     include: listingInclude,
     orderBy: { postedAt: "desc" },
   });
@@ -164,7 +181,7 @@ export async function getDropOffDetail(id: string) {
   const dropOff = await prisma.dropOff.findUnique({ where: { id } });
   if (!dropOff) return null;
   const rows = await prisma.foodListing.findMany({
-    where: { dropOffId: id },
+    where: { dropOffId: id, ...withinScheduleHorizon() },
     include: listingInclude,
     orderBy: { postedAt: "desc" },
   });

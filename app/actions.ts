@@ -457,6 +457,7 @@ function refreshViews(listingId?: string) {
   revalidatePath("/");
   revalidatePath("/impact");
   revalidatePath("/restaurant");
+  revalidatePath("/restaurant/listings");
   revalidatePath("/dropoff");
   if (listingId) revalidatePath(`/listings/${listingId}`);
 }

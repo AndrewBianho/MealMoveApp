@@ -78,9 +78,10 @@ export const DROP_OFFS: {
 
 export const LISTINGS: Listing[] = [
   {
-    // Demo: the one perpetually-urgent listing. lib/listings.ts pins this to
-    // the <10 min band in dev (see ALWAYS_URGENT_TITLE) so the urgency UI —
-    // tomato chip + pulse + 2-col feature — is always on screen to test.
+    // Demo: the one perpetually-urgent listing. Demo countdowns are frozen
+    // offsets (see displayMinutesLeft in lib/listings.ts), so its 6 minutes
+    // keep it in the <10 min band forever — the urgency UI (tomato dot +
+    // pulse) is always on screen to test.
     id: "PU-4821",
     title: "Mediterranean wraps & salads",
     imageUrl: "/food-wraps.jpg",
@@ -311,6 +312,9 @@ export const LISTINGS: Listing[] = [
     distance: "0.3 mi",
     status: "in transit",
     claimedBy: "Noah S.",
+    // Rescued as a pair — shows the buddy feature on a card without touching
+    // "You" (who stays free to invite a buddy live on their own pickup).
+    buddyName: "Dana K.",
     dropOff: "Grace Kitchen",
     category: "prepared",
     perishable: true,
@@ -362,6 +366,28 @@ export const LISTINGS: Listing[] = [
     status: "expired",
     category: "prepared",
     perishable: true,
+  },
+  // A multi-car rescue (carsNeeded 2) with the first car already claimed —
+  // exercises the "X of Y cars" feed cue and the second-car claim flow, where
+  // the destination is already set by the first claimer.
+  {
+    id: "PU-4832",
+    title: "Banquet buyout — hot entrée trays",
+    imageUrl: "/food-soup.jpg",
+    source: "Conference Center",
+    expiresAt: "8:10 PM",
+    minutesLeft: 85,
+    servings: 72,
+    weightLbs: 110,
+    distance: "1.1 mi",
+    status: "open",
+    carsNeeded: 2,
+    claimedBy: "Riley M.",
+    dropOff: "Grace Kitchen",
+    category: "prepared",
+    perishable: true,
+    notes:
+      "Two cars' worth — trays are hotel pans, heavy and wide. Catering staff will help load at the dock.",
   },
   // Second failed (claimed but not completed) — shown non-punitively.
   {

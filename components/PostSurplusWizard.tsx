@@ -224,7 +224,8 @@ export function PostSurplusWizard({
         nearbyVolunteers={nearbyVolunteers}
         onDone={() => {
           writePosted(null);
-          router.push("/restaurant");
+          // Land on the listings page so the fresh post is the first thing seen.
+          router.push("/restaurant/listings");
         }}
         onAnother={reset}
       />
