@@ -120,7 +120,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4823",
     title: "Catered sandwich platters",
-    imageUrl: "/food-sandwiches.jpg",
+    imageUrl: "/food-sandwich-platter.jpg",
     source: "Conference Center",
     expiresAt: "8:30 PM",
     minutesLeft: 107,
@@ -152,7 +152,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4825",
     title: "Pizza by the slice",
-    imageUrl: "/food-sandwiches.jpg",
+    imageUrl: "/food-pizza.jpg",
     source: "Slice Co. — Quad",
     expiresAt: "6:30 PM",
     minutesLeft: 50,
@@ -168,7 +168,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4831",
     title: "Chicken & rice trays",
-    imageUrl: "/food-soup.jpg",
+    imageUrl: "/food-chicken-rice.jpg",
     source: "Greenhouse Cafe",
     expiresAt: "—",
     minutesLeft: 0,
@@ -188,7 +188,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4818",
     title: "Roasted veg & grain bowls",
-    imageUrl: "/food-soup.jpg",
+    imageUrl: "/food-grain-bowl.jpg",
     source: "Greenhouse Cafe",
     expiresAt: "5:55 PM",
     minutesLeft: 0,
@@ -204,7 +204,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4815",
     title: "Assorted deli sandwiches",
-    imageUrl: "/food-sandwiches.jpg",
+    imageUrl: "/food-deli.jpg",
     source: "Corner Market",
     expiresAt: "4:10 PM",
     minutesLeft: 0,
@@ -218,7 +218,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4811",
     title: "Pasta trays & garlic bread",
-    imageUrl: "/food-soup.jpg",
+    imageUrl: "/food-pasta.jpg",
     source: "Tony's Kitchen",
     expiresAt: "3:30 PM",
     minutesLeft: 0,
@@ -234,7 +234,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4826",
     title: "Cold brew & iced lattes",
-    imageUrl: "/food-bagels.jpg",
+    imageUrl: "/food-iced-coffee.jpg",
     source: "Saxbys — Commons",
     expiresAt: "7:00 PM",
     minutesLeft: 52,
@@ -268,7 +268,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4827",
     title: "Garden salads & wraps",
-    imageUrl: "/food-wraps.jpg",
+    imageUrl: "/food-salad.jpg",
     source: "Greenhouse Cafe",
     expiresAt: "7:05 PM",
     minutesLeft: 22,
@@ -285,7 +285,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4828",
     title: "Fruit cups & yogurt parfaits",
-    imageUrl: "/food-bagels.jpg",
+    imageUrl: "/food-parfait.jpg",
     source: "Dining Hall — North",
     expiresAt: "7:20 PM",
     minutesLeft: 44,
@@ -303,7 +303,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4829",
     title: "Veggie burrito bowls",
-    imageUrl: "/food-wraps.jpg",
+    imageUrl: "/food-burrito-bowl.jpg",
     source: "Slice Co. — Quad",
     expiresAt: "6:45 PM",
     minutesLeft: 33,
@@ -322,7 +322,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4830",
     title: "Bottled juices & seltzers",
-    imageUrl: "/food-bagels.jpg",
+    imageUrl: "/food-juice.jpg",
     source: "Corner Market",
     expiresAt: "8:00 PM",
     minutesLeft: 70,
@@ -339,7 +339,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4808",
     title: "Muffins & scones",
-    imageUrl: "/food-bagels.jpg",
+    imageUrl: "/food-muffins.jpg",
     source: "Bruegger's — Main St",
     expiresAt: "9:15 AM",
     minutesLeft: 0,
@@ -356,7 +356,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4812",
     title: "Garden vegetable soup",
-    imageUrl: "/food-soup.jpg",
+    imageUrl: "/food-veg-soup.jpg",
     source: "Tony's Kitchen",
     expiresAt: "2:45 PM",
     minutesLeft: 0,
@@ -373,7 +373,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4832",
     title: "Banquet buyout — hot entrée trays",
-    imageUrl: "/food-soup.jpg",
+    imageUrl: "/food-trays.jpg",
     source: "Conference Center",
     expiresAt: "8:10 PM",
     minutesLeft: 85,
@@ -393,7 +393,7 @@ export const LISTINGS: Listing[] = [
   {
     id: "PU-4810",
     title: "Taco bar trays",
-    imageUrl: "/food-wraps.jpg",
+    imageUrl: "/food-tacos.jpg",
     source: "Conference Center",
     expiresAt: "3:10 PM",
     minutesLeft: 0,
