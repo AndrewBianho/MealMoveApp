@@ -90,6 +90,13 @@ const fieldCls =
   "placeholder:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 " +
   "focus-visible:ring-transit-400 focus-visible:ring-offset-1";
 
+// Contained icon-button chip for the schedule row's actions — a resting surface
+// (fill + hairline) so each reads as a real, tappable control, not a bare glyph.
+const actionBtnBase =
+  "grid h-10 w-10 place-items-center rounded-full border text-[19px] shadow-sm transition-all duration-150 " +
+  "hover:-translate-y-px hover:shadow-card focus-visible:outline-none focus-visible:ring-2 " +
+  "focus-visible:ring-rescued-400 focus-visible:ring-offset-1 active:translate-y-0";
+
 /**
  * The fields for one schedule — reused verbatim for creating a new schedule and
  * for editing an existing one. `initial` seeds the fields (edit mode) and flips
@@ -519,7 +526,7 @@ export function RecurringPostManager({
                           </p>
                         )}
                       </div>
-                      <div className="flex shrink-0 items-center gap-0.5">
+                      <div className="flex shrink-0 items-center gap-1.5">
                         <button
                           type="button"
                           onClick={() => togglePaused(s)}
@@ -530,11 +537,10 @@ export function RecurringPostManager({
                           }
                           title={s.active ? "Pause" : "Resume"}
                           className={cn(
-                            "grid h-9 w-9 place-items-center rounded-full text-[17px] transition-colors",
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",
+                            actionBtnBase,
                             s.active
-                              ? "text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
-                              : "border border-rescued-200 bg-rescued-50 text-rescued-700 hover:bg-rescued-100"
+                              ? "border-neutral-200 bg-neutral-50 text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
+                              : "border-rescued-300 bg-rescued-50 text-rescued-700 hover:bg-rescued-100"
                           )}
                         >
                           {s.active ? <Pause /> : <Play />}
@@ -544,7 +550,10 @@ export function RecurringPostManager({
                           onClick={() => setEditingId(s.id)}
                           aria-label={`Edit ${s.title}`}
                           title="Edit"
-                          className="grid h-9 w-9 place-items-center rounded-full text-[17px] text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+                          className={cn(
+                            actionBtnBase,
+                            "border-neutral-200 bg-neutral-50 text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
+                          )}
                         >
                           <Pencil />
                         </button>
@@ -553,7 +562,10 @@ export function RecurringPostManager({
                           onClick={() => remove(s)}
                           aria-label={`Remove ${s.title} schedule`}
                           title="Remove"
-                          className="grid h-9 w-9 place-items-center rounded-full text-[17px] text-neutral-600 transition-colors hover:bg-failed-50 hover:text-failed-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+                          className={cn(
+                            actionBtnBase,
+                            "border-neutral-200 bg-neutral-50 text-neutral-600 hover:border-failed-200 hover:bg-failed-50 hover:text-failed-600"
+                          )}
                         >
                           <X />
                         </button>
