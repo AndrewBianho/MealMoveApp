@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Button } from "./Button";
 import { Toast, useToast } from "./Toast";
 import { cn } from "./cn";
-import { Calendar, Clock, X } from "./icons";
+import { Calendar, Clock, Pause, Play, X } from "./icons";
 import {
   createRecurringPost,
   setRecurringPostActive,
@@ -162,12 +162,14 @@ export function RecurringPostManager({
             <li
               key={s.id}
               className={cn(
-                "rounded-lg border border-neutral-200/60 px-3 py-2.5",
-                !s.active && "opacity-60"
+                "rounded-lg border px-3 py-2.5 transition-colors",
+                s.active ? "border-neutral-200/60" : "border-neutral-200/60 bg-neutral-50"
               )}
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
+                {/* Content dims when paused so it reads as dormant; the Resume
+                    action stays full-strength so the way back is obvious. */}
+                <div className={cn("min-w-0", !s.active && "opacity-60")}>
                   <p className="truncate text-sm font-medium text-neutral-900">
                     {s.title}
                   </p>
@@ -216,8 +218,25 @@ export function RecurringPostManager({
                     type="button"
                     onClick={() => togglePaused(s)}
                     disabled={isPending}
-                    className="rounded-full px-2.5 py-2 font-mono text-[10px] uppercase tracking-wide text-neutral-700 transition-colors hover:bg-neutral-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+                    aria-label={
+                      s.active
+                        ? `Pause ${s.title} — stop generating pickups`
+                        : `Resume ${s.title} — start generating pickups`
+                    }
+                    className={cn(
+                      "inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-xs font-semibold transition-colors",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1",
+                      "disabled:cursor-not-allowed disabled:opacity-50",
+                      s.active
+                        ? "border-transparent text-neutral-700 hover:bg-neutral-100 hover:text-neutral-900"
+                        : "border-rescued-200 bg-rescued-50 text-rescued-800 hover:bg-rescued-100"
+                    )}
                   >
+                    {s.active ? (
+                      <Pause className="text-[0.95em]" />
+                    ) : (
+                      <Play className="text-[0.95em]" />
+                    )}
                     {s.active ? "Pause" : "Resume"}
                   </button>
                   <button
@@ -225,15 +244,16 @@ export function RecurringPostManager({
                     onClick={() => remove(s)}
                     disabled={isPending}
                     aria-label={`Remove ${s.title} schedule`}
-                    className="grid h-9 w-9 place-items-center rounded-full text-neutral-600 transition-colors hover:bg-failed-50 hover:text-failed-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-neutral-600 transition-colors hover:bg-failed-50 hover:text-failed-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 disabled:opacity-50"
                   >
                     <X />
                   </button>
                 </div>
               </div>
               {!s.active && (
-                <p className="mt-1 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
-                  paused — not generating pickups
+                <p className="mt-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+                  <Pause className="text-[11px]" />
+                  paused · not generating pickups
                 </p>
               )}
             </li>

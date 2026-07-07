@@ -105,3 +105,19 @@ export function X(props: SVGProps<SVGSVGElement>) {
     </Base>
   );
 }
+
+export function Pause(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M9 5v14M15 5v14" />
+    </Base>
+  );
+}
+
+export function Play(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M8 5v14l11-7z" />
+    </Base>
+  );
+}
