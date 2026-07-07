@@ -953,6 +953,55 @@ async function clearFutureListings(recurringPostId: string) {
   await prisma.foodListing.deleteMany({ where: { id: { in: ids } } });
 }
 
+/** Edit a schedule's details. Regenerates its upcoming (unclaimed) listings so
+ * the change takes effect on the feed; live/claimed pickups keep their terms. */
+export async function updateRecurringPost(input: {
+  id: string;
+  title: string;
+  servings: number;
+  notes?: string;
+  daysOfWeek: number[];
+  timeOfDay: number;
+  windowMinutes: number;
+}): Promise<SignUpResult> {
+  const gate = await authorizeSchedule(input.id);
+  if (!gate.ok) return gate;
+
+  const title = input.title?.trim();
+  if (!title) return { ok: false, error: "Please enter what you're sharing." };
+  if (title.length > TITLE_MAX) return { ok: false, error: "Title is too long." };
+
+  const servings = boundedInt(input.servings, 1, SERVINGS_MAX);
+  if (servings === null) {
+    return { ok: false, error: "Enter a valid number of servings." };
+  }
+
+  const days = normalizeDaysOfWeek(input.daysOfWeek);
+  if (!days) return { ok: false, error: "Pick at least one day." };
+
+  const timeOfDay = boundedInt(input.timeOfDay, 0, DAY_MINUTES - 1);
+  if (timeOfDay === null) return { ok: false, error: "Pick a valid time." };
+
+  const windowMinutes = boundedInt(input.windowMinutes, 1, MINUTES_MAX);
+  if (windowMinutes === null) {
+    return { ok: false, error: "Enter a valid pickup window." };
+  }
+
+  const notes = input.notes?.trim().slice(0, NOTES_MAX) || null;
+
+  await prisma.recurringPost.update({
+    where: { id: input.id },
+    data: { title, servings, notes, daysOfWeek: days, timeOfDay, windowMinutes },
+  });
+  // Clear the stale upcoming occurrences and regenerate from the new terms.
+  // Only unclaimed future rows are cleared; the sweep skips paused schedules.
+  await clearFutureListings(input.id);
+  await materializeSchedules();
+  refreshViews();
+  revalidatePath("/map");
+  return { ok: true };
+}
+
 /** Pause or resume a schedule. Pausing clears its upcoming (locked) listings. */
 export async function setRecurringPostActive(
   id: string,
