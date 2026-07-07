@@ -423,12 +423,13 @@ export function ListingFeed({
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
     for (const l of listings) c[l.status] = (c[l.status] ?? 0) + 1;
-    // "open" and "all" mean claimable now — future/scheduled listings live under
-    // their own "coming up" pill, so peel them out of both.
+    // The "open" count means claimable now — scheduled occurrences count under
+    // their own "coming up" pill (though the open/all views also show them, in
+    // the separate "Coming up" band).
     const scheduled = listings.filter((l) => l.status === "open" && l.scheduled).length;
     if (c.open) c.open = Math.max(0, c.open - scheduled);
     c["coming up"] = scheduled;
-    c.all = listings.length - scheduled;
+    c.all = listings.length;
     return c;
   }, [listings]);
 
@@ -446,11 +447,14 @@ export function ListingFeed({
   const shown = useMemo(() => {
     let list: Listing[];
     if (filter === "all") {
-      list = located.filter((l) => !(l.status === "open" && l.scheduled));
+      list = located;
     } else if (filter === "coming up") {
       list = located.filter((l) => l.status === "open" && l.scheduled);
     } else if (filter === "open") {
-      list = located.filter((l) => l.status === "open" && !l.scheduled);
+      // Scheduled occurrences ride along: the default view shows them in their
+      // own "Coming up" band below the claimable food, per the feed spec. The
+      // pill counts stay split (open = claimable now, coming up = scheduled).
+      list = located.filter((l) => l.status === "open");
     } else {
       list = located.filter((l) => l.status === filter);
     }
