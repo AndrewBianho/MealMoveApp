@@ -57,7 +57,7 @@ const ListingsMap = dynamic(
     ),
   }
 );
-import type { MapDropOffPin } from "./ListingsMap";
+import type { MapDropOffPin, LiveRoute } from "./ListingsMap";
 
 const STEP_LABEL: Record<string, string> = {
   open: "Posted",
@@ -205,6 +205,22 @@ export function ListingDetail({
     }
     return chosenDropOffPin ? [chosenDropOffPin] : [];
   }, [needsDropOff, dropOffChoices, chosenDropOffPin]);
+  // While a rescue is in transit, hand the map a pickup → drop-off journey so it
+  // draws the blue route and loops a tracer along it (imitated live tracking).
+  const liveRoute = useMemo<LiveRoute | null>(() => {
+    if (
+      listing?.status === "in transit" &&
+      listing.lat != null &&
+      listing.lng != null &&
+      chosenDropOffPin
+    ) {
+      return {
+        pickup: [listing.lng, listing.lat],
+        dropOff: [chosenDropOffPin.lng, chosenDropOffPin.lat],
+      };
+    }
+    return null;
+  }, [listing?.status, listing?.lat, listing?.lng, chosenDropOffPin]);
 
   if (!listing) {
     return (
@@ -1196,6 +1212,7 @@ export function ListingDetail({
                 dropOffs={mapDropOffs}
                 selectedDropOffId={needsDropOff ? chosenDropOff : listing.dropOffId ?? null}
                 onSelectDropOff={needsDropOff ? setChosenDropOff : undefined}
+                route={liveRoute}
                 className="h-full"
               />
               {/* Route overlay — once the destination is set, the journey as a
