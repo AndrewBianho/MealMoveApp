@@ -338,6 +338,26 @@ function ScheduleForm({
             </button>
           )}
         </div>
+      ) : onCancel ? (
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            type="button"
+            onClick={onCancel}
+            className="flex-1"
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            type="button"
+            onClick={submit}
+            disabled={!valid || saving}
+            className={cn("flex-1", (!valid || saving) && "opacity-50")}
+          >
+            {saving ? "Saving…" : submitLabel}
+          </Button>
+        </div>
       ) : (
         <Button
           variant="primary"
@@ -366,6 +386,9 @@ export function RecurringPostManager({
   // trip, and the revalidated prop reconciles seamlessly (no visible refresh).
   const [items, setItems] = useState(schedules);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // The create form stays collapsed behind a button once there's a schedule to
+  // show, so the card leads with what's already scheduled and stays compact.
+  const [adding, setAdding] = useState(false);
   const [, startTransition] = useTransition();
   useEffect(() => setItems(schedules), [schedules]);
 
@@ -433,6 +456,7 @@ export function RecurringPostManager({
         const res = await createRecurringPost({ restaurantId, ...values });
         if (res.ok) {
           show(`Scheduled “${values.title}” — upcoming pickups are on the feed.`);
+          setAdding(false);
         } else {
           show(res.error);
         }
@@ -585,9 +609,30 @@ export function RecurringPostManager({
         </ul>
       )}
 
-      {/* New schedule */}
+      {/* New schedule — collapsed behind a button once schedules exist, so the
+          card leads with what's already set and the page stays compact. */}
       <div className="border-t border-neutral-200/40 pt-4">
-        <ScheduleForm submitLabel="Add recurring post" onSubmit={createSchedule} />
+        {items.length === 0 || adding ? (
+          <ScheduleForm
+            submitLabel="Add recurring post"
+            onSubmit={createSchedule}
+            onCancel={items.length > 0 ? () => setAdding(false) : undefined}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className={cn(
+              "flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed",
+              "border-neutral-300 py-2.5 text-sm font-medium text-neutral-700 transition-colors",
+              "hover:border-neutral-400 hover:bg-neutral-50 focus-visible:outline-none",
+              "focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1"
+            )}
+          >
+            <Calendar className="text-[0.95em] text-clay-600" />
+            Add another schedule
+          </button>
+        )}
       </div>
 
       <Toast message={message} />

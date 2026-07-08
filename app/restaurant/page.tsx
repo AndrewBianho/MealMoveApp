@@ -81,22 +81,20 @@ export default async function RestaurantPage() {
       </header>
 
       {restaurant ? (
-        <div className="grid max-w-4xl items-start gap-4 lg:grid-cols-2 lg:gap-6">
+        <div className="grid items-start gap-4 lg:grid-cols-2 lg:gap-6 xl:grid-cols-3">
           <RestaurantPostHub
             restaurant={restaurant.name}
             restaurantId={restaurant.id}
             restaurantImageUrl={restaurant.imageUrl}
             nearbyVolunteers={nearbyVolunteers}
           />
-          <div className="space-y-4">
-            <RecurringPostManager restaurantId={restaurant.id} schedules={schedules} />
-            <TeamPanel
-              members={members}
-              invites={invites}
-              description="Everyone here manages this restaurant together — listings, photos, and pickups are shared."
-              demo={demo}
-            />
-          </div>
+          <RecurringPostManager restaurantId={restaurant.id} schedules={schedules} />
+          <TeamPanel
+            members={members}
+            invites={invites}
+            description="Everyone here manages this restaurant together — listings, photos, and pickups are shared."
+            demo={demo}
+          />
         </div>
       ) : (
         <p className="text-sm text-neutral-700">
