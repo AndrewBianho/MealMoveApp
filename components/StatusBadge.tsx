@@ -3,10 +3,10 @@ import type { ListingStatus } from "@/lib/types";
 
 export type { ListingStatus };
 
-// Color carries through the label text + the leading dot, with no filled pill,
-// so the status reads cleanly without a boxy background. Text uses 800 of each
-// ramp; expired is intentionally neutral, not red. Color is never the sole
-// signal — the uppercase label and dot pair with it (color-blind-safe).
+// Just the uppercase mono label in the status color — no filled pill, no dot —
+// so the status reads cleanly and quietly. Text uses 800 of each ramp; expired
+// is intentionally neutral, not red. Color is never the sole signal: the
+// uppercase word itself names the status (color-blind-safe without the dot).
 const STYLES: Record<ListingStatus, string> = {
   open: "text-rescued-800",
   claimed: "text-urgent-800",
@@ -26,7 +26,6 @@ export function StatusBadge({ status }: { status: ListingStatus }) {
         STYLES[status]
       )}
     >
-      <span className="h-[6px] w-[6px] rounded-full bg-current" />
       {status}
     </span>
   );

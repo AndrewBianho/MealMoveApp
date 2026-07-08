@@ -33,27 +33,26 @@ const SPENT: Listing["status"][] = ["delivered", "expired", "failed"];
 // Meal Move logo, shown as a contained brand placeholder rather than a crop.
 const DEFAULT_IMAGE = "/mealmovelogo.jpg";
 
-// Urgency reads as one quiet status line at the top of the body — a colored dot
-// + a mono word + the literal minutes ("closing soon · 6m"). Pairing the hue
-// with a word AND the minutes keeps it legible without color (color-blind-safe),
-// and the dot-only treatment (no tinted fill) keeps the card calm. Ramp text is
-// the 800 stop for contrast; the dot is the 600. Bands: open (35m+) · soon
-// (10–35) · closing soon (<10) · closed (spent) · taken home (deferred).
+// Urgency reads as one quiet status line at the top of the body — a mono word +
+// the literal minutes ("closing soon · 6m"). The word (plus the minutes) names
+// the state, so it stays legible without color (color-blind-safe); ramp text is
+// the 800 stop for contrast. Bands: open (35m+) · soon (10–35) · closing soon
+// (<10) · closed (spent) · taken home (deferred).
 function urgency(listing: Listing) {
   if (SPENT.includes(listing.status)) {
-    return { dot: "bg-neutral-400", text: "text-neutral-600", word: "closed", minutes: null, soon: false, held: true };
+    return { text: "text-neutral-600", word: "closed", minutes: null, held: true };
   }
   if (listing.status === "taken home") {
-    return { dot: "bg-transit-600", text: "text-transit-800", word: "taken home", minutes: null, soon: false, held: true };
+    return { text: "text-transit-800", word: "taken home", minutes: null, held: true };
   }
   const m = listing.minutesLeft;
   if (m < 10) {
-    return { dot: "bg-failed-600", text: "text-failed-800", word: "closing soon", minutes: m, soon: true, held: false };
+    return { text: "text-failed-800", word: "closing soon", minutes: m, held: false };
   }
   if (m < 35) {
-    return { dot: "bg-urgent-600", text: "text-urgent-800", word: "soon", minutes: m, soon: false, held: false };
+    return { text: "text-urgent-800", word: "soon", minutes: m, held: false };
   }
-  return { dot: "bg-rescued-600", text: "text-rescued-800", word: "open", minutes: m, soon: false, held: false };
+  return { text: "text-rescued-800", word: "open", minutes: m, held: false };
 }
 
 export function ListingCard({
@@ -115,13 +114,12 @@ export function ListingCard({
   const sourceLabel = audience === "dropoff" ? `from ${source}` : source;
 
   // Status line — a clay "available <when>" cue for a scheduled listing, else the
-  // semantic urgency band. Calm dot + mono label, never a tinted chip.
+  // semantic urgency word. Mono, color-coded, never a dot or a tinted chip.
   const statusLine = scheduled ? (
     <span
       aria-label={recurrence ? `recurs ${recurrence}` : `available ${availableLabel}`}
-      className="inline-flex items-center gap-2 font-mono text-[12px] font-semibold text-clay-800"
+      className="font-mono text-[12px] font-semibold text-clay-800"
     >
-      <span className="h-[7px] w-[7px] rounded-full bg-clay-600" aria-hidden="true" />
       {recurrence ? (
         <span>recurs {recurrence}</span>
       ) : (
@@ -131,14 +129,10 @@ export function ListingCard({
   ) : (
     <span
       aria-label={spent ? "closed" : u.held ? u.word : `${u.word}, ${formatTimeLeft(minutesLeft, { long: true })} left`}
-      className={cn("inline-flex items-center gap-2 font-mono text-[12px] font-semibold", u.text)}
+      className={cn("font-mono text-[12px] font-semibold", u.text)}
     >
-      <span
-        className={cn("h-[7px] w-[7px] rounded-full", u.dot, u.soon && "motion-safe:animate-pulse")}
-        aria-hidden="true"
-      />
       <span>{u.word}</span>
-      {u.minutes != null && <span className="tabular-nums">· {formatTimeLeft(u.minutes)}</span>}
+      {u.minutes != null && <span className="tabular-nums"> · {formatTimeLeft(u.minutes)}</span>}
     </span>
   );
 

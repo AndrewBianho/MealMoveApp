@@ -15,24 +15,11 @@ const STATUS_ORDER: ListingStatus[] = [
   "failed",
 ];
 
-// Chip dots keep their stage ramp in both chip states — the label + mono count
-// carry the meaning, the hue just echoes it (color-blind-safe).
-const DOT: Record<string, string> = {
-  all: "bg-neutral-400",
-  claimed: "bg-urgent-600",
-  "in transit": "bg-transit-600",
-  "taken home": "bg-transit-600",
-  delivered: "bg-rescued-600",
-  expired: "bg-neutral-400",
-  failed: "bg-failed-600",
-};
-
 /**
  * "My pickups" — one list of lifecycle-timeline cards, scoped by a status
  * chip row (All + only the stages actually present). From the pickups-timeline
  * handoff: chips follow the feed's pill spec (fully round, ink fill when
- * active, status dot + mono count), cards tell each pickup's story from post
- * to delivery.
+ * active, a mono count), cards tell each pickup's story from post to delivery.
  */
 export function PickupSections({
   active,
@@ -110,10 +97,6 @@ export function PickupSections({
                     : "border border-neutral-200 bg-card text-neutral-700 hover:shadow-card"
                 )}
               >
-                <span
-                  aria-hidden
-                  className={cn("h-[7px] w-[7px] rounded-full", DOT[c.value])}
-                />
                 {c.label}
                 <span
                   className={cn(
