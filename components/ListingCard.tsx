@@ -4,6 +4,7 @@ import { cn } from "./cn";
 import { Clock, MapPin, ArrowRight, Flame, Snowflake, Box } from "./icons";
 import { StatusBadge } from "./StatusBadge";
 import { NearbyVolunteers } from "./NearbyVolunteers";
+import { InfoRows } from "./InfoRows";
 import { formatTimeLeft } from "@/lib/time";
 import type { Listing } from "@/lib/types";
 
@@ -239,22 +240,28 @@ export function ListingCard({
           )}
         </p>
 
-        {/* Scannability — food type + handling, so the feed reads by category at
-            a glance. Calm neutral metadata (no status hue), each only when set. */}
+        {/* Scannability — food type + handling as calm labelled rows (no pills),
+            so the feed reads by category at a glance. Each only when set. */}
         {(category || handling) && (
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            {category && (
-              <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 font-mono text-[11px] text-neutral-700">
-                {category}
-              </span>
-            )}
-            {handling && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 px-2.5 py-0.5 font-mono text-[11px] text-neutral-600">
-                <handling.icon className="text-[0.95em] text-neutral-400" />
-                {handling.label}
-              </span>
-            )}
-          </div>
+          <InfoRows
+            className="mt-3"
+            rows={[
+              ...(category ? [{ label: "food", value: category }] : []),
+              ...(handling
+                ? [
+                    {
+                      label: "handling",
+                      value: (
+                        <span className="inline-flex items-center gap-1.5">
+                          <handling.icon className="text-[0.95em] text-neutral-400" />
+                          {handling.label}
+                        </span>
+                      ),
+                    },
+                  ]
+                : []),
+            ]}
+          />
         )}
 
         {dropOff && showRoute && (

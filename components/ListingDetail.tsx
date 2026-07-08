@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { useMemo, useState, useTransition } from "react";
 import { Button } from "./Button";
 import { StatusBadge } from "./StatusBadge";
+import { InfoRows } from "./InfoRows";
 import { Toast, useToast } from "./Toast";
 import { ArrowRight, Car, MapPin, Users, Flame, Snowflake, Box } from "./icons";
 import { cn } from "./cn";
@@ -608,60 +609,85 @@ export function ListingDetail({
               </div>
             </div>
 
-            {/* Food type + handling + cars, then who it's for — clean labelled
-                lines rather than nested gray boxes. */}
-            <div className="mt-4 space-y-3">
-              {(listing.category || listing.tempHandling || (listing.carsNeeded ?? 1) > 1) && (
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {listing.category && (
-                    <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 font-mono text-[11px] text-neutral-700">
-                      {listing.category}
-                    </span>
-                  )}
-                  {listing.tempHandling && (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 px-2.5 py-0.5 font-mono text-[11px] text-neutral-600">
-                      {listing.tempHandling === "hot" ? (
-                        <Flame className="text-[0.95em] text-neutral-400" />
-                      ) : listing.tempHandling === "cold" ? (
-                        <Snowflake className="text-[0.95em] text-neutral-400" />
-                      ) : (
-                        <Box className="text-[0.95em] text-neutral-400" />
+            {/* Listing metadata as a calm labelled definition list (no pills):
+                food type · handling · cars · drop-off · allergens. */}
+            <InfoRows
+              className="mt-5"
+              labelClassName="w-24"
+              rows={[
+                ...(listing.category
+                  ? [{ label: "food type", value: listing.category }]
+                  : []),
+                ...(listing.tempHandling
+                  ? [
+                      {
+                        label: "handling",
+                        value: (
+                          <span className="inline-flex items-center gap-1.5">
+                            {listing.tempHandling === "hot" ? (
+                              <Flame className="text-[0.95em] text-neutral-400" />
+                            ) : listing.tempHandling === "cold" ? (
+                              <Snowflake className="text-[0.95em] text-neutral-400" />
+                            ) : (
+                              <Box className="text-[0.95em] text-neutral-400" />
+                            )}
+                            keep {TEMP_LABEL[listing.tempHandling]}
+                          </span>
+                        ),
+                      },
+                    ]
+                  : []),
+                ...((listing.carsNeeded ?? 1) > 1
+                  ? [
+                      {
+                        label: "cars",
+                        value:
+                          listing.status === "open"
+                            ? `${(listing.carsNeeded ?? 1) - (listing.claimedCount ?? 0)} of ${listing.carsNeeded} still needed`
+                            : `${listing.carsNeeded} cars`,
+                      },
+                    ]
+                  : []),
+                {
+                  label: "drop-off",
+                  value: (
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      {listing.dropOff ?? (
+                        <span className="font-normal text-neutral-500">
+                          chosen when you claim
+                        </span>
                       )}
-                      keep {TEMP_LABEL[listing.tempHandling]}
+                      {listing.dropOffHours && (
+                        <>
+                          <OpenNowBadge hours={listing.dropOffHours} />
+                          <span className="font-mono text-xs font-normal text-neutral-600">
+                            today {formatDay(listing.dropOffHours[currentDayKey()])}
+                          </span>
+                        </>
+                      )}
                     </span>
-                  )}
-                  {(listing.carsNeeded ?? 1) > 1 && (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 px-2.5 py-0.5 font-mono text-[11px] text-neutral-600">
-                      <Car className="text-[0.95em] text-neutral-400" />
-                      {listing.status === "open"
-                        ? `${(listing.carsNeeded ?? 1) - (listing.claimedCount ?? 0)} of ${listing.carsNeeded} cars`
-                        : `${listing.carsNeeded} cars`}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
-                  drop-off
-                </span>
-                <span className="text-sm font-semibold text-neutral-800">
-                  {listing.dropOff ?? (
-                    <span className="font-normal text-neutral-500">
-                      chosen when you claim
-                    </span>
-                  )}
-                </span>
-                {listing.dropOffHours && (
-                  <span className="inline-flex items-center gap-2">
-                    <OpenNowBadge hours={listing.dropOffHours} />
-                    <span className="font-mono text-xs text-neutral-600">
-                      today {formatDay(listing.dropOffHours[currentDayKey()])}
-                    </span>
-                  </span>
-                )}
-              </div>
-            </div>
+                  ),
+                },
+                ...(listing.allergens?.length
+                  ? [
+                      {
+                        label: "allergens",
+                        value: (
+                          <span className="text-urgent-800">
+                            <span aria-hidden>⚠ </span>
+                            {listing.allergens.join(", ")}
+                          </span>
+                        ),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+            {listing.allergens?.length ? (
+              <p className="mt-1.5 text-[12px] text-neutral-600">
+                Contains allergens — handle and label with care.
+              </p>
+            ) : null}
 
             {/* Drop-off closed right now and this rescue is in flight — the one
                 honey warning the handoff calls for; take-home is the fallback. */}
@@ -689,27 +715,6 @@ export function ListingDetail({
               </div>
             )}
 
-            {listing.allergens?.length ? (
-              <div className="mt-5 border-t border-neutral-200/60 pt-4">
-                <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
-                  food safety
-                </span>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {listing.allergens.map((a) => (
-                    <span
-                      key={a}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-urgent-50 px-2.5 py-1 font-mono text-[11px] text-urgent-800"
-                    >
-                      <span aria-hidden>⚠</span>
-                      {a}
-                    </span>
-                  ))}
-                </div>
-                <p className="mt-2 text-[12px] text-neutral-600">
-                  Contains allergens — handle and label with care.
-                </p>
-              </div>
-            ) : null}
 
             {dropOffNotices.length > 0 && (
               <DropOffNotices notices={dropOffNotices} className="mt-4" />
