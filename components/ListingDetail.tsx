@@ -7,7 +7,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Button } from "./Button";
 import { StatusBadge } from "./StatusBadge";
 import { Toast, useToast } from "./Toast";
-import { ArrowRight, Car, Clock, MapPin, Users } from "./icons";
+import { ArrowRight, Car, MapPin, Users, Flame, Snowflake, Box } from "./icons";
 import { cn } from "./cn";
 import {
   claimListing,
@@ -120,12 +120,14 @@ function ProofPhoto({ label, url }: { label: string; url: string }) {
 function MetaRow({
   icon,
   children,
+  className,
 }: {
   icon: React.ReactNode;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <p className="flex items-center gap-2 font-sans text-[13px] text-neutral-700">
+    <p className={cn("flex items-center gap-2 font-sans text-[13px] text-neutral-700", className)}>
       <span className="text-neutral-600">{icon}</span>
       {children}
     </p>
@@ -536,119 +538,128 @@ export function ListingDetail({
 
         {/* Main */}
         <div className="overflow-hidden rounded-2xl border border-neutral-200/40 bg-card">
+          {/* Food photo — the appetizing anchor the detail page was missing; the
+              Meal Move mark as a calm placeholder when a listing has no photo. */}
           <div
             className={cn(
-              "h-[3px]",
-              terminal
-                ? "bg-neutral-200"
-                : listing.minutesLeft < 10
-                  ? "bg-failed-400"
-                  : listing.minutesLeft < 35
-                    ? "bg-urgent-400"
-                    : "bg-rescued-400"
+              "relative aspect-[16/9] w-full",
+              listing.imageUrl ? "bg-neutral-100" : "bg-neutral-50"
             )}
-          />
+          >
+            {listing.imageUrl ? (
+              <Image
+                src={listing.imageUrl}
+                alt={listing.title}
+                fill
+                sizes="(min-width: 1024px) 472px, 100vw"
+                priority
+                className={cn("object-cover", terminal && "opacity-75 saturate-[0.7]")}
+              />
+            ) : (
+              <span
+                aria-hidden
+                className="absolute inset-x-0 inset-y-8 bg-neutral-300 [mask:url(/mealmovelogo.png)_center/contain_no-repeat] [-webkit-mask:url(/mealmovelogo.png)_center/contain_no-repeat]"
+              />
+            )}
+          </div>
           <div className="p-6">
-            <div className="mb-4 flex items-start justify-between gap-3">
+            <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h1 className="font-display text-[26px] font-semibold leading-tight text-neutral-900 text-balance">
                   {listing.title}
                 </h1>
-                {!terminal && (
-                  <span
-                    className={cn(
-                      "mt-2.5 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[11px] font-medium tabular-nums",
-                      listing.minutesLeft < 10
-                        ? "bg-failed-50 text-failed-800"
-                        : listing.minutesLeft < 35
-                          ? "bg-urgent-50 text-urgent-800"
-                          : "bg-rescued-50 text-rescued-800"
-                    )}
-                  >
-                    <Clock className="h-3.5 w-3.5" />
-                    {formatTimeLeft(listing.minutesLeft)} left
-                  </span>
-                )}
+                <MetaRow icon={<MapPin />} className="mt-1.5">
+                  {listing.source}
+                </MetaRow>
               </div>
               <StatusBadge status={listing.status} />
             </div>
 
-            <MetaRow icon={<MapPin />}>
-              {listing.source}
-              <span className="text-neutral-300">·</span>
-              <span>
-                <span className="font-semibold text-neutral-900">
+            {/* Decision facts as two warm focal stats (no gray cells): how much
+                food, and how long is left — serif numbers in semantic color. */}
+            <div className="mt-5 flex items-stretch rounded-2xl border border-neutral-200/70">
+              <div className="flex-1 px-5 py-3.5">
+                <p className="font-display text-[30px] font-semibold leading-none text-rescued-600">
                   ~{listing.servings}
-                </span>{" "}
-                servings
-              </span>
-            </MetaRow>
+                </p>
+                <p className="mt-2 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+                  servings
+                </p>
+              </div>
+              <div className="w-px self-stretch bg-neutral-200/70" />
+              <div className="flex-1 px-5 py-3.5">
+                <p
+                  className={cn(
+                    "font-display text-[30px] font-semibold leading-none tabular-nums",
+                    terminal
+                      ? "text-neutral-500"
+                      : listing.minutesLeft < 10
+                        ? "text-failed-600"
+                        : listing.minutesLeft < 35
+                          ? "text-urgent-600"
+                          : "text-rescued-600"
+                  )}
+                >
+                  {terminal ? "—" : formatTimeLeft(listing.minutesLeft)}
+                </p>
+                <p className="mt-2 font-mono text-[10px] uppercase tracking-wide tabular-nums text-neutral-500">
+                  {terminal ? "closed" : "left"} · {listing.expiresAt}
+                </p>
+              </div>
+            </div>
 
-            {/* Facts grid — the decision facts as hairline-divided cells, each
-                a mono micro-label over its value (pickup-detail handoff). */}
-            <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-neutral-200/60 bg-neutral-200/60">
-              <div className="bg-neutral-50 px-3.5 py-3">
-                <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
-                  {terminal ? "closed" : "expires"}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-neutral-800 tabular-nums">
-                  {listing.expiresAt}
-                  {!terminal && (
-                    <span className="font-normal text-neutral-600">
-                      {" "}
-                      · {formatTimeLeft(listing.minutesLeft)} left
+            {/* Food type + handling + cars, then who it's for — clean labelled
+                lines rather than nested gray boxes. */}
+            <div className="mt-4 space-y-3">
+              {(listing.category || listing.tempHandling || (listing.carsNeeded ?? 1) > 1) && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {listing.category && (
+                    <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 font-mono text-[11px] text-neutral-700">
+                      {listing.category}
                     </span>
                   )}
-                </p>
-              </div>
-              <div className="bg-neutral-50 px-3.5 py-3">
-                {(listing.carsNeeded ?? 1) > 1 ? (
-                  <>
-                    <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
-                      cars
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-neutral-800">
-                      {listing.status === "open"
-                        ? `${(listing.carsNeeded ?? 1) - (listing.claimedCount ?? 0)} of ${listing.carsNeeded} still needed`
-                        : `${listing.carsNeeded} cars`}
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
-                      food
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-neutral-800">
-                      {listing.category ?? "surplus"}
-                      {listing.tempHandling && (
-                        <span className="font-normal text-neutral-600">
-                          {" "}
-                          · keep {TEMP_LABEL[listing.tempHandling]}
-                        </span>
+                  {listing.tempHandling && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 px-2.5 py-0.5 font-mono text-[11px] text-neutral-600">
+                      {listing.tempHandling === "hot" ? (
+                        <Flame className="text-[0.95em] text-neutral-400" />
+                      ) : listing.tempHandling === "cold" ? (
+                        <Snowflake className="text-[0.95em] text-neutral-400" />
+                      ) : (
+                        <Box className="text-[0.95em] text-neutral-400" />
                       )}
-                    </p>
-                  </>
-                )}
-              </div>
-              <div className="col-span-2 bg-neutral-50 px-3.5 py-3">
-                <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
+                      keep {TEMP_LABEL[listing.tempHandling]}
+                    </span>
+                  )}
+                  {(listing.carsNeeded ?? 1) > 1 && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 px-2.5 py-0.5 font-mono text-[11px] text-neutral-600">
+                      <Car className="text-[0.95em] text-neutral-400" />
+                      {listing.status === "open"
+                        ? `${(listing.carsNeeded ?? 1) - (listing.claimedCount ?? 0)} of ${listing.carsNeeded} cars`
+                        : `${listing.carsNeeded} cars`}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
                   drop-off
-                </p>
-                <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-neutral-800">
+                </span>
+                <span className="text-sm font-semibold text-neutral-800">
                   {listing.dropOff ?? (
-                    <span className="font-normal text-neutral-600">
-                      chosen by the claiming volunteer
+                    <span className="font-normal text-neutral-500">
+                      chosen when you claim
                     </span>
                   )}
-                  {listing.dropOffHours && (
-                    <span className="inline-flex items-center gap-2">
-                      <OpenNowBadge hours={listing.dropOffHours} />
-                      <span className="font-mono text-xs font-normal text-neutral-700">
-                        today {formatDay(listing.dropOffHours[currentDayKey()])}
-                      </span>
+                </span>
+                {listing.dropOffHours && (
+                  <span className="inline-flex items-center gap-2">
+                    <OpenNowBadge hours={listing.dropOffHours} />
+                    <span className="font-mono text-xs text-neutral-600">
+                      today {formatDay(listing.dropOffHours[currentDayKey()])}
                     </span>
-                  )}
-                </p>
+                  </span>
+                )}
               </div>
             </div>
 
@@ -678,18 +689,13 @@ export function ListingDetail({
               </div>
             )}
 
-            {(listing.allergens?.length || listing.tempHandling) && (
-              <div className="mt-4 rounded-md bg-neutral-100 px-4 py-3 text-sm text-neutral-800">
-                <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+            {listing.allergens?.length ? (
+              <div className="mt-5 border-t border-neutral-200/60 pt-4">
+                <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
                   food safety
                 </span>
-                <div className="mt-1.5 flex flex-wrap items-center gap-2">
-                  {listing.tempHandling && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-transit-50 px-2.5 py-1 font-mono text-[11px] text-transit-800">
-                      keep {TEMP_LABEL[listing.tempHandling]}
-                    </span>
-                  )}
-                  {listing.allergens?.map((a) => (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {listing.allergens.map((a) => (
                     <span
                       key={a}
                       className="inline-flex items-center gap-1.5 rounded-full bg-urgent-50 px-2.5 py-1 font-mono text-[11px] text-urgent-800"
@@ -699,24 +705,24 @@ export function ListingDetail({
                     </span>
                   ))}
                 </div>
-                {listing.allergens?.length ? (
-                  <p className="mt-1.5 text-[12px] text-neutral-600">
-                    Contains allergens — handle and label with care.
-                  </p>
-                ) : null}
+                <p className="mt-2 text-[12px] text-neutral-600">
+                  Contains allergens — handle and label with care.
+                </p>
               </div>
-            )}
+            ) : null}
 
             {dropOffNotices.length > 0 && (
               <DropOffNotices notices={dropOffNotices} className="mt-4" />
             )}
 
             {listing.notes && (
-              <div className="mt-5 rounded-md bg-neutral-100 px-4 py-3 text-sm text-neutral-800">
-                <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+              <div className="mt-5 border-t border-neutral-200/60 pt-4">
+                <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
                   special requests
                 </span>
-                <p className="mt-0.5 whitespace-pre-line">{listing.notes}</p>
+                <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-neutral-700">
+                  {listing.notes}
+                </p>
               </div>
             )}
 
