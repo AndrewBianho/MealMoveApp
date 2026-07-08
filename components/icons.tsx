@@ -130,3 +130,31 @@ export function Pencil(props: SVGProps<SVGSVGElement>) {
     </Base>
   );
 }
+
+// Handling cues on cards: a bounded set (hot · cold · shelf-stable · perishable)
+// where a glyph reads faster than the words alone — the one thing a volunteer
+// must prepare for. Food-type categories stay text (open-ended, clearer as words).
+export function Flame(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M12 3c1 2.5 4 4.5 4 8a4 4 0 0 1-8 0c0-1.2.5-2.2 1.2-3 .2 1 1 1.6 1.8 1.6 0-2.4-1-4.4 1-6.6z" />
+    </Base>
+  );
+}
+
+export function Snowflake(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M12 3v18M4.2 7.5l15.6 9M19.8 7.5l-15.6 9" />
+    </Base>
+  );
+}
+
+export function Box(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M4 8l8-4 8 4v8l-8 4-8-4z" />
+      <path d="M4 8l8 4 8-4M12 12v8" />
+    </Base>
+  );
+}

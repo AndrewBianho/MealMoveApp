@@ -292,7 +292,7 @@ export function PickupTimelineCard({
           ) : delivered ? (
             <p className="flex items-center justify-center gap-2 rounded-2xl bg-rescued-50 px-4 py-2.5 text-[13px] font-semibold text-rescued-800">
               <Check className="h-3.5 w-3.5" />
-              Delivered to {dest} · thank you
+              Delivered — thank you
             </p>
           ) : (
             <p className="flex items-center justify-center gap-2 rounded-2xl bg-neutral-100 px-4 py-2.5 text-[13px] font-medium text-neutral-600">

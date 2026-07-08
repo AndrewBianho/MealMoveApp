@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "./cn";
-import { Clock, MapPin, ArrowRight } from "./icons";
+import { Clock, MapPin, ArrowRight, Flame, Snowflake, Box } from "./icons";
 import { StatusBadge } from "./StatusBadge";
 import { NearbyVolunteers } from "./NearbyVolunteers";
 import { formatTimeLeft } from "@/lib/time";
@@ -91,23 +91,25 @@ export function ListingCard({
   const img = imageUrl ?? DEFAULT_IMAGE;
   const isPlaceholder = !imageUrl;
 
-  // Handling cue — "what do I need to bring, how much time do I really have?".
-  // Temp handling answers it directly; perishable is the fallback flag. Kept as
-  // calm neutral metadata so it never competes with the urgency signal.
+  // Handling cue — "what do I need to bring?". A glyph leads the word so the
+  // temperature cue reads at a glance (the bounded set that earns a symbol); the
+  // word stays for clarity. Calm neutral metadata, never competing with urgency.
   const handling = tempHandling
     ? tempHandling === "hot"
-      ? "keep hot"
+      ? { icon: Flame, label: "keep hot" }
       : tempHandling === "cold"
-        ? "keep cold"
-        : "shelf-stable"
+        ? { icon: Snowflake, label: "keep cold" }
+        : { icon: Box, label: "shelf-stable" }
     : perishable
-      ? "perishable"
+      ? { icon: Clock, label: "perishable" }
       : null;
 
-  // Audience tuning: distance is only meaningful to a volunteer; the source line
-  // is redundant for a restaurant (it's them); the → drop-off line is redundant
-  // for a drop-off admin (it's them).
-  const showDistance = audience === "volunteer";
+  // Audience tuning: the source line is redundant for a restaurant (it's them);
+  // the → drop-off line is redundant for a drop-off admin (it's them).
+  // Distance is only meaningful to a volunteer, and only once we actually know it
+  // — an unshared location renders "—", so guard against a dangling "· — away".
+  const showDistance =
+    audience === "volunteer" && !!distance && distance !== "—" && distance !== "";
   const showSource = audience !== "restaurant";
   const showRoute = audience !== "dropoff";
   const sourceLabel = audience === "dropoff" ? `from ${source}` : source;
@@ -253,8 +255,9 @@ export function ListingCard({
               </span>
             )}
             {handling && (
-              <span className="rounded-full border border-neutral-200 px-2.5 py-0.5 font-mono text-[11px] text-neutral-600">
-                {handling}
+              <span className="inline-flex items-center gap-1 rounded-full border border-neutral-200 px-2.5 py-0.5 font-mono text-[11px] text-neutral-600">
+                <handling.icon className="text-[0.95em] text-neutral-400" />
+                {handling.label}
               </span>
             )}
           </div>
