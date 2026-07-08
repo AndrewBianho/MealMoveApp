@@ -13,13 +13,13 @@ export interface HourWindow {
 export type RetrievalHours = Record<DayKey, HourWindow[]>; // empty/missing day = closed
 
 export const DAY_LABELS: Record<DayKey, string> = {
-  mon: "mon",
-  tue: "tue",
-  wed: "wed",
-  thu: "thu",
-  fri: "fri",
-  sat: "sat",
-  sun: "sun",
+  mon: "Mon",
+  tue: "Tue",
+  wed: "Wed",
+  thu: "Thu",
+  fri: "Fri",
+  sat: "Sat",
+  sun: "Sun",
 };
 
 // All hours are interpreted in this one timezone (campus-local).

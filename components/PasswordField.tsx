@@ -64,8 +64,8 @@ export function PasswordField({
           type="button"
           onClick={() => setReveal((r) => !r)}
           className={cn(
-            "absolute inset-y-0 right-1 my-auto h-9 rounded px-2 font-mono text-[11px]",
-            "uppercase tracking-wide text-rescued-600 hover:underline",
+            "absolute inset-y-0 right-1 my-auto h-9 rounded px-2 font-mono text-[13px]",
+            "text-rescued-600 hover:underline",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
           )}
           aria-pressed={reveal}
@@ -80,7 +80,7 @@ export function PasswordField({
             return (
               <li
                 key={rule.id}
-                className="flex items-center gap-2 font-mono text-[11px]"
+                className="flex items-center gap-2 font-mono text-[13px]"
               >
                 <span
                   className={cn(

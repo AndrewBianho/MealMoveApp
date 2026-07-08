@@ -53,11 +53,11 @@ export function DropOffNotices({
             <NoticeGlyph />
           </span>
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-x-2 font-mono text-[10px] uppercase tracking-wide text-urgent-800/80">
+            <div className="flex flex-wrap items-center gap-x-2 font-mono text-[13px] text-urgent-800/80">
               <span className="font-semibold">{NOTICE_KIND_LABEL[n.kind]}</span>
               {n.until && <span>· until {untilLabel(n.until)}</span>}
             </div>
-            <p className="mt-0.5 whitespace-pre-line text-[13px] leading-snug">{n.body}</p>
+            <p className="mt-0.5 whitespace-pre-line text-[15px] leading-snug">{n.body}</p>
           </div>
         </div>
       ))}

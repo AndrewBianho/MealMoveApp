@@ -46,7 +46,7 @@ export default function GlobalError({
             Try again
           </button>
           {error.digest && (
-            <p className="mt-6 font-mono text-[11px] uppercase tracking-wide text-neutral-500">
+            <p className="mt-6 font-mono text-[11px] text-neutral-700">
               ref {error.digest}
             </p>
           )}

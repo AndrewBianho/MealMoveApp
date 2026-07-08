@@ -22,7 +22,7 @@ export default function NotFound() {
       >
         Back to rescues
       </Link>
-      <p className="mt-6 font-mono text-[11px] uppercase tracking-wide text-neutral-500">
+      <p className="mt-6 font-mono text-[11px] text-neutral-700">
         error 404
       </p>
     </main>

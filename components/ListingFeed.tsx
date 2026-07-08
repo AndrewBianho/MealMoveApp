@@ -6,6 +6,7 @@ import { cn } from "./cn";
 import dynamic from "next/dynamic";
 import { ListingCard } from "./ListingCard";
 import { EmptyState } from "./EmptyState";
+import { capitalize } from "@/lib/text";
 
 // Lazy — keep Mapbox (and its CSS) out of the default list bundle; it only loads
 // when a volunteer switches to map view. Client-only, with a calm placeholder.
@@ -83,14 +84,14 @@ function CategoryFilter({
             aria-pressed={active}
             onClick={() => onChange(c)}
             className={cn(
-              "rounded-full px-3 py-1.5 font-mono text-[11px] transition-colors duration-150",
+              "rounded-full px-3 py-1.5 font-mono text-[13px] transition-colors duration-150",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",
               active
                 ? "bg-neutral-900 text-neutral-50"
-                : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
             )}
           >
-            {c}
+            {capitalize(c)}
           </button>
         );
       })}
@@ -112,8 +113,8 @@ function SortControl({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="font-mono text-[11px] uppercase tracking-wide text-neutral-500">
-        sort
+      <span className="font-mono text-[13px] text-neutral-700">
+        Sort
       </span>
       <div className="inline-flex rounded-full border border-neutral-200 bg-card p-0.5">
         {SORTS.map((s) => {
@@ -126,12 +127,12 @@ function SortControl({
               onClick={() => onChange(s)}
               title={s === "nearest" && !located ? "Share your location to sort by distance" : undefined}
               className={cn(
-                "rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-colors duration-150",
+                "rounded-full px-3 py-1.5 text-[14px] font-semibold transition-colors duration-150",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",
-                active ? "bg-neutral-900 text-neutral-50" : "text-neutral-600 hover:text-neutral-900"
+                active ? "bg-neutral-900 text-neutral-50" : "text-neutral-700 hover:text-neutral-900"
               )}
             >
-              {s}
+              {capitalize(s)}
             </button>
           );
         })}
@@ -158,12 +159,12 @@ function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => voi
             aria-pressed={active}
             onClick={() => onChange(v)}
             className={cn(
-              "rounded-full px-3 py-1.5 text-[12.5px] font-semibold transition-colors duration-150",
+              "rounded-full px-3 py-1.5 text-[14px] font-semibold transition-colors duration-150",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",
-              active ? "bg-neutral-900 text-neutral-50" : "text-neutral-600 hover:text-neutral-900"
+              active ? "bg-neutral-900 text-neutral-50" : "text-neutral-700 hover:text-neutral-900"
             )}
           >
-            {v}
+            {capitalize(v)}
           </button>
         );
       })}
@@ -178,8 +179,8 @@ function isSpent(status: ListingStatus): boolean {
 function SectionHeader({ title, count }: { title: string; count: number }) {
   return (
     <div className="mb-3.5 flex items-center gap-2">
-      <h2 className="text-[15px] font-semibold text-neutral-800">{title}</h2>
-      <span className="font-mono text-xs text-neutral-500">{count}</span>
+      <h2 className="text-[16px] font-semibold text-neutral-800">{title}</h2>
+      <span className="font-mono text-[13px] text-neutral-700">{count}</span>
     </div>
   );
 }
@@ -221,11 +222,11 @@ function CollapsibleSectionHeader({
       type="button"
       onClick={onToggle}
       aria-expanded={open}
-      className="mb-3.5 flex w-full items-center gap-2 rounded-lg py-1 text-left text-neutral-600 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+      className="mb-3.5 flex w-full items-center gap-2 rounded-lg py-1 text-left text-neutral-700 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
     >
       <Chevron open={open} />
-      <h2 className="text-[15px] font-semibold text-neutral-800">{title}</h2>
-      <span className="font-mono text-xs text-neutral-500">{count}</span>
+      <h2 className="text-[16px] font-semibold text-neutral-800">{title}</h2>
+      <span className="font-mono text-[13px] text-neutral-700">{count}</span>
     </button>
   );
 }
@@ -244,7 +245,7 @@ function ListingStack({
   lead?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-[18px]">
+    <div className="flex flex-col gap-6">
       {listings.map((l, i) => (
         <ListingCard
           key={l.id}
@@ -293,7 +294,7 @@ function RepeatRow({ listing }: { listing: Listing }) {
       >
         {d && (
           <span className="flex w-11 shrink-0 flex-col items-center rounded-xl bg-neutral-100 py-1">
-            <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+            <span className="font-mono text-[13px] text-neutral-700">
               {d.toLocaleDateString([], { weekday: "short" })}
             </span>
             <span className="font-display text-[17px] font-semibold leading-tight text-neutral-900">
@@ -301,13 +302,13 @@ function RepeatRow({ listing }: { listing: Listing }) {
             </span>
           </span>
         )}
-        <span className="min-w-0 flex-1 text-[13.5px] text-neutral-700">
+        <span className="min-w-0 flex-1 text-[15px] text-neutral-700">
           opens{" "}
           {d
             ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
             : listing.availableLabel}
         </span>
-        <span className="shrink-0 font-mono text-[12.5px] text-neutral-600">
+        <span className="shrink-0 font-mono text-[14px] text-neutral-700">
           <span className="font-bold text-neutral-900">{listing.servings}</span>{" "}
           servings
         </span>
@@ -325,7 +326,7 @@ function RecurringGroup({ listings }: { listings: Listing[] }) {
   const [first, ...rest] = listings;
   const more = rest.length;
   return (
-    <div className="flex flex-col gap-[18px]">
+    <div className="flex flex-col gap-6">
       <ListingCard listing={first} />
       {more > 0 && (
         <>
@@ -333,7 +334,7 @@ function RecurringGroup({ listings }: { listings: Listing[] }) {
             type="button"
             onClick={() => setOpen((o) => !o)}
             aria-expanded={open}
-            className="-mt-1 flex items-center gap-2 self-start rounded-lg py-1 pl-1 pr-2 text-left text-[13px] font-semibold text-neutral-600 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+            className="-mt-1 flex items-center gap-2 self-start rounded-lg py-1 pl-1 pr-2 text-left text-[15px] font-semibold text-neutral-700 transition-colors hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
           >
             <Chevron open={open} />
             {open ? "Hide repeats" : `Show ${more} more ${more === 1 ? "time" : "times"} this schedule`}
@@ -356,7 +357,7 @@ function RecurringGroup({ listings }: { listings: Listing[] }) {
 function ComingUpStack({ listings }: { listings: Listing[] }) {
   const groups = useMemo(() => groupBySchedule(listings), [listings]);
   return (
-    <div className="flex flex-col gap-[18px]">
+    <div className="flex flex-col gap-6">
       {groups.map((g) =>
         g.length === 1 ? (
           <ListingCard key={g[0].id} listing={g[0]} />
@@ -523,7 +524,7 @@ export function ListingFeed({
       {comingUp.length > 0 && (
         <section>
           <SectionHeader title="Coming up" count={comingUpScheduleCount} />
-          <p className="-mt-2 mb-3.5 text-sm text-neutral-600">
+          <p className="-mt-2 mb-3.5 text-[16px] text-neutral-700">
             Scheduled pickups you can plan around — each opens to claim at its
             listed time.
           </p>

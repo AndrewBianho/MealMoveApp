@@ -1,12 +1,13 @@
 import { cn } from "./cn";
+import { capitalize } from "@/lib/text";
 import type { ListingStatus } from "@/lib/types";
 
 export type { ListingStatus };
 
-// Just the uppercase mono label in the status color — no filled pill, no dot —
-// so the status reads cleanly and quietly. Text uses 800 of each ramp; expired
-// is intentionally neutral, not red. Color is never the sole signal: the
-// uppercase word itself names the status (color-blind-safe without the dot).
+// Just the mono label in the status color — no filled pill, no dot — so the
+// status reads cleanly and quietly. Sentence case (never ALLCAPS). Text uses 800
+// of each ramp; expired is intentionally neutral, not red. Color is never the
+// sole signal: the word itself names the status (color-blind-safe without hue).
 const STYLES: Record<ListingStatus, string> = {
   open: "text-rescued-800",
   claimed: "text-urgent-800",
@@ -22,11 +23,11 @@ export function StatusBadge({ status }: { status: ListingStatus }) {
     <span
       className={cn(
         "inline-flex items-center gap-1.5",
-        "font-mono text-xs font-semibold uppercase tracking-wide",
+        "font-mono text-[13px] font-semibold",
         STYLES[status]
       )}
     >
-      {status}
+      {capitalize(status)}
     </span>
   );
 }

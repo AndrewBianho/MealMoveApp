@@ -41,14 +41,14 @@ export function RequestResetForm() {
         <h1 className="mt-4 font-display text-2xl font-bold text-neutral-900">
           Check your inbox
         </h1>
-        <p className="mx-auto mt-1.5 max-w-[36ch] text-[15px] leading-relaxed text-neutral-700">
+        <p className="mx-auto mt-1.5 max-w-[36ch] text-[16px] leading-relaxed text-neutral-700">
           If an account exists for{" "}
           <span className="font-semibold text-neutral-900">
             {email.trim().toLowerCase()}
           </span>
           , we&apos;ve sent a reset link. It expires in 1 hour.
         </p>
-        <p className="mt-4 text-sm text-neutral-700">
+        <p className="mt-4 text-[16px] text-neutral-700">
           Didn&apos;t get it?{" "}
           <button
             type="button"
@@ -58,7 +58,7 @@ export function RequestResetForm() {
             Resend
           </button>
         </p>
-        <p className="mt-5 text-sm">
+        <p className="mt-5 text-[16px]">
           <BackToSignIn />
         </p>
       </div>
@@ -70,7 +70,7 @@ export function RequestResetForm() {
       <h1 className="font-display text-[26px] font-bold leading-tight tracking-tight text-neutral-900">
         Reset your password
       </h1>
-      <p className="mb-6 mt-1.5 text-[15px] leading-relaxed text-neutral-700">
+      <p className="mb-6 mt-1.5 text-[16px] leading-relaxed text-neutral-700">
         Enter the email tied to your account and we&apos;ll send a reset link.
       </p>
 
@@ -106,7 +106,7 @@ export function RequestResetForm() {
         </Button>
       </form>
 
-      <p className="mt-5 text-center text-sm">
+      <p className="mt-5 text-center text-[16px]">
         <BackToSignIn />
       </p>
     </>

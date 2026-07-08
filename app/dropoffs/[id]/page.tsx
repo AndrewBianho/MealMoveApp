@@ -36,7 +36,7 @@ export default async function DropOffDetailPage({
         badge={
           <span
             className={
-              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide " +
+              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] " +
               (dropOff.refrigerated
                 ? "bg-transit-50 text-transit-800"
                 : "bg-neutral-100 text-neutral-700")
@@ -58,7 +58,7 @@ export default async function DropOffDetailPage({
           {dropOff.acceptedCategories.map((c) => (
             <span
               key={c}
-              className="rounded-full bg-rescued-50 px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-rescued-800"
+              className="rounded-full bg-rescued-50 px-2.5 py-0.5 font-mono text-[10px] text-rescued-800"
             >
               {c}
             </span>

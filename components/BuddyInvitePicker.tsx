@@ -59,13 +59,13 @@ export function BuddyInvitePicker({
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+        <p className="font-mono text-[13px] text-neutral-700">
           Invite a buddy
         </p>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-full px-2 py-1 text-[13px] text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+          className="rounded-full px-2 py-1 text-[15px] text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
         >
           Cancel
         </button>
@@ -83,7 +83,7 @@ export function BuddyInvitePicker({
       )}
 
       {state.kind === "error" && (
-        <div className="rounded-2xl bg-failed-50 px-4 py-3 text-sm text-failed-800">
+        <div className="rounded-2xl bg-failed-50 px-4 py-3 text-[16px] text-failed-800">
           <p>Couldn&apos;t load volunteers.</p>
           <button
             type="button"
@@ -96,7 +96,7 @@ export function BuddyInvitePicker({
       )}
 
       {state.kind === "ready" && state.volunteers.length === 0 && (
-        <p className="text-sm text-neutral-700">
+        <p className="text-[16px] text-neutral-700">
           No volunteers to invite right now.
         </p>
       )}
@@ -110,13 +110,13 @@ export function BuddyInvitePicker({
                 onClick={() => onPick(v)}
                 disabled={isPending}
                 aria-label={`Invite ${v.name} as a buddy`}
-                className="flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl px-3 py-2 text-left text-sm transition-colors hover:bg-rescued-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 disabled:opacity-50"
+                className="flex min-h-11 w-full items-center justify-between gap-3 rounded-2xl px-3 py-2 text-left text-[16px] transition-colors hover:bg-rescued-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 disabled:opacity-50"
               >
                 <span className="flex items-center gap-2.5">
                   <Avatar name={v.name} />
                   {v.name}
                 </span>
-                <span className="font-mono text-[11px] uppercase tracking-wide text-rescued-600">
+                <span className="font-mono text-[13px] text-rescued-600">
                   {pendingId === v.id ? "inviting…" : "invite"}
                 </span>
               </button>

@@ -66,7 +66,7 @@ export function OrgNotesPanel({
   if (!editing) {
     return (
       <div className="mt-3 border-t border-neutral-200/60 pt-3">
-        <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+        <p className="font-mono text-[10px] text-neutral-700">
           Notes & contacts
         </p>
         {isEmpty ? (
@@ -77,25 +77,25 @@ export function OrgNotesPanel({
           <dl className="mt-2 space-y-1.5 text-sm">
             {values.primaryContact && (
               <div>
-                <dt className="font-mono text-[11px] text-neutral-600">primary contact</dt>
+                <dt className="font-mono text-[11px] text-neutral-700">Primary contact</dt>
                 <dd className="text-neutral-900">{values.primaryContact}</dd>
               </div>
             )}
             {values.contactInfo && (
               <div>
-                <dt className="font-mono text-[11px] text-neutral-600">reach them</dt>
+                <dt className="font-mono text-[11px] text-neutral-700">Reach them</dt>
                 <dd className="text-neutral-900">{values.contactInfo}</dd>
               </div>
             )}
             {values.lastContactDate && (
               <div>
-                <dt className="font-mono text-[11px] text-neutral-600">last contact</dt>
+                <dt className="font-mono text-[11px] text-neutral-700">Last contact</dt>
                 <dd className="text-neutral-900">{prettyDate(values.lastContactDate)}</dd>
               </div>
             )}
             {values.quirks && (
               <div>
-                <dt className="font-mono text-[11px] text-neutral-600">quirks</dt>
+                <dt className="font-mono text-[11px] text-neutral-700">Quirks</dt>
                 <dd className="whitespace-pre-wrap text-neutral-900">{values.quirks}</dd>
               </div>
             )}
@@ -112,11 +112,11 @@ export function OrgNotesPanel({
   }
 
   const inputCls =
-    "mt-1 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm placeholder:text-neutral-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400";
+    "mt-1 w-full rounded-md border border-neutral-200 bg-white px-3 py-2 text-sm placeholder:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400";
 
   return (
     <div className="mt-3 border-t border-neutral-200/60 pt-3">
-      <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+      <p className="font-mono text-[10px] text-neutral-700">
         Notes & contacts
       </p>
 

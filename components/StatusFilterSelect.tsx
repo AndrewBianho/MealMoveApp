@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "./cn";
+import { capitalize } from "@/lib/text";
 import type { Listing } from "@/lib/types";
 
 // The shared status-filter dropdown for card lists. One control, every
@@ -36,8 +37,8 @@ export function StatusFilterSelect({
 }) {
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <span className="font-mono text-[11px] uppercase tracking-wide text-neutral-500">
-        {label}
+      <span className="font-mono text-[13px] text-neutral-700">
+        {capitalize(label)}
       </span>
       <span className="relative inline-flex">
         <select
@@ -45,14 +46,14 @@ export function StatusFilterSelect({
           aria-label={selectLabel}
           onChange={(e) => onChange(e.target.value)}
           className={cn(
-            "appearance-none rounded-full border border-neutral-200 bg-card py-2 pl-4 pr-9 text-[13px] font-semibold text-neutral-800",
+            "appearance-none rounded-full border border-neutral-200 bg-card py-2 pl-4 pr-9 text-[15px] font-semibold text-neutral-800",
             "transition-colors duration-150 hover:border-neutral-300 hover:shadow-card",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50"
           )}
         >
           {options.map((o) => (
             <option key={o.value} value={o.value}>
-              {o.label} · {o.count}
+              {capitalize(o.label)} · {o.count}
             </option>
           ))}
         </select>
@@ -66,7 +67,7 @@ export function StatusFilterSelect({
           strokeLinecap="round"
           strokeLinejoin="round"
           aria-hidden="true"
-          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral-500"
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-neutral-700"
         >
           <path d="M6 9l6 6 6-6" />
         </svg>

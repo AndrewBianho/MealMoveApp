@@ -56,7 +56,7 @@ export function QuietHoursControl({
       {enabled && (
         <div className="mt-4 flex flex-wrap items-end gap-3">
           <label className="text-sm">
-            <span className="block font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+            <span className="block font-mono text-[10px] text-neutral-700">
               From
             </span>
             <select
@@ -76,7 +76,7 @@ export function QuietHoursControl({
             </select>
           </label>
           <label className="text-sm">
-            <span className="block font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+            <span className="block font-mono text-[10px] text-neutral-700">
               Until
             </span>
             <select

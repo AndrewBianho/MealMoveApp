@@ -46,8 +46,8 @@ export default function StyleGuidePage() {
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">
       <header>
-        <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
-          design system · live components
+        <p className="font-mono text-[10px] text-neutral-700">
+          Design system · live components
         </p>
         <h1 className="mt-2 text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">Style guide</h1>
         <p className="mt-2 max-w-xl text-sm text-neutral-700">
@@ -58,7 +58,7 @@ export default function StyleGuidePage() {
 
       <Section
         title="Status badges"
-        hint="Mono, uppercase, leading dot, fully round. Fill + text drawn from one ramp."
+        hint="Mono, sentence case, the status color as text — no dot, no filled pill. The word names the status; color reinforces."
       >
         <div className="flex flex-wrap gap-2 rounded-xl border border-neutral-200/40 bg-card p-5">
           {STATUSES.map((s) => (
@@ -89,7 +89,7 @@ export default function StyleGuidePage() {
               <h3 className="text-base font-semibold text-neutral-800">
                 Available to claim
               </h3>
-              <span className="font-mono text-xs text-neutral-600">
+              <span className="font-mono text-xs text-neutral-700">
                 {CLAIMABLE.length}
               </span>
             </div>
@@ -109,7 +109,7 @@ export default function StyleGuidePage() {
               <h3 className="text-base font-semibold text-neutral-800">
                 Claimed &amp; closed
               </h3>
-              <span className="font-mono text-xs text-neutral-600">
+              <span className="font-mono text-xs text-neutral-700">
                 {UNCLAIMABLE.length}
               </span>
             </div>
@@ -128,20 +128,20 @@ export default function StyleGuidePage() {
       >
         <div className="grid gap-6 md:grid-cols-3">
           <div>
-            <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
-              volunteer
+            <p className="mb-2 font-mono text-[10px] text-neutral-700">
+              Volunteer
             </p>
             <ListingCard listing={AUDIENCE_DEMO} audience="volunteer" />
           </div>
           <div>
-            <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
-              restaurant
+            <p className="mb-2 font-mono text-[10px] text-neutral-700">
+              Restaurant
             </p>
             <ListingCard listing={AUDIENCE_DEMO} audience="restaurant" />
           </div>
           <div>
-            <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
-              drop-off
+            <p className="mb-2 font-mono text-[10px] text-neutral-700">
+              Drop-off
             </p>
             <ListingCard listing={AUDIENCE_DEMO} audience="dropoff" />
           </div>
@@ -170,7 +170,7 @@ export default function StyleGuidePage() {
         </Section>
       </div>
 
-      <p className="mt-12 font-mono text-[11px] text-neutral-600">
+      <p className="mt-12 font-mono text-[11px] text-neutral-700">
         next.js 14 · app router · tailwind v3 · fraunces · nunito sans · jetbrains mono
       </p>
     </main>

@@ -73,7 +73,7 @@ export default async function DropoffPage() {
                 <h3 className="text-sm font-medium">{d.name}</h3>
                 <span
                   className={
-                    "rounded-[3px] px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide " +
+                    "rounded-[3px] px-2 py-0.5 font-mono text-[10px] " +
                     (d.refrigerated
                       ? "bg-transit-50 text-transit-800"
                       : "bg-neutral-50 text-neutral-800")
@@ -86,7 +86,7 @@ export default async function DropoffPage() {
                 {d.acceptedCategories.map((c) => (
                   <span
                     key={c}
-                    className="rounded-[3px] bg-rescued-50 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-rescued-800"
+                    className="rounded-[3px] bg-rescued-50 px-2 py-0.5 font-mono text-[10px] text-rescued-800"
                   >
                     {c}
                   </span>

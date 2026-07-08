@@ -84,7 +84,7 @@ const daysMatch = (a: Set<number>, b: number[]) =>
   a.size === b.length && b.every((d) => a.has(d));
 
 const labelCls =
-  "mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-700";
+  "mb-1.5 block font-mono text-[10px] text-neutral-700";
 const fieldCls =
   "w-full rounded-md border border-neutral-200/60 bg-card px-3 py-2 text-sm " +
   "placeholder:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 " +
@@ -285,7 +285,7 @@ function ScheduleForm({
       <div>
         <label className={labelCls} htmlFor={`rp-notes-${initial?.id ?? "new"}`}>
           Special requests / restraints{" "}
-          <span className="text-neutral-600">(optional)</span>
+          <span className="text-neutral-700">(optional)</span>
         </label>
         <textarea
           id={`rp-notes-${initial?.id ?? "new"}`}
@@ -332,7 +332,7 @@ function ScheduleForm({
             <button
               type="button"
               onClick={onDelete}
-              className="w-full rounded-lg py-1.5 text-center font-mono text-[10px] uppercase tracking-wide text-failed-600 transition-colors hover:bg-failed-50"
+              className="w-full rounded-lg py-1.5 text-center font-mono text-[10px] text-failed-600 transition-colors hover:bg-failed-50"
             >
               Delete this schedule
             </button>
@@ -526,7 +526,7 @@ export function RecurringPostManager({
                                     "grid h-5 w-5 place-items-center rounded-[5px] font-mono text-[10px] leading-none",
                                     on
                                       ? "bg-rescued-100 font-semibold text-rescued-800"
-                                      : "bg-neutral-100 text-neutral-400"
+                                      : "bg-neutral-100 text-neutral-700"
                                   )}
                                 >
                                   {label[0]}
@@ -540,7 +540,7 @@ export function RecurringPostManager({
                           >
                             <Clock className="text-[0.95em]" />
                             {minutesToClock(s.timeOfDay)}
-                            <span className="text-neutral-500">·</span>
+                            <span className="text-neutral-700">·</span>
                             {s.servings} servings
                           </span>
                         </div>
@@ -588,7 +588,7 @@ export function RecurringPostManager({
                           title="Remove"
                           className={cn(
                             actionBtnBase,
-                            "border-neutral-200 bg-neutral-50 text-neutral-600 hover:border-failed-200 hover:bg-failed-50 hover:text-failed-600"
+                            "border-neutral-200 bg-neutral-50 text-neutral-700 hover:border-failed-200 hover:bg-failed-50 hover:text-failed-600"
                           )}
                         >
                           <X />
@@ -596,9 +596,9 @@ export function RecurringPostManager({
                       </div>
                     </div>
                     {!s.active && (
-                      <p className="mt-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+                      <p className="mt-2 flex items-center gap-1.5 font-mono text-[10px] text-neutral-700">
                         <Pause className="text-[11px]" />
-                        paused · not generating pickups
+                        Paused · not generating pickups
                       </p>
                     )}
                   </>

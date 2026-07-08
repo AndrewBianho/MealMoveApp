@@ -64,8 +64,8 @@ export default async function RestaurantDetailPage({
 
       {recommendation && (
         <div className="mt-6 rounded-2xl border border-rescued-200 bg-rescued-50 p-5">
-          <p className="font-mono text-[10px] uppercase tracking-wide text-rescued-800">
-            recommended drop-off
+          <p className="font-mono text-[10px] text-rescued-800">
+            Recommended drop-off
           </p>
           <p className="mt-1.5 text-sm text-rescued-800">
             <Link

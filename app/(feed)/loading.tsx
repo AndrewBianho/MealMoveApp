@@ -23,7 +23,7 @@ export default function Loading() {
         <FilterPillSkeleton className="w-36" />
         <FilterPillSkeleton className="w-56" />
       </div>
-      <div className="flex flex-col gap-[18px] lg:max-w-2xl" aria-hidden="true">
+      <div className="flex flex-col gap-6 lg:max-w-2xl" aria-hidden="true">
         <ListingCardSkeleton />
         <ListingCardSkeleton />
         <ListingCardSkeleton />

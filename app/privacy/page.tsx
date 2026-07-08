@@ -44,7 +44,7 @@ function Section({
 export default function PrivacyPage() {
   return (
     <main className="mx-auto max-w-[72ch] px-6 py-12">
-      <p className="font-mono text-xs uppercase tracking-wide text-neutral-600">
+      <p className="font-mono text-xs text-neutral-700">
         last updated {EFFECTIVE_DATE}
       </p>
       <h1 className="mt-2 text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">
@@ -235,7 +235,7 @@ export default function PrivacyPage() {
       <div className="mt-12 border-t border-neutral-900/10 pt-6">
         <Link
           href="/"
-          className="-mx-1.5 -my-2 inline-flex items-center gap-1.5 rounded px-1.5 py-2 font-mono text-[11px] uppercase tracking-wide text-rescued-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
+          className="-mx-1.5 -my-2 inline-flex items-center gap-1.5 rounded px-1.5 py-2 font-mono text-[11px] text-rescued-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
         >
           <span aria-hidden>←</span> back to Meal Move
         </Link>

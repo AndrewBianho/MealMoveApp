@@ -91,12 +91,12 @@ export function FirstRescueTracker({
         type="button"
         onClick={dismiss}
         aria-label="Dismiss first-rescue guide"
-        className="absolute right-3.5 top-3.5 rounded-full p-1.5 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+        className="absolute right-3.5 top-3.5 rounded-full p-1.5 text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
       >
         <X className="h-4 w-4" />
       </button>
 
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-rescued-50 px-2.5 py-1 font-mono text-[11px] uppercase tracking-wide text-rescued-800">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-rescued-50 px-2.5 py-1 font-mono text-[13px] text-rescued-800">
         <span className="h-1.5 w-1.5 rounded-full bg-rescued-600" aria-hidden />
         first rescue
       </span>
@@ -107,7 +107,7 @@ export function FirstRescueTracker({
       >
         Your first rescue
       </h2>
-      <p className="mt-1 max-w-prose text-[15px] leading-relaxed text-neutral-700">
+      <p className="mt-1 max-w-prose text-[16px] leading-relaxed text-neutral-700">
         {line}
       </p>
 
@@ -127,21 +127,21 @@ export function FirstRescueTracker({
               <div className="flex flex-col items-center gap-2 text-center">
                 <span
                   className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded-full font-mono text-xs font-bold transition-colors",
+                    "flex h-8 w-8 items-center justify-center rounded-full font-mono text-[13px] font-bold transition-colors",
                     done && "bg-rescued-600 text-white",
                     current &&
                       "bg-urgent-50 text-urgent-800 ring-2 ring-urgent-400 motion-safe:animate-pulse",
-                    !done && !current && "bg-neutral-100 text-neutral-500"
+                    !done && !current && "bg-neutral-100 text-neutral-700"
                   )}
                 >
                   {done ? <CheckIcon className="h-4 w-4" /> : i + 1}
                 </span>
                 <span
                   className={cn(
-                    "max-w-[5.5rem] font-mono text-[11px] leading-tight sm:max-w-none",
+                    "max-w-[5.5rem] font-mono text-[13px] leading-tight sm:max-w-none",
                     done && "text-neutral-700",
                     current && "font-semibold text-neutral-900",
-                    !done && !current && "text-neutral-500"
+                    !done && !current && "text-neutral-700"
                   )}
                 >
                   {done ? s.verb.toLowerCase() : s.label}
@@ -169,7 +169,7 @@ export function FirstRescueTracker({
         <Link
           href={`/listings/${active.listingId}`}
           className={cn(
-            "mt-5 inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-sm font-bold transition-all duration-200",
+            "mt-5 inline-flex items-center gap-2 rounded-2xl px-5 py-2.5 text-[16px] font-bold transition-all duration-200",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50",
             "hover:-translate-y-0.5 hover:shadow-lift active:translate-y-0 active:scale-[0.98]",
             primaryFill

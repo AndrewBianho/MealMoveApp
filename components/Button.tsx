@@ -31,7 +31,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "rounded-2xl px-5 py-2.5 text-sm font-bold transition-all duration-200",
+        "rounded-2xl px-6 py-3 text-[16px] font-bold transition-all duration-200",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50",
         "active:translate-y-0 active:scale-[0.98] disabled:hover:translate-y-0",
         VARIANTS[variant],

@@ -13,7 +13,7 @@ export function SectionHeading({
         {title}
       </h2>
       {count != null && (
-        <span className="font-mono text-[11px] tabular-nums text-neutral-600">
+        <span className="font-mono text-[11px] tabular-nums text-neutral-700">
           {count}
         </span>
       )}

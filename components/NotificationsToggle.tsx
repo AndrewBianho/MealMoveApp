@@ -52,7 +52,7 @@ export function NotificationsToggle({ initialEnabled }: { initialEnabled: boolea
       {error && <p className="mt-2 text-sm text-failed-600">{error}</p>}
       {enabled && !error && (
         <p className="mt-2 font-mono text-[11px] text-neutral-700">
-          notifications on
+          Notifications on
         </p>
       )}
     </div>

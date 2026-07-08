@@ -328,7 +328,7 @@ export function ListingsMap({
         const popup = new mapboxgl.Popup({ offset: 16, closeButton: false }).setHTML(
           `<div style="font-family:var(--font-sans),system-ui,sans-serif;">
             <div style="font-family:var(--font-display),Georgia,serif;font-size:15px;font-weight:600;color:rgb(var(--n-900));">${escapeHtml(d.name)}</div>
-            <div style="color:rgb(var(--n-600));font-family:var(--font-mono),monospace;font-size:10px;letter-spacing:.05em;text-transform:uppercase;margin-top:2px;">drop-off</div>
+            <div style="color:rgb(var(--n-700));font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:.02em;margin-top:2px;">Drop-off</div>
           </div>`
         );
         el.addEventListener("click", () => onSelectRef.current?.(d.id));

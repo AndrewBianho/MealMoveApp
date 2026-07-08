@@ -154,7 +154,7 @@ export function PickupTimelineCard({
 
       {/* Body */}
       <div className="flex min-w-0 flex-1 flex-col p-5 sm:p-6">
-        <h3 className="font-display text-[22px] font-medium leading-[1.18] tracking-tight text-balance sm:text-[24px]">
+        <h3 className="font-display text-[24px] font-medium leading-[1.18] tracking-tight text-balance sm:text-[24px]">
           <Link
             href={`/listings/${id}`}
             className="rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
@@ -163,8 +163,8 @@ export function PickupTimelineCard({
           </Link>
         </h3>
 
-        <p className="mt-2 flex items-center gap-1.5 text-[13.5px] font-medium text-neutral-500">
-          <MapPin className="text-[0.95em] text-neutral-400" />
+        <p className="mt-2 flex items-center gap-1.5 text-[15px] font-medium text-neutral-700">
+          <MapPin className="text-[0.95em] text-neutral-700" />
           {source}
           <span className="text-neutral-300">·</span>
           <span className="font-mono">
@@ -175,8 +175,8 @@ export function PickupTimelineCard({
         {route && (
           <p
             className={cn(
-              "mt-2.5 flex items-center gap-1.5 text-[13px] font-semibold",
-              terminal ? "text-neutral-500" : heldOvernight ? "text-transit-800" : "text-clay-800"
+              "mt-2.5 flex items-center gap-1.5 text-[15px] font-semibold",
+              terminal ? "text-neutral-700" : heldOvernight ? "text-transit-800" : "text-clay-800"
             )}
           >
             <ArrowRight className="shrink-0 text-[1.05em]" />
@@ -196,7 +196,7 @@ export function PickupTimelineCard({
                 key={name}
                 className={cn(
                   "min-h-[12px] flex-1 text-center font-mono text-[10.5px] font-bold tabular-nums",
-                  i <= progress ? "text-neutral-900" : "text-neutral-400"
+                  i <= progress ? "text-neutral-900" : "text-neutral-700"
                 )}
               >
                 {i <= progress ? stamp(times[i]) : ""}
@@ -254,12 +254,12 @@ export function PickupTimelineCard({
               <div
                 key={name}
                 className={cn(
-                  "flex-1 text-center text-[11px] font-semibold leading-tight",
+                  "flex-1 text-center text-[13px] font-semibold leading-tight",
                   i <= progress
                     ? "text-neutral-700"
                     : !terminal && i === progress + 1
-                      ? "text-neutral-600"
-                      : "text-neutral-400"
+                      ? "text-neutral-700"
+                      : "text-neutral-700"
                 )}
               >
                 {name}
@@ -268,8 +268,8 @@ export function PickupTimelineCard({
           </div>
 
           {heldOvernight && (
-            <p className="mt-2 text-center font-mono text-[11px] text-transit-800">
-              held overnight{deliverByLabel ? ` · deliver by ${deliverByLabel}` : ""}
+            <p className="mt-2 text-center font-mono text-[13px] text-transit-800">
+              Held overnight{deliverByLabel ? ` · deliver by ${deliverByLabel}` : ""}
             </p>
           )}
         </div>
@@ -282,7 +282,7 @@ export function PickupTimelineCard({
             <Link
               href={`/listings/${id}`}
               className={cn(
-                "block w-full rounded-2xl px-4 py-2 text-center text-[13px] font-bold transition-all duration-200",
+                "block w-full rounded-2xl px-4 py-2 text-center text-[15px] font-bold transition-all duration-200",
                 "bg-gradient-to-b from-rescued-400 to-rescued-600 text-white shadow-glow hover:-translate-y-0.5 hover:shadow-lift",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50"
               )}
@@ -290,12 +290,12 @@ export function PickupTimelineCard({
               {actionLabel}
             </Link>
           ) : delivered ? (
-            <p className="flex items-center justify-center gap-2 rounded-2xl bg-rescued-50 px-4 py-2.5 text-[13px] font-semibold text-rescued-800">
+            <p className="flex items-center justify-center gap-2 rounded-2xl bg-rescued-50 px-4 py-2.5 text-[15px] font-semibold text-rescued-800">
               <Check className="h-3.5 w-3.5" />
               Delivered — thank you
             </p>
           ) : (
-            <p className="flex items-center justify-center gap-2 rounded-2xl bg-neutral-100 px-4 py-2.5 text-[13px] font-medium text-neutral-600">
+            <p className="flex items-center justify-center gap-2 rounded-2xl bg-neutral-100 px-4 py-2.5 text-[15px] font-medium text-neutral-700">
               {status === "expired"
                 ? "This one closed before it could be rescued."
                 : "This one didn't make it — thanks for trying."}

@@ -30,13 +30,13 @@ export function SafetyChecklist({
     <div className="mb-3 animate-fade-in rounded-xl border border-neutral-200/60 bg-card p-4">
       <div className="mb-2 flex items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold">
+          <p className="text-[16px] font-semibold">
             Quick food-safety check
-            <span className="ml-2 font-mono text-[11px] font-normal text-neutral-500 tabular-nums">
+            <span className="ml-2 font-mono text-[13px] font-normal text-neutral-700 tabular-nums">
               {confirmed}/{SAFETY_QUESTIONS.length} confirmed
             </span>
           </p>
-          <p className="text-[13px] text-neutral-700">
+          <p className="text-[15px] text-neutral-700">
             Tick what applies — it travels with the pickup.
           </p>
         </div>
@@ -44,7 +44,7 @@ export function SafetyChecklist({
           type="button"
           onClick={() => setDismissed(true)}
           aria-label="Dismiss safety checklist"
-          className="rounded-full p-1 text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+          className="rounded-full p-1 text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
         >
           <X />
         </button>
@@ -57,7 +57,7 @@ export function SafetyChecklist({
             <li key={q.key}>
               <label
                 className={cn(
-                  "flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors",
+                  "flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-1.5 text-[16px] transition-colors",
                   checked ? "bg-rescued-50 text-rescued-800" : "hover:bg-neutral-100"
                 )}
               >

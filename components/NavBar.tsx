@@ -215,7 +215,7 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
 
       {/* Desktop: user + sign out */}
       <div className="ml-auto hidden items-center gap-2.5 md:flex">
-        <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+        <span className="font-mono text-[10px] text-neutral-700">
           {roleLabel}
         </span>
         <Link
@@ -330,7 +330,7 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
                 <div className="truncate font-display text-base font-semibold text-neutral-900">
                   {name}
                 </div>
-                <div className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+                <div className="font-mono text-[10px] text-neutral-700">
                   {roleLabel}
                 </div>
               </div>

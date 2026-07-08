@@ -130,13 +130,13 @@ export function ChatPanel({
 
   return (
     <div className="rounded-2xl border border-neutral-200/40 bg-card p-5 shadow-card">
-      <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+      <p className="mb-3 font-mono text-[13px] text-neutral-700">
         Coordination chat
       </p>
 
       <div ref={listRef} className="mb-3 max-h-72 space-y-3 overflow-y-auto">
         {messages.length === 0 ? (
-          <p className="text-[13px] text-neutral-700">
+          <p className="text-[15px] text-neutral-700">
             No messages yet. Say hello — the restaurant and drop-off can see this
             too.
           </p>
@@ -149,16 +149,16 @@ export function ChatPanel({
                 className={cn("flex flex-col", mine ? "items-end" : "items-start")}
               >
                 <div className="mb-0.5 flex items-baseline gap-1.5">
-                  <span className="text-[13px] font-semibold text-neutral-900">
+                  <span className="text-[15px] font-semibold text-neutral-900">
                     {mine ? "You" : m.senderName}
                   </span>
-                  <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+                  <span className="font-mono text-[13px] text-neutral-700">
                     {ROLE_LABEL[m.senderRole]} · {clock(m.createdAt)}
                   </span>
                 </div>
                 <p
                   className={cn(
-                    "max-w-[85%] rounded-2xl px-3 py-2 text-[13px]",
+                    "max-w-[85%] rounded-2xl px-3 py-2 text-[15px]",
                     mine
                       ? "bg-rescued-50 text-rescued-800"
                       : "bg-neutral-50 text-neutral-900"
@@ -178,25 +178,25 @@ export function ChatPanel({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Message the restaurant and drop-off…"
-            className="min-w-0 flex-1 rounded-full border border-neutral-200 bg-card px-4 py-2 text-[13px] outline-none focus:border-rescued-400 focus:ring-2 focus:ring-rescued-200"
+            className="min-w-0 flex-1 rounded-full border border-neutral-200 bg-card px-4 py-2 text-[15px] outline-none focus:border-rescued-400 focus:ring-2 focus:ring-rescued-200"
           />
           <button
             type="submit"
             disabled={sending || !draft.trim()}
             className={cn(
               primaryFill,
-              "rounded-full px-4 py-2 text-[13px] font-bold transition-all hover:-translate-y-0.5 disabled:opacity-50"
+              "rounded-full px-4 py-2 text-[15px] font-bold transition-all hover:-translate-y-0.5 disabled:opacity-50"
             )}
           >
             Send
           </button>
         </form>
       ) : (
-        <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+        <p className="font-mono text-[13px] text-neutral-700">
           Conversation closed
         </p>
       )}
-      {error && <p className="mt-1.5 text-[12px] text-failed-600">{error}</p>}
+      {error && <p className="mt-1.5 text-[14px] text-failed-600">{error}</p>}
     </div>
   );
 }

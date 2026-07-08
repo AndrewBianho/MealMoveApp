@@ -26,16 +26,16 @@ export function NearbyVolunteers({
     return (
       <p
         className={cn(
-          "flex items-center gap-1.5 font-sans text-[13px]",
+          "flex items-center gap-1.5 font-sans text-[15px]",
           some ? "text-rescued-800" : "text-neutral-700",
           className
         )}
       >
-        <Users className={some ? "text-rescued-600" : "text-neutral-500"} />
+        <Users className={some ? "text-rescued-600" : "text-neutral-700"} />
         {some ? (
           <span>
             <span className="font-mono font-semibold tabular-nums">{count}</span> active
-            nearby
+            Nearby
           </span>
         ) : (
           <span>none nearby yet — a longer window helps</span>
@@ -52,11 +52,11 @@ export function NearbyVolunteers({
         className
       )}
     >
-      <p className="flex items-center gap-2 text-sm font-semibold">
-        <Users className={some ? "text-rescued-600" : "text-neutral-500"} />
+      <p className="flex items-center gap-2 text-[16px] font-semibold">
+        <Users className={some ? "text-rescued-600" : "text-neutral-700"} />
         {some ? `${label} active nearby right now.` : "No volunteers nearby right now."}
       </p>
-      <p className="mt-1 text-xs leading-relaxed text-neutral-700">
+      <p className="mt-1 text-[13px] leading-relaxed text-neutral-700">
         {some
           ? "Good chance someone claims this soon after you post."
           : "Posting a longer pickup window — or trying again a little later — gives more people a chance to claim it."}

@@ -59,7 +59,7 @@ function InfoChip({ tone, children }: { tone: ChipTone; children: ReactNode }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wide",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] font-medium",
         CHIP_FILL[tone]
       )}
     >
@@ -1223,7 +1223,7 @@ export function RescueMap({
           {/* Address inputs */}
           <div className="grid gap-2">
         <div>
-          <label className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+          <label className="mb-1 block font-mono text-[10px] text-neutral-700">
             Your location
           </label>
           <div className="flex gap-2">
@@ -1260,8 +1260,8 @@ export function RescueMap({
           </button>
         </div>
         <div>
-          <label className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-neutral-700">
-            Final destination <span className="text-neutral-600">(optional)</span>
+          <label className="mb-1 block font-mono text-[10px] text-neutral-700">
+            Final destination <span className="text-neutral-700">(optional)</span>
           </label>
           <div className="flex gap-2">
             <input
@@ -1303,7 +1303,7 @@ export function RescueMap({
           color on a raised chip = shown; greyed pin + dashed outline + struck
           label = hidden. */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-mono text-[10px] text-neutral-700">show on map</span>
+        <span className="font-mono text-[10px] text-neutral-700">Show on map</span>
         {(
           [
             { kind: "rest", label: "Pickups", on: showRest, color: PICKUP, glyph: GLYPH_REST },
@@ -1445,8 +1445,8 @@ export function RescueMap({
                             {o.name}
                           </span>
                           {o.recommended && (
-                            <span className="mt-1 inline-flex w-fit items-center rounded-full bg-clay-50 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide text-clay-800">
-                              fastest
+                            <span className="mt-1 inline-flex w-fit items-center rounded-full bg-clay-50 px-1.5 py-0.5 font-mono text-[9px] text-clay-800">
+                              Fastest
                             </span>
                           )}
                         </span>
@@ -1547,7 +1547,7 @@ export function RescueMap({
                             <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1 1 2 2 2h3Zm0 0v7" />
                           </svg>
                         </span>
-                        <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+                        <span className="font-mono text-[10px] text-neutral-700">
                           Pickup
                         </span>
                       </div>
@@ -1586,7 +1586,7 @@ export function RescueMap({
                             <path d="M12 22V12" />
                           </svg>
                         </span>
-                        <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+                        <span className="font-mono text-[10px] text-neutral-700">
                           Drop-off
                         </span>
                       </div>

@@ -63,7 +63,7 @@ export function TeamPanel({
 
   return (
     <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
-      <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+      <p className="font-mono text-[10px] text-neutral-700">
         {title} · {members.length}
       </p>
       {description && (
@@ -87,7 +87,7 @@ export function TeamPanel({
       </ul>
 
       {demo ? (
-        <p className="rounded-md bg-neutral-100 px-3 py-2 font-mono text-[11px] text-neutral-600">
+        <p className="rounded-md bg-neutral-100 px-3 py-2 font-mono text-[11px] text-neutral-700">
           demo — inviting teammates is disabled
         </p>
       ) : (
@@ -113,7 +113,7 @@ export function TeamPanel({
 
       {invites.length > 0 && (
         <div className="mt-3">
-          <p className="mb-1.5 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+          <p className="mb-1.5 font-mono text-[10px] text-neutral-700">
             Pending
           </p>
           <ul className="space-y-1">

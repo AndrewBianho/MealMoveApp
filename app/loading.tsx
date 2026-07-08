@@ -15,7 +15,7 @@ export default function Loading() {
         <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2.4" />
         <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
       </svg>
-      <p className="mt-4 font-mono text-xs uppercase tracking-wide text-neutral-500">loading</p>
+      <p className="mt-4 font-mono text-xs text-neutral-700">Loading</p>
       <span className="sr-only">Loading…</span>
     </main>
   );

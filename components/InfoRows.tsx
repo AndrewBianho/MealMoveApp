@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { cn } from "./cn";
+import { capitalize } from "@/lib/text";
 
 export interface InfoRow {
-  /** Mono micro-label (sentence/lower-case; rendered uppercase). */
+  /** Mono micro-label, authored lower-case; rendered sentence case. */
   label: string;
   value: ReactNode;
 }
@@ -29,13 +30,13 @@ export function InfoRows({
         <div key={r.label} className="flex items-baseline gap-3 py-2">
           <dt
             className={cn(
-              "shrink-0 font-mono text-[10px] uppercase tracking-wide text-neutral-500",
+              "shrink-0 font-mono text-[13px] text-neutral-700",
               labelClassName ?? "w-[4.5rem]"
             )}
           >
-            {r.label}
+            {capitalize(r.label)}
           </dt>
-          <dd className="min-w-0 flex-1 text-[13px] font-medium text-neutral-800">
+          <dd className="min-w-0 flex-1 text-[15px] font-medium text-neutral-800">
             {r.value}
           </dd>
         </div>

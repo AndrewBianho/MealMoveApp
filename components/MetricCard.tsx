@@ -1,5 +1,6 @@
 import { CountUp } from "./CountUp";
 import { cn } from "./cn";
+import { capitalize } from "@/lib/text";
 
 // The earthy ramps a stat can wear. Color-codes the value + a soft corner glow
 // so a grid of metrics reads with energy and a little wayfinding, instead of a
@@ -59,8 +60,8 @@ export function MetricCard({
       <div className={cn("relative font-display text-4xl font-semibold leading-none", a.value)}>
         <CountUp value={value} />
       </div>
-      <div className="relative mt-2 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
-        {label}
+      <div className="relative mt-2 font-mono text-[13px] text-neutral-700">
+        {capitalize(label)}
       </div>
     </div>
   );

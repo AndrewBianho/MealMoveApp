@@ -208,13 +208,13 @@ export function ImageUploadField({
   }
 
   const btn =
-    "inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-semibold transition-all disabled:opacity-50";
+    "inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-[15px] font-semibold transition-all disabled:opacity-50";
 
   return (
     <div>
-      <span className="mb-1.5 block font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+      <span className="mb-1.5 block font-mono text-[13px] text-neutral-700">
         {label}{" "}
-        {optional && <span className="text-neutral-600">(optional)</span>}
+        {optional && <span className="text-neutral-700">(optional)</span>}
       </span>
 
       {preview ? (
@@ -243,7 +243,7 @@ export function ImageUploadField({
           )}
         >
           {busy ? (
-            <span className="text-[13px] text-neutral-700">Uploading…</span>
+            <span className="text-[15px] text-neutral-700">Uploading…</span>
           ) : (
             <div className="flex gap-2">
               <button
@@ -272,11 +272,11 @@ export function ImageUploadField({
       )}
 
       {hint && !error && !queued && (
-        <p className="mt-1.5 text-[12px] text-neutral-700">{hint}</p>
+        <p className="mt-1.5 text-[14px] text-neutral-700">{hint}</p>
       )}
-      {error && <p className="mt-1.5 text-[12px] text-failed-600">{error}</p>}
+      {error && <p className="mt-1.5 text-[14px] text-failed-600">{error}</p>}
       {queued && (
-        <p className="mt-1.5 flex items-center gap-1.5 text-[12px] text-urgent-700">
+        <p className="mt-1.5 flex items-center gap-1.5 text-[14px] text-urgent-700">
           <span aria-hidden="true">⏳</span>
           Saved — we&apos;ll upload it when you&apos;re back online. Your pickup is
           safe.

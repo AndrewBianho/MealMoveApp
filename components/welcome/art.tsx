@@ -215,7 +215,7 @@ function ClaimArt() {
           {done ? (
             <>
               <Check className="h-3 w-3" />
-              rescued
+              Rescued
             </>
           ) : (
             <>
@@ -331,8 +331,8 @@ function TeamArt() {
   return (
     <Panel className="bg-neutral-100">
       <div className="w-52 rounded-2xl bg-card p-3.5 shadow-card">
-        <p className="mb-2.5 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
-          your team
+        <p className="mb-2.5 font-mono text-[10px] text-neutral-700">
+          Your team
         </p>
         <div className="space-y-2">
           {members.map((m, idx) => (
@@ -359,8 +359,8 @@ function TeamArt() {
             <span className="grid h-8 w-8 place-items-center rounded-full border border-dashed border-clay-400 text-clay-600">
               <span className="text-base leading-none">+</span>
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-urgent-50 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wide text-urgent-800">
-              invite sent
+            <span className="inline-flex items-center gap-1 rounded-full bg-urgent-50 px-2 py-0.5 font-mono text-[9px] text-urgent-800">
+              Invite sent
             </span>
           </div>
         </div>

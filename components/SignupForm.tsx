@@ -172,7 +172,7 @@ export function SignupForm() {
         heading="You're all set"
         message="Welcome to Meal Move — taking you to your dashboard…"
       >
-        <p className="mt-5 text-sm">
+        <p className="mt-5 text-[16px]">
           <BackToSignIn />
         </p>
       </SuccessPanel>
@@ -192,16 +192,16 @@ export function SignupForm() {
         <h2 className="mt-4 font-display text-2xl font-bold text-neutral-900">
           Thanks — you&apos;re almost in
         </h2>
-        <p className="mx-auto mt-1.5 max-w-[36ch] text-[15px] leading-relaxed text-neutral-700">
+        <p className="mx-auto mt-1.5 max-w-[36ch] text-[16px] leading-relaxed text-neutral-700">
           {ROLE_LABEL[role]} accounts are confirmed by an org admin before they go
           live. We&apos;ll email{" "}
-          <span className="font-mono text-[13px] text-neutral-900">
+          <span className="font-mono text-[15px] text-neutral-900">
             {email.trim().toLowerCase()}
           </span>{" "}
           once <span className="font-semibold text-neutral-900">{orgName}</span> is
           approved — then you can sign in and get started.
         </p>
-        <p className="mt-5 text-sm">
+        <p className="mt-5 text-[16px]">
           <BackToSignIn />
         </p>
       </div>
@@ -214,7 +214,7 @@ export function SignupForm() {
 
   return (
     <>
-      <p className="font-mono text-[11px] uppercase tracking-wide text-neutral-700">
+      <p className="font-mono text-[13px] text-neutral-700">
         Step {step + 1} of {TOTAL}
       </p>
       <div
@@ -235,7 +235,7 @@ export function SignupForm() {
       <h1 className="mt-5 font-display text-[26px] font-bold leading-tight tracking-tight text-neutral-900">
         {TITLES.title}
       </h1>
-      <p className="mb-5 mt-1.5 text-[15px] leading-relaxed text-neutral-700">
+      <p className="mb-5 mt-1.5 text-[16px] leading-relaxed text-neutral-700">
         {TITLES.sub}
       </p>
 
@@ -257,7 +257,7 @@ export function SignupForm() {
                 value={phone}
                 onChange={setPhone}
               />
-              <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-neutral-700">
+              <p className="mt-1.5 font-mono text-[13px] leading-relaxed text-neutral-700">
                 Only used to coordinate pickups — never shared with admins.
               </p>
             </div>
@@ -358,7 +358,7 @@ export function SignupForm() {
         </Button>
       </div>
 
-      <p className="mt-5 text-center text-sm text-neutral-700">
+      <p className="mt-5 text-center text-[16px] text-neutral-700">
         Already have an account?{" "}
         <Link href="/login" className="-mx-1 -my-2 inline-block px-1 py-2 font-bold text-rescued-600 hover:underline">
           Sign in
@@ -420,7 +420,7 @@ function RoleStep({ role, onPick }: { role: Role; onPick: (r: Role) => void }) {
           >
             <span className="min-w-0 flex-1">
               <span className="block font-semibold text-neutral-900">{r.label}</span>
-              <span className="block text-sm text-neutral-700">{r.blurb}</span>
+              <span className="block text-[16px] text-neutral-700">{r.blurb}</span>
             </span>
             <span
               aria-hidden
@@ -455,7 +455,7 @@ function RoleSpecificStep(props: {
 }) {
   if (props.invite) {
     return (
-      <div className="rounded-md border border-rescued-200 bg-rescued-50 px-4 py-3.5 text-sm leading-relaxed text-rescued-800">
+      <div className="rounded-md border border-rescued-200 bg-rescued-50 px-4 py-3.5 text-[16px] leading-relaxed text-rescued-800">
         You&apos;ve been invited to join{" "}
         <span className="font-semibold">{props.invite.orgName}</span>{" "}
         {props.invite.role === "restaurant" ? "as a restaurant teammate" : "as a drop-off admin"}.
@@ -486,7 +486,7 @@ function RoleSpecificStep(props: {
   return (
     <div>
       <Field id="campus" label="Campus or organization" placeholder="State University" value={props.campus} onChange={props.setCampus} />
-      <p className="mt-1.5 text-[13px] leading-relaxed text-neutral-700">
+      <p className="mt-1.5 text-[15px] leading-relaxed text-neutral-700">
         Optional —{" "}
         <button
           type="button"
@@ -556,22 +556,22 @@ function ReviewStep(props: {
             )}
           >
             <div className="min-w-0 flex-1">
-              <dt className="font-mono text-[11px] uppercase tracking-wide text-neutral-700">
+              <dt className="font-mono text-[13px] text-neutral-700">
                 {r.label}
               </dt>
-              <dd className="mt-0.5 text-[15px] text-neutral-900">{r.value}</dd>
+              <dd className="mt-0.5 text-[16px] text-neutral-900">{r.value}</dd>
             </div>
             <button
               type="button"
               onClick={() => props.onEdit(r.step)}
-              className="shrink-0 text-sm font-semibold text-rescued-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 rounded"
+              className="shrink-0 text-[16px] font-semibold text-rescued-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 rounded"
             >
               Edit
             </button>
           </div>
         ))}
       </dl>
-      <p className="mt-4 text-center text-[13px] leading-relaxed text-neutral-700">
+      <p className="mt-4 text-center text-[15px] leading-relaxed text-neutral-700">
         By creating an account you agree to our{" "}
         <Link
           href="/privacy"
@@ -641,11 +641,11 @@ function ToggleRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-neutral-800">{title}</span>
-          <span className="rounded-full bg-rescued-100 px-2 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wide text-rescued-800">
+          <span className="rounded-full bg-rescued-100 px-2 py-0.5 font-mono text-[13px] font-bold text-rescued-800">
             Recommended
           </span>
         </div>
-        <p className="mt-0.5 text-sm text-neutral-700">{desc}</p>
+        <p className="mt-0.5 text-[16px] text-neutral-700">{desc}</p>
       </div>
       <button
         type="button"

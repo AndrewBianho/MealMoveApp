@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { cn } from "./cn";
 import { PickupTimelineCard } from "./PickupTimelineCard";
 import { EmptyState } from "./EmptyState";
+import { capitalize } from "@/lib/text";
 import type { Listing, ListingStatus } from "@/lib/types";
 
 const STATUS_ORDER: ListingStatus[] = [
@@ -90,18 +91,18 @@ export function PickupSections({
                 aria-pressed={isActive}
                 onClick={() => setFilter(c.value)}
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold transition-colors duration-150",
+                  "inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[14px] font-semibold transition-colors duration-150",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",
                   isActive
                     ? "bg-neutral-900 text-neutral-50"
                     : "border border-neutral-200 bg-card text-neutral-700 hover:shadow-card"
                 )}
               >
-                {c.label}
+                {capitalize(c.label)}
                 <span
                   className={cn(
-                    "font-mono text-[11px]",
-                    isActive ? "text-neutral-50/60" : "text-neutral-500"
+                    "font-mono text-[13px]",
+                    isActive ? "text-neutral-50/60" : "text-neutral-700"
                   )}
                 >
                   {c.count}
@@ -113,7 +114,7 @@ export function PickupSections({
       )}
 
       {shown.length > 0 ? (
-        <div className="flex flex-col gap-[18px]">
+        <div className="flex flex-col gap-6">
           {shown.map((l, i) => (
             <PickupTimelineCard
               key={l.id}
@@ -124,7 +125,7 @@ export function PickupSections({
           ))}
         </div>
       ) : (
-        <p className="rounded-3xl border border-neutral-200/70 bg-card px-5 py-14 text-center text-[15px] font-medium text-neutral-500">
+        <p className="rounded-3xl border border-neutral-200/70 bg-card px-5 py-14 text-center text-[16px] font-medium text-neutral-700">
           No pickups in this stage right now.
         </p>
       )}

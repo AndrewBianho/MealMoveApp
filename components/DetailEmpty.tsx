@@ -17,7 +17,7 @@ export function DetailNotFound({ label }: { label: string }) {
         <p className="text-sm text-neutral-700">{label}</p>
         <Link
           href="/map"
-          className="mt-4 inline-flex items-center gap-1.5 rounded-full px-1 font-mono text-[11px] uppercase tracking-wide text-rescued-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
+          className="mt-4 inline-flex items-center gap-1.5 rounded-full px-1 font-mono text-[11px] text-rescued-600 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
         >
           <span aria-hidden>←</span> back to the map
         </Link>

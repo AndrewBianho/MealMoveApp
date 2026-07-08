@@ -71,8 +71,8 @@ export function DropOffNoticeManager({
   return (
     <div className="mt-3 border-t border-neutral-200/40 pt-3">
       <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
-          service notices
+        <span className="font-mono text-[10px] text-neutral-700">
+          Service notices
         </span>
         {!open && (
           <button
@@ -92,7 +92,7 @@ export function DropOffNoticeManager({
               className="flex items-start justify-between gap-2 rounded-xl bg-urgent-50 px-3 py-2 text-urgent-800"
             >
               <div className="min-w-0">
-                <div className="font-mono text-[10px] uppercase tracking-wide text-urgent-800/80">
+                <div className="font-mono text-[10px] text-urgent-800/80">
                   {NOTICE_KIND_LABEL[n.kind]}
                   {n.until && <span> · until {untilLabel(n.until)}</span>}
                 </div>
@@ -120,7 +120,7 @@ export function DropOffNoticeManager({
                 type="button"
                 onClick={() => setKind(k)}
                 className={cn(
-                  "rounded-full px-3 py-1 font-mono text-[10px] uppercase tracking-wide transition-colors",
+                  "rounded-full px-3 py-1 font-mono text-[10px] transition-colors",
                   kind === k
                     ? "bg-neutral-900 text-neutral-50"
                     : "bg-card text-neutral-700 hover:text-neutral-900"
@@ -138,7 +138,7 @@ export function DropOffNoticeManager({
             className={fieldCls}
           />
           <label className="block">
-            <span className="mb-1 block font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+            <span className="mb-1 block font-mono text-[10px] text-neutral-700">
               clears after (optional)
             </span>
             <input

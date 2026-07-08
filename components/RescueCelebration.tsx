@@ -34,7 +34,7 @@ function HarvestStat({ value, label }: { value: string; label: string }) {
         value={value}
         className="font-display text-2xl font-semibold text-neutral-900"
       />
-      <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+      <p className="mt-0.5 font-mono text-[13px] text-neutral-700">
         {label}
       </p>
     </div>
@@ -104,7 +104,7 @@ export function RescueCelebration({
       </div>
 
       <div className="relative w-full max-w-md rounded-3xl bg-card p-8 text-center shadow-lift animate-fade-up">
-        <p className="inline-flex items-center gap-1.5 rounded-full bg-rescued-50 px-3 py-1 font-mono text-[10px] uppercase tracking-wide text-rescued-800">
+        <p className="inline-flex items-center gap-1.5 rounded-full bg-rescued-50 px-3 py-1 font-mono text-[13px] text-rescued-800">
           <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-rescued-600" />
           rescue complete
         </p>
@@ -119,7 +119,7 @@ export function RescueCelebration({
           </span>
         </h2>
 
-        <p className="mt-3 flex items-center justify-center gap-1.5 font-sans text-[13px] text-neutral-700">
+        <p className="mt-3 flex items-center justify-center gap-1.5 font-sans text-[15px] text-neutral-700">
           <span className="truncate">{source}</span>
           <span className="shrink-0 text-clay-600">
             <ArrowRight />
@@ -127,15 +127,15 @@ export function RescueCelebration({
           <span className="truncate">{dropOff ?? "drop-off"}</span>
         </p>
 
-        <p className="mt-5 text-sm leading-relaxed text-neutral-700">
+        <p className="mt-5 text-[16px] leading-relaxed text-neutral-700">
           {firstRescue
             ? "That was your first rescue — welcome to the crew. Food that was headed for the bin is on its way to plates instead."
             : "Food that was headed for the bin is on its way to plates instead. Thank you for showing up."}
         </p>
 
         <div className="mt-6 border-t border-neutral-200/60 pt-5">
-          <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
-            your harvest so far
+          <p className="mb-3 font-mono text-[13px] text-neutral-700">
+            Your harvest so far
           </p>
           <div className="grid grid-cols-3 gap-2">
             <HarvestStat

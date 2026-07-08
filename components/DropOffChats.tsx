@@ -72,7 +72,7 @@ export function DropOffChats({
                   {t.source}
                   {t.volunteerName && <span> · {t.volunteerName}</span>}
                 </div>
-                <div className="mt-0.5 font-mono text-[10px] uppercase tracking-wide text-neutral-600">
+                <div className="mt-0.5 font-mono text-[10px] text-neutral-700">
                   {t.status}
                 </div>
               </button>

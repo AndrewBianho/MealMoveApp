@@ -27,7 +27,7 @@ export function RestaurantAccuracySummary({
       className={className}
       aria-label="Rescue accuracy"
     >
-      <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+      <p className="font-mono text-[10px] text-neutral-700">
         Rescue accuracy · private
       </p>
 
@@ -59,19 +59,19 @@ export function RestaurantAccuracySummary({
 
           <dl className="mt-3 grid grid-cols-3 gap-2 font-mono text-[12px]">
             <div>
-              <dt className="text-neutral-600">as described</dt>
+              <dt className="text-neutral-700">As described</dt>
               <dd className="text-neutral-900">{data.yes}</dd>
             </div>
             <div>
-              <dt className="text-neutral-600">partly off</dt>
+              <dt className="text-neutral-700">Partly off</dt>
               <dd className="text-neutral-900">{data.partly}</dd>
             </div>
             <div>
-              <dt className="text-neutral-600">not there</dt>
+              <dt className="text-neutral-700">Not there</dt>
               <dd className="text-neutral-900">{data.no}</dd>
             </div>
           </dl>
-          <p className="mt-2 font-mono text-[11px] text-neutral-600">
+          <p className="mt-2 font-mono text-[11px] text-neutral-700">
             {data.total} signal{data.total === 1 ? "" : "s"}
           </p>
         </>

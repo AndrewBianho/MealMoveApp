@@ -46,7 +46,7 @@ export async function Header() {
             <Link
               href="/settings"
               title="You're viewing demo data — change in Settings"
-              className="rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-wide text-neutral-700 transition-colors hover:text-neutral-900"
+              className="rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-1.5 font-mono text-[10px] text-neutral-700 transition-colors hover:text-neutral-900"
             >
               demo data
             </Link>

@@ -82,7 +82,7 @@ export function LoginForm() {
   if (done) {
     return (
       <SuccessPanel heading="You're in" message="Taking you to your pickups…">
-        <p className="mt-5 text-sm">
+        <p className="mt-5 text-[16px]">
           <BackToSignIn />
         </p>
       </SuccessPanel>
@@ -94,7 +94,7 @@ export function LoginForm() {
       <h1 className="font-display text-[30px] font-bold leading-[1.05] tracking-tight text-neutral-900">
         Welcome back
       </h1>
-      <p className="mb-6 mt-1.5 text-[15px] leading-relaxed text-neutral-700">
+      <p className="mb-6 mt-1.5 text-[16px] leading-relaxed text-neutral-700">
         Sign in to claim pickups and track your rescues.
       </p>
 
@@ -122,7 +122,7 @@ export function LoginForm() {
           labelRight={
             <Link
               href="/forgot-password"
-              className="-mx-1.5 -my-2 inline-block px-1.5 py-2 font-mono text-[11px] uppercase tracking-wide text-rescued-600 hover:underline"
+              className="-mx-1.5 -my-2 inline-block px-1.5 py-2 font-mono text-[13px] text-rescued-600 hover:underline"
             >
               Forgot?
             </Link>
@@ -146,7 +146,7 @@ export function LoginForm() {
           >
             {remember && <CheckIcon className="h-3 w-3" />}
           </span>
-          <span className="text-sm text-neutral-800">Remember me</span>
+          <span className="text-[16px] text-neutral-800">Remember me</span>
         </button>
 
         {error && (
@@ -165,7 +165,7 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <p className="mt-5 text-center text-sm text-neutral-700">
+      <p className="mt-5 text-center text-[16px] text-neutral-700">
         New to Meal Move?{" "}
         <Link
           href="/signup"
@@ -176,7 +176,7 @@ export function LoginForm() {
       </p>
 
       <div className="mt-6 border-t border-neutral-200/70 pt-5">
-        <p className="mb-2.5 font-mono text-[11px] uppercase tracking-wide text-neutral-700">
+        <p className="mb-2.5 font-mono text-[13px] text-neutral-700">
           Or try a demo login
         </p>
         <div className="grid grid-cols-2 gap-2.5">
@@ -186,7 +186,7 @@ export function LoginForm() {
               type="button"
               onClick={() => prefillDemo(d.email)}
               className={cn(
-                "rounded-md border border-neutral-200 bg-neutral-50/60 px-3 py-2.5 text-sm font-medium text-neutral-800 transition-colors",
+                "rounded-md border border-neutral-200 bg-neutral-50/60 px-3 py-2.5 text-[16px] font-medium text-neutral-800 transition-colors",
                 "hover:border-rescued-400 hover:bg-rescued-50 hover:text-rescued-800",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
               )}

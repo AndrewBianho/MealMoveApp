@@ -75,9 +75,9 @@ export default async function AdminUsersPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-urgent-200/50 bg-urgent-50/60 text-left">
-                  <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-wide text-urgent-800">Requested by</th>
-                  <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-wide text-urgent-800">Email</th>
-                  <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-wide text-urgent-800">Wants to add</th>
+                  <th className="px-4 py-3 font-mono text-[10px] text-urgent-800">Requested by</th>
+                  <th className="px-4 py-3 font-mono text-[10px] text-urgent-800">Email</th>
+                  <th className="px-4 py-3 font-mono text-[10px] text-urgent-800">Wants to add</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -87,7 +87,7 @@ export default async function AdminUsersPage() {
                     <td className="px-4 py-3">{u.name}</td>
                     <td className="px-4 py-3 font-mono text-xs text-neutral-700">{u.email}</td>
                     <td className="px-4 py-3">
-                      <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+                      <span className="font-mono text-[10px] text-neutral-700">
                         {u.role === "restaurant" ? "restaurant" : "drop-off"}
                       </span>
                       <span className="ml-2 text-neutral-800">{pendingOrgName(u.pendingOrg) ?? "—"}</span>
@@ -107,13 +107,13 @@ export default async function AdminUsersPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-neutral-200/40 bg-neutral-100/60 text-left">
-              <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+              <th className="px-4 py-3 font-mono text-[10px] text-neutral-700">
                 Name
               </th>
-              <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+              <th className="px-4 py-3 font-mono text-[10px] text-neutral-700">
                 Email
               </th>
-              <th className="px-4 py-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+              <th className="px-4 py-3 font-mono text-[10px] text-neutral-700">
                 Role
               </th>
             </tr>
@@ -127,8 +127,8 @@ export default async function AdminUsersPage() {
                   <td className="px-4 py-3">
                     {u.name}
                     {isSelf && (
-                      <span className="ml-1.5 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
-                        you
+                      <span className="ml-1.5 font-mono text-[10px] text-neutral-700">
+                        You
                       </span>
                     )}
                   </td>

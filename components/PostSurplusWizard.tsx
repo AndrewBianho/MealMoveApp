@@ -261,10 +261,10 @@ export function PostSurplusWizard({
       </div>
 
       <div className="mt-3 flex items-baseline justify-between">
-        <span className="font-mono text-[11px] uppercase tracking-wide text-neutral-700">
+        <span className="font-mono text-[11px] text-neutral-700">
           Step {step + 1} of {TOTAL}
         </span>
-        <span className="font-mono text-[11px] uppercase tracking-wide text-rescued-700">
+        <span className="font-mono text-[11px] text-rescued-700">
           {STEP_NAMES[step]}
         </span>
       </div>
@@ -332,7 +332,7 @@ export function PostSurplusWizard({
           <button
             type="button"
             onClick={skip}
-            className="w-full text-center text-sm font-semibold text-neutral-600 hover:text-neutral-900 focus-visible:outline-none focus-visible:underline"
+            className="w-full text-center text-sm font-semibold text-neutral-700 hover:text-neutral-900 focus-visible:outline-none focus-visible:underline"
           >
             Skip for now
           </button>
@@ -398,7 +398,7 @@ function ItemStep({
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[15px] font-semibold text-neutral-900">{p.title}</span>
-                    {p.notes && <span className="block truncate text-[13px] text-neutral-600">{p.notes}</span>}
+                    {p.notes && <span className="block truncate text-[13px] text-neutral-700">{p.notes}</span>}
                   </span>
                   <ChevronRight />
                 </button>
@@ -439,7 +439,7 @@ function QuantityStep({
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[15px] font-semibold text-neutral-900">Cars needed</p>
-              <p className="mt-0.5 text-[13px] text-neutral-600">
+              <p className="mt-0.5 text-[13px] text-neutral-700">
                 {isAuto ? (weight > 0 ? "Suggested from the weight" : "Add the weight first") : "Manually set"}
               </p>
             </div>
@@ -514,7 +514,7 @@ function DetailsStep({
             value={allergens}
             onChange={(e) => setAllergens(e.target.value)}
           />
-          <p className="mt-1.5 text-[11px] text-neutral-600">Comma-separated — shown to volunteers.</p>
+          <p className="mt-1.5 text-[11px] text-neutral-700">Comma-separated — shown to volunteers.</p>
         </div>
         <div>
           <label className={labelCls} htmlFor="special">
@@ -547,14 +547,14 @@ function KeepStep({ value, onChange }: { value: KeepKey; onChange: (v: KeepKey) 
               <span
                 className={cn(
                   "grid h-10 w-10 shrink-0 place-items-center rounded-xl",
-                  selected ? "bg-rescued-100 text-rescued-700" : "bg-neutral-100 text-neutral-600"
+                  selected ? "bg-rescued-100 text-rescued-700" : "bg-neutral-100 text-neutral-700"
                 )}
               >
                 <Icon />
               </span>
               <span className="min-w-0">
                 <span className="block text-[15px] font-semibold text-neutral-900">{k.label}</span>
-                <span className="block text-[13px] text-neutral-600">{k.hint}</span>
+                <span className="block text-[13px] text-neutral-700">{k.hint}</span>
               </span>
             </RadioRow>
           );
@@ -592,11 +592,11 @@ function ReviewStep({
       <StepHeading title="Ready to post?" />
       <div className="rounded-2xl border border-neutral-200 bg-card p-5">
         <p className="font-display text-[21px] font-medium leading-tight text-neutral-900">{title || "Untitled"}</p>
-        <p className="mt-1 text-[13.5px] text-neutral-600">{source}</p>
+        <p className="mt-1 text-[13.5px] text-neutral-700">{source}</p>
         <dl className="mt-4 space-y-2.5">
           {rows.map(([k, v]) => (
             <div key={k} className="flex items-baseline justify-between gap-4">
-              <dt className="font-mono text-[11px] uppercase tracking-wide text-neutral-600">{k}</dt>
+              <dt className="font-mono text-[11px] text-neutral-700">{k}</dt>
               <dd className="text-right text-[14px] font-semibold text-neutral-900">{v}</dd>
             </div>
           ))}
@@ -650,7 +650,7 @@ function SuccessScreen({
 function Row({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <dt className="font-mono text-[11px] uppercase tracking-wide text-neutral-600">{k}</dt>
+      <dt className="font-mono text-[11px] text-neutral-700">{k}</dt>
       <dd className="text-right text-[14px] font-semibold text-neutral-900">{v}</dd>
     </div>
   );
@@ -771,7 +771,7 @@ function ChevronLeft() {
 }
 function ChevronRight() {
   return (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 text-neutral-400">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 text-neutral-700">
       <path d="m9 18 6-6-6-6" />
     </svg>
   );

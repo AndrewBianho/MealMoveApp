@@ -14,7 +14,7 @@ export function OpenNowBadge({ hours }: { hours: RetrievalHours | null }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide",
+        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[13px]",
         open ? "bg-rescued-50 text-rescued-800" : "bg-neutral-100 text-neutral-700"
       )}
     >
@@ -34,20 +34,20 @@ export function OpenNowBadge({ hours }: { hours: RetrievalHours | null }) {
 export function RetrievalHoursDisplay({ hours }: { hours: RetrievalHours | null }) {
   if (!hours) {
     return (
-      <p className="text-xs italic text-neutral-700">Retrieval hours not set yet.</p>
+      <p className="text-[13px] italic text-neutral-700">Retrieval hours not set yet.</p>
     );
   }
   return (
     <div>
       <div className="mb-1 flex items-center gap-2">
-        <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
-          retrieval hours
+        <p className="font-mono text-[13px] text-neutral-700">
+          Retrieval hours
         </p>
         <OpenNowBadge hours={hours} />
       </div>
       <ul className="space-y-0.5">
         {DAY_KEYS.map((d) => (
-          <li key={d} className="flex justify-between gap-4 font-mono text-xs">
+          <li key={d} className="flex justify-between gap-4 font-mono text-[13px]">
             <span className="text-neutral-700">{DAY_LABELS[d]}</span>
             <span className="text-neutral-700">{formatDay(hours[d])}</span>
           </li>

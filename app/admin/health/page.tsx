@@ -36,7 +36,7 @@ function Metric({
         {value}
       </div>
       <div className="mt-2 text-sm font-semibold">{label}</div>
-      <div className="mt-1 font-mono text-[11px] text-neutral-600">{caption}</div>
+      <div className="mt-1 font-mono text-[11px] text-neutral-700">{caption}</div>
     </div>
   );
 }

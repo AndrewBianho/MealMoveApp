@@ -6,6 +6,7 @@ import { StatusBadge } from "./StatusBadge";
 import { NearbyVolunteers } from "./NearbyVolunteers";
 import { InfoRows } from "./InfoRows";
 import { formatTimeLeft } from "@/lib/time";
+import { capitalize } from "@/lib/text";
 import type { Listing } from "@/lib/types";
 
 export type ListingCardAudience = "volunteer" | "restaurant" | "dropoff";
@@ -41,7 +42,7 @@ const DEFAULT_IMAGE = "/mealmovelogo.jpg";
 // (<10) · closed (spent) · taken home (deferred).
 function urgency(listing: Listing) {
   if (SPENT.includes(listing.status)) {
-    return { text: "text-neutral-600", word: "closed", minutes: null, held: true };
+    return { text: "text-neutral-700", word: "closed", minutes: null, held: true };
   }
   if (listing.status === "taken home") {
     return { text: "text-transit-800", word: "taken home", minutes: null, held: true };
@@ -96,12 +97,12 @@ export function ListingCard({
   // word stays for clarity. Calm neutral metadata, never competing with urgency.
   const handling = tempHandling
     ? tempHandling === "hot"
-      ? { icon: Flame, label: "keep hot" }
+      ? { icon: Flame, label: "Keep hot" }
       : tempHandling === "cold"
-        ? { icon: Snowflake, label: "keep cold" }
-        : { icon: Box, label: "shelf-stable" }
+        ? { icon: Snowflake, label: "Keep cold" }
+        : { icon: Box, label: "Shelf-stable" }
     : perishable
-      ? { icon: Clock, label: "perishable" }
+      ? { icon: Clock, label: "Perishable" }
       : null;
 
   // Audience tuning: the source line is redundant for a restaurant (it's them);
@@ -119,20 +120,20 @@ export function ListingCard({
   const statusLine = scheduled ? (
     <span
       aria-label={recurrence ? `recurs ${recurrence}` : `available ${availableLabel}`}
-      className="font-mono text-[12px] font-semibold text-clay-800"
+      className="font-mono text-[14px] font-semibold text-clay-800"
     >
       {recurrence ? (
-        <span>recurs {recurrence}</span>
+        <span>Recurs {recurrence}</span>
       ) : (
-        <span className="tabular-nums">available {availableLabel}</span>
+        <span className="tabular-nums">Available {availableLabel}</span>
       )}
     </span>
   ) : (
     <span
       aria-label={spent ? "closed" : u.held ? u.word : `${u.word}, ${formatTimeLeft(minutesLeft, { long: true })} left`}
-      className={cn("font-mono text-[12px] font-semibold", u.text)}
+      className={cn("font-mono text-[14px] font-semibold", u.text)}
     >
-      <span>{u.word}</span>
+      <span>{capitalize(u.word)}</span>
       {u.minutes != null && <span className="tabular-nums"> · {formatTimeLeft(u.minutes)}</span>}
     </span>
   );
@@ -175,10 +176,10 @@ export function ListingCard({
       </Link>
 
       {/* Body — one quiet stack: status · title · source · facts · action. */}
-      <div className="flex min-w-0 flex-1 flex-col justify-center p-5 sm:p-6">
+      <div className="flex min-w-0 flex-1 flex-col justify-center p-6 sm:p-7">
         <div className="mb-2.5">{statusLine}</div>
 
-        <h3 className="font-display text-[22px] font-medium leading-[1.18] tracking-tight text-balance sm:text-[25px]">
+        <h3 className="font-display text-[24px] font-medium leading-[1.18] tracking-tight text-balance sm:text-[27px]">
           <Link
             href={`/listings/${id}`}
             className="rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
@@ -188,14 +189,14 @@ export function ListingCard({
         </h3>
 
         {showSource && (
-          <p className="mt-2 flex items-center gap-1.5 text-[13.5px] font-medium text-neutral-500">
-            <MapPin className="text-[0.95em] text-neutral-400" />
+          <p className="mt-2 flex items-center gap-1.5 text-[15px] font-medium text-neutral-700">
+            <MapPin className="text-[0.95em] text-neutral-700" />
             {sourceLabel}
           </p>
         )}
 
         {/* Decision facts — one mono line; only the numbers carry weight + ink. */}
-        <p className="mt-3.5 font-mono text-[14px] font-medium text-neutral-600">
+        <p className="mt-3.5 font-mono text-[15px] font-medium text-neutral-700">
           <span className="font-bold text-neutral-900">{servings}</span> servings
           {showDistance && (
             <>
@@ -246,14 +247,14 @@ export function ListingCard({
           <InfoRows
             className="mt-3"
             rows={[
-              ...(category ? [{ label: "food", value: category }] : []),
+              ...(category ? [{ label: "food", value: capitalize(category) }] : []),
               ...(handling
                 ? [
                     {
                       label: "handling",
                       value: (
                         <span className="inline-flex items-center gap-1.5">
-                          <handling.icon className="text-[0.95em] text-neutral-400" />
+                          <handling.icon className="text-[0.95em] text-neutral-700" />
                           {handling.label}
                         </span>
                       ),
@@ -265,7 +266,7 @@ export function ListingCard({
         )}
 
         {dropOff && showRoute && (
-          <p className="mt-2 flex items-center gap-1.5 text-[13px] text-clay-800">
+          <p className="mt-2 flex items-center gap-1.5 text-[15px] text-clay-800">
             <ArrowRight className="text-clay-400" />
             {dropOff}
           </p>
@@ -283,7 +284,7 @@ export function ListingCard({
             scheduled one; otherwise the live status + who has it. */}
         <div className="mt-5">
           {scheduled ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-clay-50 px-3 py-1 font-mono text-[11px] uppercase tracking-wide text-clay-800">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-clay-50 px-3 py-1 font-mono text-[13px] text-clay-800">
               <Clock className="text-[0.95em]" />
               opens {availableLabel}
             </span>
@@ -291,7 +292,7 @@ export function ListingCard({
             <Link
               href={`/listings/${id}`}
               className={cn(
-                "flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-5 py-2.5 text-sm font-bold text-neutral-50 shadow-card transition-all duration-200",
+                "flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-5 py-2.5 text-[16px] font-bold text-neutral-50 shadow-card transition-all duration-200",
                 "hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-lift active:translate-y-0 active:scale-[0.98]",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50"
               )}
@@ -303,12 +304,12 @@ export function ListingCard({
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <StatusBadge status={status} />
               {buddyName && (
-                <span className="rounded-full bg-rescued-50 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-rescued-800">
+                <span className="rounded-full bg-rescued-50 px-2 py-0.5 font-mono text-[13px] text-rescued-800">
                   +1 buddy
                 </span>
               )}
               {claimedBy && (
-                <span className="truncate text-[13px] text-neutral-500">by {claimedBy}</span>
+                <span className="truncate text-[15px] text-neutral-700">by {claimedBy}</span>
               )}
             </div>
           )}

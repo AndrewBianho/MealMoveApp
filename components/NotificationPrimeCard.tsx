@@ -39,18 +39,18 @@ export function NotificationPrimeCard({ onDone }: { onDone?: () => void }) {
 
   return (
     <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
-      <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+      <p className="mb-2 font-mono text-[13px] text-neutral-700">
         Stay in the loop
       </p>
       <p className="font-display text-lg text-neutral-900">
         Want a nudge before pickup?
       </p>
-      <p className="mt-1 text-[13px] text-neutral-700">
+      <p className="mt-1 text-[15px] text-neutral-700">
         We&apos;ll remind you when it&apos;s time to grab this food and head out — so
         it&apos;s one less thing to remember. You can turn this off anytime.
       </p>
       {note ? (
-        <p className="mt-3 text-[13px] text-neutral-700">{note}</p>
+        <p className="mt-3 text-[15px] text-neutral-700">{note}</p>
       ) : (
         <div className="mt-4 flex gap-2">
           <Button variant="primary" className="flex-1" onClick={enable} disabled={busy}>

@@ -27,7 +27,7 @@ export function EmptyState({
       )}
       <p className="text-base font-medium text-neutral-800">{title}</p>
       {hint && (
-        <p className="mx-auto mt-1.5 max-w-xs font-mono text-xs leading-relaxed text-neutral-700">
+        <p className="mx-auto mt-1.5 max-w-xs font-mono text-[13px] leading-relaxed text-neutral-700">
           {hint}
         </p>
       )}

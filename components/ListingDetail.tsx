@@ -111,7 +111,7 @@ function ProofPhoto({ label, url }: { label: string; url: string }) {
       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl">
         <Image src={url} alt={`Food ${label}`} fill sizes="200px" className="object-cover" />
       </div>
-      <figcaption className="mt-1 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+      <figcaption className="mt-1 font-mono text-[13px] text-neutral-700">
         {label}
       </figcaption>
     </figure>
@@ -128,8 +128,8 @@ function MetaRow({
   className?: string;
 }) {
   return (
-    <p className={cn("flex items-center gap-2 font-sans text-[13px] text-neutral-700", className)}>
-      <span className="text-neutral-600">{icon}</span>
+    <p className={cn("flex items-center gap-2 font-sans text-[15px] text-neutral-700", className)}>
+      <span className="text-neutral-700">{icon}</span>
       {children}
     </p>
   );
@@ -228,13 +228,13 @@ export function ListingDetail({
   if (!listing) {
     return (
       <div className="rounded-xl border border-dashed border-neutral-200 bg-card px-6 py-16 text-center">
-        <p className="text-sm text-neutral-700">This listing isn&apos;t available.</p>
-        <p className="mt-1 font-mono text-xs text-neutral-700">
+        <p className="text-[16px] text-neutral-700">This listing isn&apos;t available.</p>
+        <p className="mt-1 font-mono text-[13px] text-neutral-700">
           It may have been removed.
         </p>
         <Link
           href="/"
-          className="mt-4 inline-block text-sm font-medium text-rescued-600 hover:underline"
+          className="mt-4 inline-block text-[16px] font-medium text-rescued-600 hover:underline"
         >
           ← Back to the feed
         </Link>
@@ -402,7 +402,7 @@ export function ListingDetail({
     >
       <Link
         href="/"
-        className="-mx-1.5 mb-2 inline-block rounded px-1.5 py-2 text-sm text-neutral-700 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+        className="-mx-1.5 mb-2 inline-block rounded px-1.5 py-2 text-[16px] text-neutral-700 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
       >
         ← Feed
       </Link>
@@ -415,10 +415,10 @@ export function ListingDetail({
 
       {incomingInvite && !listing.mine && onClaimActive && (
         <div className="mb-4 rounded-xl border border-rescued-200 bg-rescued-50 p-5">
-          <p className="font-mono text-[10px] uppercase tracking-wide text-rescued-800">
+          <p className="font-mono text-[13px] text-rescued-800">
             Buddy invite
           </p>
-          <p className="mt-1 text-sm text-rescued-800">
+          <p className="mt-1 text-[16px] text-rescued-800">
             <span className="font-medium">{incomingInvite.inviterName}</span>{" "}
             invited you to buddy this pickup — do it together so neither of you
             has to flake.
@@ -461,7 +461,7 @@ export function ListingDetail({
               key={step}
               className={cn(
                 "min-h-[12px] flex-1 text-center font-mono text-[10.5px] font-bold tabular-nums",
-                !terminal && i <= currentStep ? "text-neutral-900" : "text-neutral-400"
+                !terminal && i <= currentStep ? "text-neutral-900" : "text-neutral-700"
               )}
             >
               {i <= currentStep ? stepStamp(stepTimes[i]) : ""}
@@ -518,12 +518,12 @@ export function ListingDetail({
             <div
               key={step}
               className={cn(
-                "flex-1 text-center text-[11px] font-semibold leading-tight",
+                "flex-1 text-center text-[13px] font-semibold leading-tight",
                 !terminal && i <= currentStep
                   ? "text-neutral-700"
                   : !terminal && i === currentStep + 1
-                    ? "text-neutral-600"
-                    : "text-neutral-400"
+                    ? "text-neutral-700"
+                    : "text-neutral-700"
               )}
             >
               {STEP_LABEL[step]}
@@ -531,8 +531,8 @@ export function ListingDetail({
           ))}
         </div>
         {heldOvernight && (
-          <p className="mt-2 text-center font-mono text-[11px] text-transit-800">
-            held overnight{deliverByLabel ? ` · deliver by ${deliverByLabel}` : ""}
+          <p className="mt-2 text-center font-mono text-[13px] text-transit-800">
+            Held overnight{deliverByLabel ? ` · deliver by ${deliverByLabel}` : ""}
           </p>
         )}
       </div>
@@ -583,8 +583,8 @@ export function ListingDetail({
                 <p className="font-display text-[30px] font-semibold leading-none text-rescued-600">
                   ~{listing.servings}
                 </p>
-                <p className="mt-2 font-mono text-[10px] uppercase tracking-wide text-neutral-500">
-                  servings
+                <p className="mt-2 font-mono text-[13px] text-neutral-700">
+                  Servings
                 </p>
               </div>
               <div className="w-px self-stretch bg-neutral-200/70" />
@@ -593,7 +593,7 @@ export function ListingDetail({
                   className={cn(
                     "font-display text-[30px] font-semibold leading-none tabular-nums",
                     terminal
-                      ? "text-neutral-500"
+                      ? "text-neutral-700"
                       : listing.minutesLeft < 10
                         ? "text-failed-600"
                         : listing.minutesLeft < 35
@@ -603,8 +603,8 @@ export function ListingDetail({
                 >
                   {terminal ? "—" : formatTimeLeft(listing.minutesLeft)}
                 </p>
-                <p className="mt-2 font-mono text-[10px] uppercase tracking-wide tabular-nums text-neutral-500">
-                  {terminal ? "closed" : "left"} · {listing.expiresAt}
+                <p className="mt-2 font-mono text-[13px] tabular-nums text-neutral-700">
+                  {terminal ? "Closed" : "Left"} · {listing.expiresAt}
                 </p>
               </div>
             </div>
@@ -625,13 +625,13 @@ export function ListingDetail({
                         value: (
                           <span className="inline-flex items-center gap-1.5">
                             {listing.tempHandling === "hot" ? (
-                              <Flame className="text-[0.95em] text-neutral-400" />
+                              <Flame className="text-[0.95em] text-neutral-700" />
                             ) : listing.tempHandling === "cold" ? (
-                              <Snowflake className="text-[0.95em] text-neutral-400" />
+                              <Snowflake className="text-[0.95em] text-neutral-700" />
                             ) : (
-                              <Box className="text-[0.95em] text-neutral-400" />
+                              <Box className="text-[0.95em] text-neutral-700" />
                             )}
-                            keep {TEMP_LABEL[listing.tempHandling]}
+                            Keep {TEMP_LABEL[listing.tempHandling]}
                           </span>
                         ),
                       },
@@ -653,14 +653,14 @@ export function ListingDetail({
                   value: (
                     <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       {listing.dropOff ?? (
-                        <span className="font-normal text-neutral-500">
+                        <span className="font-normal text-neutral-700">
                           chosen when you claim
                         </span>
                       )}
                       {listing.dropOffHours && (
                         <>
                           <OpenNowBadge hours={listing.dropOffHours} />
-                          <span className="font-mono text-xs font-normal text-neutral-600">
+                          <span className="font-mono text-[13px] font-normal text-neutral-700">
                             today {formatDay(listing.dropOffHours[currentDayKey()])}
                           </span>
                         </>
@@ -684,7 +684,7 @@ export function ListingDetail({
               ]}
             />
             {listing.allergens?.length ? (
-              <p className="mt-1.5 text-[12px] text-neutral-600">
+              <p className="mt-1.5 text-[14px] text-neutral-700">
                 Contains allergens — handle and label with care.
               </p>
             ) : null}
@@ -698,7 +698,7 @@ export function ListingDetail({
                   <span aria-hidden className="mt-px text-urgent-800">
                     ⚠
                   </span>
-                  <p className="text-[13px] leading-relaxed text-urgent-800">
+                  <p className="text-[15px] leading-relaxed text-urgent-800">
                     {listing.dropOff ?? "The drop-off"} is closed right now.
                     Message them to confirm, or keep it safe at home if no one
                     answers.
@@ -722,10 +722,10 @@ export function ListingDetail({
 
             {listing.notes && (
               <div className="mt-5 border-t border-neutral-200/60 pt-4">
-                <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
-                  special requests
+                <span className="font-mono text-[13px] text-neutral-700">
+                  Special requests
                 </span>
-                <p className="mt-1.5 whitespace-pre-line text-sm leading-relaxed text-neutral-700">
+                <p className="mt-1.5 whitespace-pre-line text-[16px] leading-relaxed text-neutral-700">
                   {listing.notes}
                 </p>
               </div>
@@ -734,7 +734,7 @@ export function ListingDetail({
             {terminal && (
               <div
                 className={cn(
-                  "mt-5 rounded-md px-4 py-3 text-sm",
+                  "mt-5 rounded-md px-4 py-3 text-[16px]",
                   listing.status === "expired"
                     ? "bg-neutral-50 text-neutral-800"
                     : "bg-failed-50 text-failed-800"
@@ -748,16 +748,16 @@ export function ListingDetail({
 
             {(listing.photoAtPickupUrl || listing.photoAtDeliveryUrl) && (
               <div className="mt-5">
-                <p className="mb-2 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+                <p className="mb-2 font-mono text-[13px] text-neutral-700">
                   Proof photos
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   {listing.photoAtPickupUrl && (
-                    <ProofPhoto label="at pickup" url={listing.photoAtPickupUrl} />
+                    <ProofPhoto label="At pickup" url={listing.photoAtPickupUrl} />
                   )}
                   {listing.photoAtDeliveryUrl && (
                     <ProofPhoto
-                      label="at delivery"
+                      label="At delivery"
                       url={listing.photoAtDeliveryUrl}
                     />
                   )}
@@ -771,12 +771,12 @@ export function ListingDetail({
         <aside className="space-y-6">
           {!terminal && (
             <div className="rounded-2xl border border-neutral-200/40 bg-card p-5">
-              <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+              <p className="mb-3 font-mono text-[13px] text-neutral-700">
                 Next step
               </p>
               {listing.status === "open" &&
                 (canClaim && activeElsewhere ? (
-                  <div className="rounded-xl bg-neutral-100 px-4 py-3 text-sm text-neutral-700">
+                  <div className="rounded-xl bg-neutral-100 px-4 py-3 text-[16px] text-neutral-700">
                     <p>
                       One rescue at a time — you&apos;re already on{" "}
                       <span className="font-medium text-neutral-900">
@@ -786,7 +786,7 @@ export function ListingDetail({
                     </p>
                     <Link
                       href={`/listings/${activeElsewhere.listingId}`}
-                      className="mt-2 inline-flex items-center gap-1 text-[13px] font-semibold text-clay-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+                      className="mt-2 inline-flex items-center gap-1 text-[15px] font-semibold text-clay-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
                     >
                       Go to your current pickup
                       <ArrowRight className="text-[1.05em]" />
@@ -796,12 +796,12 @@ export function ListingDetail({
                   <>
                     {needsDropOff && (
                       <div id="dropoff-picker" className="mb-4">
-                        <p className="mb-2.5 text-[13px] text-neutral-700">
+                        <p className="mb-2.5 text-[15px] text-neutral-700">
                           First, pick where you&apos;ll take it — every rescue
                           starts with a destination.
                         </p>
                         {dropOffChoices.length === 0 ? (
-                          <p className="rounded-xl bg-neutral-100 px-4 py-3 text-sm text-neutral-700">
+                          <p className="rounded-xl bg-neutral-100 px-4 py-3 text-[16px] text-neutral-700">
                             No drop-off can take this food right now — check
                             back soon.
                           </p>
@@ -824,13 +824,13 @@ export function ListingDetail({
                                   )}
                                 >
                                   <span className="flex items-center justify-between gap-3">
-                                    <span className="text-sm font-medium text-neutral-900">
+                                    <span className="text-[16px] font-medium text-neutral-900">
                                       {d.name}
                                     </span>
                                     <span
                                       aria-hidden
                                       className={cn(
-                                        "grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[10px]",
+                                        "grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[13px]",
                                         sel
                                           ? "border-rescued-600 bg-rescued-600 text-white"
                                           : "border-neutral-200 bg-card text-transparent"
@@ -839,13 +839,13 @@ export function ListingDetail({
                                       ✓
                                     </span>
                                   </span>
-                                  <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] text-neutral-700">
+                                  <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[13px] text-neutral-700">
                                     <span className="tabular-nums">
                                       {d.miles.toFixed(1)} mi from pickup
                                     </span>
                                     {i === 0 && (
-                                      <span className="rounded-full bg-rescued-100 px-2 py-0.5 text-[10px] uppercase tracking-wide text-rescued-800">
-                                        nearest
+                                      <span className="rounded-full bg-rescued-100 px-2 py-0.5 text-[13px] text-rescued-800">
+                                        Nearest
                                       </span>
                                     )}
                                     {d.retrievalHours && (
@@ -859,7 +859,7 @@ export function ListingDetail({
                                     )}
                                   </span>
                                   {d.notes && (
-                                    <span className="mt-1 block text-[12px] text-neutral-600">
+                                    <span className="mt-1 block text-[14px] text-neutral-700">
                                       {d.notes}
                                     </span>
                                   )}
@@ -871,7 +871,7 @@ export function ListingDetail({
                       </div>
                     )}
                     {!needsDropOff && listing.dropOff && (
-                      <p className="mb-3 text-[13px] text-neutral-700">
+                      <p className="mb-3 text-[15px] text-neutral-700">
                         Delivering to{" "}
                         <span className="font-medium text-neutral-900">
                           {listing.dropOff}
@@ -888,13 +888,13 @@ export function ListingDetail({
                       Claim pickup
                     </Button>
                     {needsDropOff && !chosenDropOff && dropOffChoices.length > 0 && (
-                      <p className="mt-2 text-center font-mono text-[11px] text-neutral-600">
-                        choose a drop-off above to claim
+                      <p className="mt-2 text-center font-mono text-[13px] text-neutral-700">
+                        Choose a drop-off above to claim
                       </p>
                     )}
                   </>
                 ) : (
-                  <p className="rounded-xl bg-neutral-100 px-4 py-3 text-sm text-neutral-700">
+                  <p className="rounded-xl bg-neutral-100 px-4 py-3 text-[16px] text-neutral-700">
                     Org admins oversee rescues — claiming is for volunteers.
                   </p>
                 ))}
@@ -912,7 +912,7 @@ export function ListingDetail({
                     />
                   </>
                 ) : (
-                  <p className="text-sm text-neutral-700">
+                  <p className="text-[16px] text-neutral-700">
                     Waiting for {listing.claimedBy ?? "the volunteer"} to pick up
                     and start delivery.
                   </p>
@@ -925,10 +925,10 @@ export function ListingDetail({
                         <Car />
                       </span>
                       <div>
-                        <p className="text-sm font-semibold text-rescued-800">
+                        <p className="text-[16px] font-semibold text-rescued-800">
                           You&apos;re on the way
                         </p>
-                        <p className="mt-0.5 text-[13px] leading-relaxed text-neutral-700">
+                        <p className="mt-0.5 text-[15px] leading-relaxed text-neutral-700">
                           Head to {listing.dropOff ?? "the drop-off"} — follow
                           the route on the map.
                           {dropOffOpen === false &&
@@ -946,10 +946,10 @@ export function ListingDetail({
                     />
                     {confirmTakeHome ? (
                       <div className="mt-3 animate-fade-in rounded-md bg-transit-50 px-4 py-3">
-                        <p className="text-sm font-medium text-transit-800">
+                        <p className="text-[16px] font-medium text-transit-800">
                           Take it home for tonight?
                         </p>
-                        <p className="mt-0.5 text-[13px] text-transit-800/80">
+                        <p className="mt-0.5 text-[15px] text-transit-800/80">
                           Keep it chilled and deliver it tomorrow — the rescue
                           still counts, and {listing.dropOff ?? "the drop-off"}{" "}
                           will know it&apos;s coming.
@@ -980,7 +980,7 @@ export function ListingDetail({
                           onClick={() => setConfirmTakeHome(true)}
                           disabled={isPending}
                           className={cn(
-                            "flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-bold transition-all duration-200",
+                            "flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-[16px] font-bold transition-all duration-200",
                             "bg-card text-urgent-800 shadow-[inset_0_0_0_2px_rgb(var(--urgent-200))] hover:-translate-y-0.5 hover:bg-urgent-50",
                             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50 disabled:hover:translate-y-0"
                           )}
@@ -1002,14 +1002,14 @@ export function ListingDetail({
                           </svg>
                           Take it home instead
                         </button>
-                        <p className="mt-1.5 text-center text-[12px] text-neutral-600">
+                        <p className="mt-1.5 text-center text-[14px] text-neutral-700">
                           Drop-off closed? Keep it safe until they reopen.
                         </p>
                       </div>
                     )}
                   </>
                 ) : (
-                  <p className="text-sm text-neutral-700">
+                  <p className="text-[16px] text-neutral-700">
                     {listing.claimedBy ?? "The volunteer"} is on the way to{" "}
                     {listing.dropOff ?? "the drop-off"}.
                   </p>
@@ -1018,10 +1018,10 @@ export function ListingDetail({
                 (listing.mine ? (
                   <>
                     <div className="mb-4 rounded-md bg-transit-50 px-4 py-3">
-                      <p className="text-sm font-medium text-transit-800">
+                      <p className="text-[16px] font-medium text-transit-800">
                         You&apos;re holding this until tomorrow. 🌙
                       </p>
-                      <p className="mt-0.5 text-[13px] text-transit-800/80">
+                      <p className="mt-0.5 text-[15px] text-transit-800/80">
                         Keep it chilled.{" "}
                         {deliverByLabel
                           ? `Aim to drop it at ${listing.dropOff ?? "the drop-off"} by ${deliverByLabel}.`
@@ -1038,7 +1038,7 @@ export function ListingDetail({
                     />
                   </>
                 ) : (
-                  <p className="text-sm text-neutral-700">
+                  <p className="text-[16px] text-neutral-700">
                     {listing.claimedBy ?? "The volunteer"} is holding this
                     overnight and will deliver it to{" "}
                     {listing.dropOff ?? "the drop-off"}{" "}
@@ -1065,7 +1065,7 @@ export function ListingDetail({
                   <p className="mt-3 font-display text-lg font-medium text-neutral-900">
                     Delivered — thank you
                   </p>
-                  <p className="mt-1 text-[13px] text-neutral-700">
+                  <p className="mt-1 text-[15px] text-neutral-700">
                     ~{listing.servings} servings reached{" "}
                     {listing.dropOff ?? "the drop-off"}.
                   </p>
@@ -1087,7 +1087,7 @@ export function ListingDetail({
             <div className="rounded-2xl border border-neutral-200/40 bg-card p-5">
               {listing.buddyName ? (
                 <>
-                  <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+                  <p className="mb-3 font-mono text-[13px] text-neutral-700">
                     Buddies
                   </p>
                   <div className="flex items-center gap-3">
@@ -1095,12 +1095,12 @@ export function ListingDetail({
                       <Avatar name={listing.primaryName} className="border-2 border-white" />
                       <Avatar name={listing.buddyName} className="border-2 border-white" />
                     </span>
-                    <span className="text-sm text-neutral-700">
+                    <span className="text-[16px] text-neutral-700">
                       {listing.mine
                         ? `You + ${listing.iAmBuddy ? listing.primaryName : listing.buddyName}`
                         : `${listing.primaryName} + ${listing.buddyName}`}
-                      <span className="block font-mono text-[11px] text-rescued-600">
-                        on this pickup together
+                      <span className="block font-mono text-[13px] text-rescued-600">
+                        On this pickup together
                       </span>
                     </span>
                   </div>
@@ -1116,21 +1116,21 @@ export function ListingDetail({
                 />
               ) : outgoingInvite ? (
                 <>
-                  <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+                  <p className="mb-3 font-mono text-[13px] text-neutral-700">
                     Buddy
                   </p>
                   <div className="rounded-md bg-urgent-50 px-4 py-3">
-                    <p className="text-sm font-medium text-urgent-800">
+                    <p className="text-[16px] font-medium text-urgent-800">
                       Invite sent to {outgoingInvite.inviteeName}
                     </p>
-                    <p className="mt-0.5 text-[13px] text-urgent-800/80">
+                    <p className="mt-0.5 text-[15px] text-urgent-800/80">
                       Waiting for them to accept.
                     </p>
                     <button
                       type="button"
                       onClick={onCancelInvite}
                       disabled={isPending}
-                      className="mt-2 text-[13px] font-medium text-urgent-800 underline hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 disabled:opacity-50"
+                      className="mt-2 text-[15px] font-medium text-urgent-800 underline hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 disabled:opacity-50"
                     >
                       Cancel invite
                     </button>
@@ -1153,10 +1153,10 @@ export function ListingDetail({
             <div className="border-t border-neutral-200/50 pt-4">
               {confirmCancel ? (
                 <div className="animate-fade-in rounded-md bg-failed-50 px-4 py-3">
-                  <p className="text-sm font-medium text-failed-800">
+                  <p className="text-[16px] font-medium text-failed-800">
                     Cancel this pickup?
                   </p>
-                  <p className="mt-0.5 text-[13px] text-failed-800/80">
+                  <p className="mt-0.5 text-[15px] text-failed-800/80">
                     {listing.iAmBuddy
                       ? "You'll step off — your buddy keeps the pickup."
                       : listing.buddyName
@@ -1187,7 +1187,7 @@ export function ListingDetail({
                   {canInviteBuddy && (
                     <Button
                       variant="secondary"
-                      className="flex flex-1 items-center justify-center gap-2 px-4 py-2 text-[13px]"
+                      className="flex flex-1 items-center justify-center gap-2 px-4 py-2 text-[15px]"
                       onClick={() => setPickerOpen(true)}
                       disabled={isPending}
                     >
@@ -1198,7 +1198,7 @@ export function ListingDetail({
                   {canCancel && (
                     <Button
                       variant="danger"
-                      className="flex-1 px-4 py-2 text-[13px]"
+                      className="flex-1 px-4 py-2 text-[15px]"
                       onClick={() => setConfirmCancel(true)}
                       disabled={isPending}
                     >
@@ -1231,15 +1231,15 @@ export function ListingDetail({
                   straight-line miles (pickup-detail handoff). */}
               {!terminal && listing.dropOff && chosenDropOffPin && (
                 <div className="pointer-events-none absolute left-4 top-4 z-[1] max-w-[280px] rounded-2xl border border-neutral-200/60 bg-card/95 px-4 py-3.5 shadow-card backdrop-blur-sm">
-                  <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-500">
-                    your route{routeMiles != null && ` · ${routeMiles.toFixed(1)} mi`}
+                  <p className="font-mono text-[13px] text-neutral-700">
+                    Your route{routeMiles != null && ` · ${routeMiles.toFixed(1)} mi`}
                   </p>
                   <div className="mt-2.5 flex items-center gap-2.5">
                     <span
                       aria-hidden
                       className="h-[9px] w-[9px] shrink-0 rounded-full bg-rescued-600 ring-[3px] ring-rescued-100"
                     />
-                    <span className="truncate text-[13px] font-semibold text-neutral-800">
+                    <span className="truncate text-[15px] font-semibold text-neutral-800">
                       {listing.source}
                     </span>
                   </div>
@@ -1252,12 +1252,12 @@ export function ListingDetail({
                       aria-hidden
                       className="h-[9px] w-[9px] shrink-0 rounded-full bg-neutral-900"
                     />
-                    <span className="truncate text-[13px] font-semibold text-neutral-800">
+                    <span className="truncate text-[15px] font-semibold text-neutral-800">
                       {listing.dropOff}
                     </span>
                     {dropOffOpen === false && (
-                      <span className="shrink-0 rounded-full bg-urgent-50 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wide text-urgent-800">
-                        closed
+                      <span className="shrink-0 rounded-full bg-urgent-50 px-2 py-0.5 font-mono text-[14px] text-urgent-800">
+                        Closed
                       </span>
                     )}
                   </div>

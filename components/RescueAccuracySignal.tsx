@@ -36,17 +36,17 @@ export function RescueAccuracySignal({
     const label = RESCUE_ACCURACY_OPTIONS.find((o) => o.value === current)?.label;
     return (
       <div className="rounded-2xl border border-neutral-200/60 bg-card p-4">
-        <p className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+        <p className="font-mono text-[13px] text-neutral-700">
           Rescue accuracy
         </p>
-        <p className="mt-1 text-sm text-neutral-800">
+        <p className="mt-1 text-[16px] text-neutral-800">
           Thanks — you marked this <span className="font-semibold">{label?.toLowerCase()}</span>.
           It helps us keep pickups dependable.
         </p>
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="mt-2 font-mono text-[12px] text-clay-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+          className="mt-2 font-mono text-[14px] text-clay-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
         >
           Change answer
         </button>
@@ -56,8 +56,8 @@ export function RescueAccuracySignal({
 
   return (
     <div className="rounded-2xl border border-neutral-200/60 bg-card p-4">
-      <p className="text-sm font-semibold">How was this pickup?</p>
-      <p className="text-[13px] text-neutral-700">
+      <p className="text-[16px] font-semibold">How was this pickup?</p>
+      <p className="text-[15px] text-neutral-700">
         Was the food there and roughly as described? This stays private — it helps the
         chapter, never a public score.
       </p>
@@ -72,7 +72,7 @@ export function RescueAccuracySignal({
               aria-pressed={active}
               onClick={() => setChoice(o.value)}
               className={cn(
-                "rounded-full border-2 px-4 py-2 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",
+                "rounded-full border-2 px-4 py-2 text-[16px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",
                 active
                   ? ACCENT[o.value]
                   : "border-neutral-200 bg-white text-neutral-700 hover:border-neutral-300"
@@ -85,7 +85,7 @@ export function RescueAccuracySignal({
       </div>
 
       <label className="mt-3 block">
-        <span className="font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+        <span className="font-mono text-[13px] text-neutral-700">
           Add a note (optional)
         </span>
         <textarea
@@ -94,7 +94,7 @@ export function RescueAccuracySignal({
           rows={2}
           maxLength={280}
           placeholder="e.g. half the trays were already gone"
-          className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+          className="mt-1 w-full rounded-xl border border-neutral-200 bg-white px-3 py-2 text-[16px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
         />
       </label>
 
@@ -102,7 +102,7 @@ export function RescueAccuracySignal({
         type="button"
         disabled={!choice || pending}
         onClick={() => choice && onSubmit(choice, note)}
-        className="mt-2 rounded-2xl bg-gradient-to-b from-rescued-400 to-rescued-600 px-5 py-2 text-sm font-bold text-white shadow-glow transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+        className="mt-2 rounded-2xl bg-gradient-to-b from-rescued-400 to-rescued-600 px-5 py-2 text-[16px] font-bold text-white shadow-glow transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
       >
         {pending ? "Saving…" : "Send signal"}
       </button>

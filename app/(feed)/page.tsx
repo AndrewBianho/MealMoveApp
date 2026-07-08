@@ -58,7 +58,7 @@ export default async function FeedPage() {
         <h1 className="font-display text-[36px] font-medium leading-[1.05] tracking-tight text-balance">
           Available pickups
         </h1>
-        <p className="mt-2 text-[15px] font-medium text-neutral-600">
+        <p className="mt-2 text-[16px] font-medium text-neutral-700">
           {current
             ? "You've got a rescue in flight — finish it to claim the next one."
             : openNow > 0
@@ -70,11 +70,11 @@ export default async function FeedPage() {
       {current && (
         <section className="mb-8 lg:max-w-2xl">
           <div className="mb-3.5 flex items-center gap-2">
-            <h2 className="text-[15px] font-semibold text-neutral-800">
+            <h2 className="text-[16px] font-semibold text-neutral-800">
               Your current rescue
             </h2>
-            <span className="font-mono text-[11px] text-neutral-500">
-              one at a time
+            <span className="font-mono text-[13px] text-neutral-700">
+              One at a time
             </span>
           </div>
           <PickupTimelineCard listing={current} priorityImage />
@@ -84,17 +84,17 @@ export default async function FeedPage() {
       {invited.length > 0 && (
         <section className="mb-8 lg:max-w-2xl">
           <div className="mb-1 flex items-center gap-2">
-            <h2 className="text-[15px] font-semibold text-neutral-800">
+            <h2 className="text-[16px] font-semibold text-neutral-800">
               Buddy invites
             </h2>
-            <span className="font-mono text-[11px] text-neutral-500">
+            <span className="font-mono text-[13px] text-neutral-700">
               {invited.length}
             </span>
           </div>
-          <p className="mb-3.5 text-sm text-neutral-700">
+          <p className="mb-3.5 text-[16px] text-neutral-700">
             Someone asked you to join their rescue — open one to accept.
           </p>
-          <div className="flex flex-col gap-[18px]">
+          <div className="flex flex-col gap-6">
             {invited.map((l) => (
               <ListingCard key={l.id} listing={l} />
             ))}

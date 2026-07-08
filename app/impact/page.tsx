@@ -82,7 +82,7 @@ export default async function ImpactPage() {
     <main className="mx-auto max-w-[1760px] px-6 py-8">
       <header className="mb-8">
         <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">{heading}</h1>
-        <p className="mt-1 max-w-[72ch] text-sm text-neutral-700">
+        <p className="mt-1 max-w-[72ch] text-[16px] text-neutral-700">
           {restaurant
             ? `What ${restaurant.name} has helped rescue and move into the community.`
             : isVolunteer
@@ -94,8 +94,8 @@ export default async function ImpactPage() {
       {myImpact && (
         <div className="mb-10 max-w-4xl space-y-8">
           <section>
-            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-wide text-neutral-600">
-              your harvest so far
+            <h2 className="mb-3 font-mono text-[13px] text-neutral-700">
+              Your harvest so far
             </h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <MetricCard
@@ -116,8 +116,8 @@ export default async function ImpactPage() {
             </div>
             {myImpact.attempts > 0 && (
               <div className="mt-4 max-w-sm rounded-xl border border-neutral-200/40 bg-card p-5">
-                <p className="mb-3 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
-                  your reliability
+                <p className="mb-3 font-mono text-[13px] text-neutral-700">
+                  Your reliability
                 </p>
                 <ReliabilityMeter
                   name="Completed rescues"
@@ -128,13 +128,13 @@ export default async function ImpactPage() {
           </section>
 
           <section>
-            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-wide text-neutral-600">
-              past pickups
+            <h2 className="mb-3 font-mono text-[13px] text-neutral-700">
+              Past pickups
             </h2>
             {myPast.length > 0 ? (
               <PickupSections active={[]} past={myPast} hadInvites={false} />
             ) : (
-              <p className="text-sm text-neutral-700">
+              <p className="text-[16px] text-neutral-700">
                 No completed pickups yet — your finished rescues will collect
                 here.
               </p>
@@ -148,15 +148,15 @@ export default async function ImpactPage() {
       )}
 
       {loadFailed ? (
-        <div className="mb-10 rounded-2xl border border-neutral-200/60 bg-card p-6 text-sm text-neutral-700 shadow-card">
+        <div className="mb-10 rounded-2xl border border-neutral-200/60 bg-card p-6 text-[16px] text-neutral-700 shadow-card">
           These numbers are taking a moment to load. Refresh the page in a few
           seconds and they&apos;ll be back.
         </div>
       ) : (
         <div className="mb-10 max-w-4xl space-y-8">
           <section>
-            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-wide text-neutral-600">
-              food moved
+            <h2 className="mb-3 font-mono text-[13px] text-neutral-700">
+              Food moved
             </h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {foodMoved.map((s) => (
@@ -165,7 +165,7 @@ export default async function ImpactPage() {
             </div>
           </section>
           <section>
-            <h2 className="mb-3 font-mono text-[11px] uppercase tracking-wide text-neutral-600">
+            <h2 className="mb-3 font-mono text-[13px] text-neutral-700">
               {restaurant ? "your rescue network" : "who's moving it"}
             </h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -180,7 +180,7 @@ export default async function ImpactPage() {
       {isOrgAdmin && !loadFailed && (
         <section>
           <h2 className="mb-1 text-lg font-medium">Volunteer reliability</h2>
-          <p className="mb-4 text-sm text-neutral-700">
+          <p className="mb-4 text-[16px] text-neutral-700">
             A bar and a percentage — never a grade. We surface who needs support,
             not who to shame. Visible to org admins only.
           </p>
@@ -189,14 +189,14 @@ export default async function ImpactPage() {
               {volunteers.map((v) => (
                 <div key={v.id}>
                   <ReliabilityMeter name={v.name} pct={v.reliability} />
-                  <p className="mt-1 font-mono text-[10px] uppercase tracking-wide text-neutral-700">
+                  <p className="mt-1 font-mono text-[13px] text-neutral-700">
                     {v.pickups} {v.pickups === 1 ? "pickup" : "pickups"}
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-neutral-700">
+            <p className="text-[16px] text-neutral-700">
               No pickups yet — reliability appears once volunteers start claiming.
             </p>
           )}

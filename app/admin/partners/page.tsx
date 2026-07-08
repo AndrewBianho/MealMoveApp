@@ -49,7 +49,7 @@ export default async function AdminPartnersPage() {
     return (
       <section className="mb-10">
         <h2 className="mb-3 text-2xl font-semibold">
-          {title} <span className="font-mono text-sm text-neutral-600">{rows.length}</span>
+          {title} <span className="font-mono text-sm text-neutral-700">{rows.length}</span>
         </h2>
         {rows.length === 0 ? (
           <p className="text-sm text-neutral-700">None yet.</p>
@@ -58,7 +58,7 @@ export default async function AdminPartnersPage() {
             {rows.map((r) => (
               <div key={r.id} className="rounded-3xl bg-card p-6 shadow-card">
                 <h3 className="text-lg font-semibold">{r.name}</h3>
-                <p className="font-mono text-[12px] text-neutral-600">{r.address}</p>
+                <p className="font-mono text-[12px] text-neutral-700">{r.address}</p>
                 <OrgNotesPanel entity={entity} id={r.id} initial={toValues(r)} />
               </div>
             ))}
