@@ -41,9 +41,6 @@ type Filter = "all" | "open" | "coming up" | "claimed" | "in transit" | "deliver
 
 const FILTERS: Filter[] = ["all", "open", "coming up", "claimed", "in transit", "delivered"];
 
-type Sort = "closing soon" | "nearest" | "most meals";
-const SORTS: Sort[] = ["closing soon", "nearest", "most meals"];
-
 // Canonical food-type order for the category filter (matches the FoodCategory
 // enum), so the row reads the same way every time regardless of what's posted.
 const CATEGORY_ORDER: FoodCategory[] = [
@@ -95,45 +92,6 @@ function CategoryFilter({
           </button>
         );
       })}
-    </div>
-  );
-}
-
-// Sort lets a volunteer order by their actual constraint — soonest to expire,
-// closest to them, or biggest haul — rather than a single fixed order. "Nearest"
-// needs a shared location; until then it falls back to time order.
-function SortControl({
-  sort,
-  onChange,
-  located,
-}: {
-  sort: Sort;
-  onChange: (s: Sort) => void;
-  located: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="inline-flex rounded-full border border-neutral-200 bg-card p-0.5">
-        {SORTS.map((s) => {
-          const active = s === sort;
-          return (
-            <button
-              key={s}
-              type="button"
-              aria-pressed={active}
-              onClick={() => onChange(s)}
-              title={s === "nearest" && !located ? "Share your location to sort by distance" : undefined}
-              className={cn(
-                "rounded-full px-3 py-1.5 text-[14px] font-semibold transition-colors duration-150",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",
-                active ? "bg-neutral-900 text-neutral-50" : "text-neutral-700 hover:text-neutral-900"
-              )}
-            >
-              {capitalize(s)}
-            </button>
-          );
-        })}
-      </div>
     </div>
   );
 }
@@ -375,19 +333,29 @@ export function ListingFeed({
   canClaim?: boolean;
 }) {
   const [filter, setFilter] = useState<Filter>("open");
-  const [sort, setSort] = useState<Sort>("closing soon");
   const [category, setCategory] = useState<CategoryChoice>("all types");
   const [view, setView] = useState<View>("list");
   // On wide screens (lg+) the list and map sit side by side, so the List/Map
-  // toggle is moot there. Starts false so the server-rendered default is the
-  // single-column list (Mapbox stays out of the bundle until we know we're wide).
+  // toggle is moot there. `phone` (below md) never gets the map at all — the
+  // toggle only shows on tablet (md–lg). Both start false so the server-rendered
+  // default is the single-column list (Mapbox stays out of the bundle until we
+  // know we're wide).
   const [wide, setWide] = useState(false);
+  const [phone, setPhone] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1024px)");
-    const sync = () => setWide(mq.matches);
+    const wideMq = window.matchMedia("(min-width: 1024px)");
+    const phoneMq = window.matchMedia("(max-width: 767px)");
+    const sync = () => {
+      setWide(wideMq.matches);
+      setPhone(phoneMq.matches);
+    };
     sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
+    wideMq.addEventListener("change", sync);
+    phoneMq.addEventListener("change", sync);
+    return () => {
+      wideMq.removeEventListener("change", sync);
+      phoneMq.removeEventListener("change", sync);
+    };
   }, []);
   // "Claimed & closed" is tracking, not browsing — collapsed by default for
   // volunteers (who have a dedicated "My pickups" page), expanded for org admins
@@ -405,17 +373,6 @@ export function ListingFeed({
         ? { ...l, distance: formatMiles(haversineMiles(here, { lat: l.lat, lng: l.lng })) }
         : l
     );
-  }, [listings, here]);
-
-  // Numeric miles per listing, for the "nearest" sort (the card's `distance` is a
-  // formatted string). Empty until a location is shared.
-  const milesById = useMemo(() => {
-    const m: Record<string, number> = {};
-    if (!here) return m;
-    for (const l of listings) {
-      if (l.lat != null && l.lng != null) m[l.id] = haversineMiles(here, { lat: l.lat, lng: l.lng });
-    }
-    return m;
   }, [listings, here]);
 
   const counts = useMemo(() => {
@@ -460,21 +417,15 @@ export function ListingFeed({
     if (activeCategory !== "all types") {
       list = list.filter((l) => l.category === activeCategory);
     }
-    const by =
-      sort === "nearest"
-        ? (a: Listing, b: Listing) =>
-            (milesById[a.id] ?? Infinity) - (milesById[b.id] ?? Infinity)
-        : sort === "most meals"
-          ? (a: Listing, b: Listing) => b.servings - a.servings
-          : (a: Listing, b: Listing) => a.minutesLeft - b.minutesLeft;
+    // Always closing-soonest first — the volunteer's real constraint on
+    // time-sensitive food; spent listings sink to the bottom regardless.
     return [...list].sort((a, b) => {
-      // Spent listings always sink to the bottom, whatever the sort.
       if (isSpent(a.status) !== isSpent(b.status)) {
         return Number(isSpent(a.status)) - Number(isSpent(b.status));
       }
-      return by(a, b);
+      return a.minutesLeft - b.minutesLeft;
     });
-  }, [located, filter, sort, milesById, activeCategory]);
+  }, [located, filter, activeCategory]);
 
   // Split what's shown into three bands so the eye goes to claimable food first.
   const claimable = shown.filter((l) => l.status === "open" && !l.scheduled);
@@ -551,13 +502,9 @@ export function ListingFeed({
             options={FILTERS.map((f) => ({ value: f, label: f, count: counts[f] ?? 0 }))}
             onChange={(v) => setFilter(v as Filter)}
           />
-          <div className="flex items-center gap-3">
-            {(wide || view === "list") && (
-              <SortControl sort={sort} onChange={setSort} located={!!here} />
-            )}
-            {/* Side by side on wide screens, so the toggle only matters below lg. */}
-            {!wide && <ViewToggle view={view} onChange={setView} />}
-          </div>
+          {/* Map rides beside the list on wide (lg+) screens and is hidden
+              entirely on phones, so the toggle only appears on tablet. */}
+          {!wide && !phone && <ViewToggle view={view} onChange={setView} />}
         </div>
         {availableCategories.length >= 2 && (
           <CategoryFilter
@@ -580,7 +527,7 @@ export function ListingFeed({
         </div>
       ) : shown.length === 0 ? (
         emptyState
-      ) : view === "map" ? (
+      ) : !phone && view === "map" ? (
         // Map mirrors the active filters; pins carry their own popups/links.
         <ListingsMap listings={shown} />
       ) : (
