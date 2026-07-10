@@ -47,7 +47,7 @@ export function DeliverySections({
 
       {(!filtering || shownIncoming.length > 0) && (
         <section className="mb-8">
-          <h2 className="mb-4 text-lg font-medium">Incoming</h2>
+          <h3 className="mb-4 text-base font-semibold text-neutral-800">In the process</h3>
           {shownIncoming.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {shownIncoming.map((l) => (
@@ -71,7 +71,7 @@ export function DeliverySections({
 
       {(!filtering || shownArrived.length > 0) && (
         <section>
-          <h2 className="mb-4 text-lg font-medium">Arrived</h2>
+          <h3 className="mb-4 text-base font-semibold text-neutral-800">Arrived</h3>
           {shownArrived.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {shownArrived.map((l) => (

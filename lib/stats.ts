@@ -1,5 +1,10 @@
 import { prisma } from "./prisma";
-import type { ImpactStat, Volunteer, VolunteerImpact } from "./types";
+import type {
+  DropOffDonation,
+  ImpactStat,
+  Volunteer,
+  VolunteerImpact,
+} from "./types";
 
 // Pounds use the restaurant-provided weight when available, falling back to a
 // servings estimate (~0.8 lb/serving) for donations that weren't weighed.
@@ -97,6 +102,88 @@ export async function getRestaurantImpactStats(
     { label: "volunteers helped", value: volunteers.length.toLocaleString() },
     { label: "drop-offs reached", value: dropOffs.length.toLocaleString() },
   ];
+}
+
+// One drop-off's own impact — the same shape as the chapter stats, scoped to
+// food that actually reached this location. Framed as "received" rather than
+// "rescued": this is the destination's side of the same deliveries.
+export async function getDropOffImpactStats(
+  dropOffId: string
+): Promise<ImpactStat[]> {
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+  // Sequential for the same reason as getImpactStats: one pooled connection at a
+  // time keeps the impact surface off the connection-pool ceiling.
+  const delivered = await prisma.foodListing.findMany({
+    where: { dropOffId, status: "delivered" },
+    select: { servings: true, weightLbs: true },
+  });
+  const arrivalsThisWeek = await prisma.pickup.count({
+    where: { deliveredAt: { gte: weekAgo }, listing: { dropOffId } },
+  });
+  const restaurants = await prisma.foodListing.findMany({
+    where: { dropOffId, status: "delivered" },
+    distinct: ["restaurantId"],
+    select: { restaurantId: true },
+  });
+  const volunteers = await prisma.pickup.findMany({
+    where: { deliveredAt: { not: null }, listing: { dropOffId } },
+    distinct: ["volunteerId"],
+    select: { volunteerId: true },
+  });
+
+  const mealsReceived = delivered.reduce((sum, l) => sum + l.servings, 0);
+  const lbsReceived = Math.round(
+    delivered.reduce((sum, l) => sum + (l.weightLbs ?? l.servings * LBS_PER_SERVING), 0)
+  );
+
+  return [
+    { label: "meals received", value: mealsReceived.toLocaleString() },
+    { label: "lbs received", value: lbsReceived.toLocaleString() },
+    { label: "donations received", value: delivered.length.toLocaleString() },
+    { label: "arrivals this week", value: arrivalsThisWeek.toLocaleString() },
+    { label: "partner restaurants", value: restaurants.length.toLocaleString() },
+    { label: "volunteers helped", value: volunteers.length.toLocaleString() },
+  ];
+}
+
+// A drop-off's lifetime record of completed donations — the list behind the
+// Impact stats. All-time (not schedule-scoped like the live feed), newest
+// first, capped so a long-running location's page stays light.
+export async function getDropOffDonations(
+  dropOffId: string,
+  take = 60
+): Promise<DropOffDonation[]> {
+  const rows = await prisma.foodListing.findMany({
+    where: { dropOffId, status: "delivered" },
+    select: {
+      id: true,
+      title: true,
+      servings: true,
+      restaurant: { select: { name: true } },
+      pickups: {
+        where: { deliveredAt: { not: null } },
+        orderBy: { deliveredAt: "desc" },
+        take: 1,
+        select: { deliveredAt: true, volunteer: { select: { name: true } } },
+      },
+    },
+  });
+
+  return rows
+    .map((l) => {
+      const pick = l.pickups[0];
+      return {
+        id: l.id,
+        title: l.title,
+        source: l.restaurant.name,
+        servings: l.servings,
+        deliveredAt: pick?.deliveredAt?.getTime() ?? 0,
+        volunteer: pick?.volunteer?.name ?? undefined,
+      };
+    })
+    .sort((a, b) => b.deliveredAt - a.deliveredAt)
+    .slice(0, take);
 }
 
 // Hours spent on completed rescues, summed from each pickup's claim → delivery

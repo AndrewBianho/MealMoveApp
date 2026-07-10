@@ -19,8 +19,12 @@ const ACCENTS: Record<MetricAccent, { value: string; glow: string }> = {
 // for vanity counts so the status colors keep their urgency meaning.
 const ACCENT_BY_LABEL: Record<string, MetricAccent> = {
   "meals rescued": "rescued",
+  "meals received": "rescued",
   "lbs rescued": "clay",
+  "lbs received": "clay",
   "lbs saved": "clay",
+  "donations received": "rescued",
+  "arrivals this week": "clay",
   "hours driven": "transit",
   "pickups this week": "clay",
   "pickups completed": "clay",

@@ -3,14 +3,17 @@ import { DropOffNotesEditor } from "@/components/DropOffNotesEditor";
 import { DropOffNoticeManager } from "@/components/DropOffNoticeManager";
 import { DropOffChats } from "@/components/DropOffChats";
 import { DropOffConstraintsEditor } from "@/components/DropOffConstraintsEditor";
+import { DropOffImpact } from "@/components/DropOffImpact";
 import { NeedLevelControl } from "@/components/NeedLevelControl";
 import { RetrievalHoursEditor } from "@/components/RetrievalHoursEditor";
 import { TeamPanel } from "@/components/TeamPanel";
 import { getDropOffs } from "@/lib/map";
 import { getListings } from "@/lib/listings";
 import { getActiveNoticesByDropOff } from "@/lib/dropoffNotices";
+import { getDropOffDonations, getDropOffImpactStats } from "@/lib/stats";
 import { isDemo } from "@/lib/mode";
 import { prisma } from "@/lib/prisma";
+import type { DropOffDonation, ImpactStat } from "@/lib/types";
 import { auth } from "@/auth";
 
 export const dynamic = "force-dynamic";
@@ -95,6 +98,17 @@ export default async function DropoffPage() {
 
   const own = !isOrgAdmin ? locations[0] : null;
 
+  // The location's lifetime impact — stats + the record of past donations.
+  // Only the single-location view gets it; org admins have the chapter-wide
+  // /admin/health and /impact surfaces. Fetched sequentially to stay off the
+  // connection-pool ceiling (see lib/stats).
+  let dropOffStats: ImpactStat[] = [];
+  let donations: DropOffDonation[] = [];
+  if (own) {
+    dropOffStats = await getDropOffImpactStats(own.id);
+    donations = await getDropOffDonations(own.id);
+  }
+
   // A drop-off account whose location hasn't been linked yet (shouldn't happen
   // after approval) gets a calm explanation instead of an empty console.
   if (!isOrgAdmin && !own) {
@@ -114,30 +128,16 @@ export default async function DropoffPage() {
 
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">
-      <div className="mb-8 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between lg:gap-10">
-        <header className="lg:pt-1">
-          <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">
-            {isOrgAdmin ? "Drop-off locations" : own!.name}
-          </h1>
-          <p className="mt-1 max-w-md text-sm text-neutral-700">
-            {isOrgAdmin
-              ? "Where rescued food is delivered, and what's inbound to each."
-              : "What you accept, when you're open, and what's on its way to you."}
-          </p>
-        </header>
-
-        {!isOrgAdmin && myDropOffId && (
-          <div className="w-full shrink-0 lg:w-[360px]">
-            <TeamPanel
-              members={members}
-              invites={invites}
-              title="Your team"
-              description="Everyone here manages this drop-off together. Invite a teammate to add another account for this location."
-              demo={demo}
-            />
-          </div>
-        )}
-      </div>
+      <header className="mb-8">
+        <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">
+          {isOrgAdmin ? "Drop-off locations" : own!.name}
+        </h1>
+        <p className="mt-1 max-w-md text-sm text-neutral-700">
+          {isOrgAdmin
+            ? "Where rescued food is delivered, and what's inbound to each."
+            : "What you accept, when you're open, and what's on its way to you."}
+        </p>
+      </header>
 
       {isOrgAdmin ? (
         <section className="mb-8">
@@ -169,9 +169,13 @@ export default async function DropoffPage() {
           </div>
         </section>
       ) : (
-        <section className="mb-8">
-          <h2 className="mb-4 text-lg font-medium">Your location</h2>
-          <div className="grid items-start gap-4 lg:grid-cols-2 lg:gap-6 xl:grid-cols-3">
+        <section className="mb-10">
+          <h2 className="mb-1 text-lg font-medium">About us</h2>
+          <p className="mb-4 max-w-xl text-sm text-neutral-700">
+            What you&apos;re in charge of — your opening times, your team, what
+            you accept, and any notices for volunteers on their way.
+          </p>
+          <div className="grid items-start gap-4 md:grid-cols-2 lg:gap-6">
             <SettingsCard title="What you accept">
               <DropOffConstraintsEditor
                 dropOffId={own!.id}
@@ -184,10 +188,19 @@ export default async function DropoffPage() {
                 <NeedLevelControl dropOffId={own!.id} initial={own!.needLevel} />
               </div>
             </SettingsCard>
-            <SettingsCard title="Retrieval hours">
+            <SettingsCard title="Opening times">
               <RetrievalHoursEditor dropOffId={own!.id} initialHours={own!.retrievalHours} />
             </SettingsCard>
-            <SettingsCard title="Requests & notices">
+            {myDropOffId && (
+              <TeamPanel
+                members={members}
+                invites={invites}
+                title="Your team"
+                description="Everyone here manages this drop-off together. Invite a teammate to add another account for this location."
+                demo={demo}
+              />
+            )}
+            <SettingsCard title="Special notices">
               <DropOffNotesEditor dropOffId={own!.id} initialNotes={own!.notes ?? ""} />
               <DropOffNoticeManager dropOffId={own!.id} initial={noticesByDropOff[own!.id] ?? []} />
             </SettingsCard>
@@ -195,7 +208,7 @@ export default async function DropoffPage() {
         </section>
       )}
 
-      <section className="mb-8">
+      <section className="mb-10">
         <h2 className="mb-1 text-lg font-medium">Conversations</h2>
         <p className="mb-4 text-sm text-neutral-700">
           Every active delivery headed your way, in one place — switch between
@@ -218,7 +231,23 @@ export default async function DropoffPage() {
         )}
       </section>
 
-      <DeliverySections incoming={incoming} arrived={arrived} />
+      <section className={isOrgAdmin ? undefined : "mb-10"}>
+        <h2 className="mb-1 text-lg font-medium">Incoming</h2>
+        <p className="mb-4 text-sm text-neutral-700">
+          Deliveries on their way, and what&apos;s just arrived.
+        </p>
+        <DeliverySections incoming={incoming} arrived={arrived} />
+      </section>
+
+      {!isOrgAdmin && (
+        <section>
+          <h2 className="mb-1 text-lg font-medium">Impact</h2>
+          <p className="mb-4 text-sm text-neutral-700">
+            What this location has helped rescue, and the donations behind it.
+          </p>
+          <DropOffImpact stats={dropOffStats} donations={donations} />
+        </section>
+      )}
     </main>
   );
 }

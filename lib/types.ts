@@ -188,6 +188,22 @@ export interface ImpactStat {
   value: string;
 }
 
+// One past donation a drop-off received — the completed record behind the
+// Impact stats. Lifetime history, so it's its own query (not schedule-scoped
+// like the live feed). `deliveredAt` is epoch ms; `volunteer` may be absent on
+// older data.
+export interface DropOffDonation {
+  id: string;
+  title: string;
+  /** Restaurant the food came from. */
+  source: string;
+  servings: number;
+  /** Epoch ms the volunteer marked it delivered. */
+  deliveredAt: number;
+  /** Volunteer who carried it, when known. */
+  volunteer?: string;
+}
+
 export type DropOffNoticeKind = "hours" | "conditions" | "general";
 
 // A drop-off's temporary service notice, ready for display. `until` is an epoch
