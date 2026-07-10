@@ -1,5 +1,6 @@
 import { cn } from "./cn";
 import {
+  currentDayKey,
   DAY_KEYS,
   DAY_LABELS,
   formatDay,
@@ -46,12 +47,38 @@ export function RetrievalHoursDisplay({ hours }: { hours: RetrievalHours | null 
         <OpenNowBadge hours={hours} />
       </div>
       <ul className="space-y-0.5">
-        {DAY_KEYS.map((d) => (
-          <li key={d} className="flex justify-between gap-4 font-mono text-[13px]">
-            <span className="text-neutral-700">{DAY_LABELS[d]}</span>
-            <span className="text-neutral-700">{formatDay(hours[d])}</span>
-          </li>
-        ))}
+        {DAY_KEYS.map((d) => {
+          const today = d === currentDayKey();
+          const closed = hours[d].length === 0;
+          return (
+            <li key={d} className="flex justify-between gap-4 font-mono text-[13px]">
+              <span
+                className={cn(
+                  "flex items-center gap-1.5",
+                  today ? "font-semibold text-neutral-900" : "text-neutral-700"
+                )}
+              >
+                {DAY_LABELS[d]}
+                {today && (
+                  <span className="rounded-full bg-rescued-50 px-1.5 py-px text-[10px] font-medium text-rescued-800">
+                    Today
+                  </span>
+                )}
+              </span>
+              <span
+                className={cn(
+                  closed
+                    ? "text-neutral-700"
+                    : today
+                      ? "text-neutral-900"
+                      : "text-neutral-700"
+                )}
+              >
+                {formatDay(hours[d])}
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

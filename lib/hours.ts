@@ -127,3 +127,67 @@ export function formatWindow(w: HourWindow): string {
 export function formatDay(windows: HourWindow[]): string {
   return windows.length ? windows.map(formatWindow).join(", ") : "closed";
 }
+
+// ── 12-hour helpers (the editor's time buttons + wheel picker) ──────────────
+// Stored times are 24h "HH:MM"; the editing surface speaks 12h (1–12 · quarter
+// hours · am/pm) since that's how a vendor thinks about a shift. Meridiem is the
+// app's lower-case data token (matching "3:14 pm" in the type rules).
+
+export type Meridiem = "am" | "pm";
+export interface Time12 {
+  h12: number; // 1–12
+  min: number; // 0/15/30/45
+  mer: Meridiem;
+}
+
+export function parseTime(hm: string): Time12 {
+  const [h, m] = hm.split(":").map(Number);
+  const mer: Meridiem = h < 12 ? "am" : "pm";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return { h12, min: m, mer };
+}
+
+export function buildTime(h12: number, min: number, mer: Meridiem): string {
+  const h = mer === "pm" ? (h12 % 12) + 12 : h12 % 12;
+  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
+
+// e.g. "11:00" → "11:00 am". Used on the time buttons and the picker preview.
+export function to12h(hm: string): string {
+  const { h12, min, mer } = parseTime(hm);
+  return `${h12}:${String(min).padStart(2, "0")} ${mer}`;
+}
+
+// Snap a HH:MM to the nearest quarter hour — the picker only offers 00/15/30/45,
+// so stored data with odd minutes lands on a real wheel stop when first opened.
+export function snap15(hm: string): string {
+  const [h, m] = hm.split(":").map(Number);
+  const total = Math.min(Math.round((h * 60 + m) / 15) * 15, 23 * 60 + 45);
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+}
+
+// ── Per-day validation (for the editor's inline errors) ─────────────────────
+// Mirrors validateRetrievalHours' rules but returns one human message per open
+// day (first failure wins) so the editor can flag exactly the days to fix. The
+// server still re-validates on save; this is only for immediate feedback.
+
+export function validateDay(windows: HourWindow[]): string | null {
+  for (const w of windows) {
+    if (w.open >= w.close) return "Closing time must be after opening time";
+  }
+  const sorted = [...windows].sort((a, b) => a.open.localeCompare(b.open));
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i].open < sorted[i - 1].close) return "These hours overlap — adjust them";
+  }
+  return null;
+}
+
+export function validateWeek(hours: RetrievalHours): Partial<Record<DayKey, string>> {
+  const errors: Partial<Record<DayKey, string>> = {};
+  for (const day of DAY_KEYS) {
+    if (hours[day].length === 0) continue;
+    const err = validateDay(hours[day]);
+    if (err) errors[day] = err;
+  }
+  return errors;
+}

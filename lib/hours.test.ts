@@ -8,6 +8,12 @@ import {
   isOpenNow,
   currentDayKey,
   formatDay,
+  to12h,
+  parseTime,
+  buildTime,
+  snap15,
+  validateDay,
+  validateWeek,
 } from "./hours";
 
 const TZ = "America/New_York";
@@ -93,4 +99,58 @@ test("currentDayKey and formatDay produce display values", () => {
   const { hours } = validateRetrievalHours(WEEK) as { ok: true; hours: any };
   assert.equal(formatDay(hours.mon), "09:00–12:00, 13:00–17:00");
   assert.equal(formatDay(hours.tue), "closed");
+});
+
+test("to12h formats 24h stored times as lower-case 12h", () => {
+  assert.equal(to12h("00:00"), "12:00 am"); // midnight
+  assert.equal(to12h("09:05"), "9:05 am");
+  assert.equal(to12h("12:00"), "12:00 pm"); // noon
+  assert.equal(to12h("13:30"), "1:30 pm");
+  assert.equal(to12h("23:45"), "11:45 pm");
+});
+
+test("parseTime / buildTime round-trip every quarter hour", () => {
+  for (let h = 0; h < 24; h++) {
+    for (const m of [0, 15, 30, 45]) {
+      const hm = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+      const { h12, min, mer } = parseTime(hm);
+      assert.equal(buildTime(h12, min, mer), hm);
+    }
+  }
+});
+
+test("snap15 rounds to the nearest quarter hour and clamps at 23:45", () => {
+  assert.equal(snap15("09:07"), "09:00");
+  assert.equal(snap15("09:08"), "09:15");
+  assert.equal(snap15("09:53"), "10:00");
+  assert.equal(snap15("23:59"), "23:45"); // never rolls past end of day
+});
+
+test("validateDay flags inverted and overlapping windows, passes clean ones", () => {
+  assert.equal(validateDay([{ open: "09:00", close: "17:00" }]), null);
+  assert.equal(
+    validateDay([{ open: "17:00", close: "09:00" }]),
+    "Closing time must be after opening time"
+  );
+  assert.equal(
+    validateDay([
+      { open: "09:00", close: "12:00" },
+      { open: "11:00", close: "13:00" },
+    ]),
+    "These hours overlap — adjust them"
+  );
+});
+
+test("validateWeek only reports open days that fail", () => {
+  const errors = validateWeek({
+    mon: [{ open: "09:00", close: "17:00" }], // ok
+    tue: [{ open: "18:00", close: "09:00" }], // inverted
+    wed: [],
+    thu: [],
+    fri: [],
+    sat: [],
+    sun: [],
+  });
+  assert.deepEqual(Object.keys(errors), ["tue"]);
+  assert.equal(errors.tue, "Closing time must be after opening time");
 });

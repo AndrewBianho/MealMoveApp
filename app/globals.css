@@ -245,6 +245,16 @@ body {
   border-radius: 12px;
 }
 
+/* Hide the native scrollbar on the time-picker wheels while keeping them
+   scroll-snappable (the selection is read from scrollTop, not a visible bar). */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

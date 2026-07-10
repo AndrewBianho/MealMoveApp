@@ -131,6 +131,11 @@ const config: Config = {
           from: { opacity: "0", transform: "translateX(-24px)" },
           to: { opacity: "1", transform: "translateX(0)" },
         },
+        // Bottom sheet rising into place (the time-picker wheel sheet).
+        "sheet-up": {
+          from: { transform: "translateY(100%)" },
+          to: { transform: "translateY(0)" },
+        },
         // Celebration leaves: drift down with a gentle sway and fade out.
         // Decorative only (RescueCelebration), gated behind motion-safe.
         "leaf-fall": {
@@ -150,6 +155,7 @@ const config: Config = {
         "slide-down": "slide-down 0.2s cubic-bezier(0.22,1,0.36,1) both",
         "slide-in-right": "slide-in-right 0.4s cubic-bezier(0.22,1,0.36,1) both",
         "slide-in-left": "slide-in-left 0.4s cubic-bezier(0.22,1,0.36,1) both",
+        "sheet-up": "sheet-up 0.28s cubic-bezier(0.22,1,0.36,1) both",
         "leaf-fall": "leaf-fall 6s ease-in both",
       },
       // Semantic layering scale — sticky header < dropdown/menu < modal overlay
