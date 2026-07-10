@@ -1,98 +1,10 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
-import { Avatar } from "@/components/Avatar";
-import { MetricCard, metricAccent } from "@/components/MetricCard";
-import { ReliabilityRing } from "@/components/ReliabilityRing";
-import { getVolunteerImpact } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
 
+// Profile and impact are one surface now — the account's identity header plus
+// its role-matched stats all live on /impact. Kept as a redirect so the avatar
+// link and any old bookmarks still land on the merged page.
 export default async function ProfilePage() {
-  const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) redirect("/login");
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { name: true, role: true, createdAt: true },
-  });
-  if (!user) redirect("/login");
-
-  const impact = await getVolunteerImpact(userId);
-  const hasActivity = impact.pickupsCompleted > 0 || impact.attempts > 0;
-  const joined = new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    year: "numeric",
-  }).format(user.createdAt);
-
-  return (
-    <main className="mx-auto max-w-[1760px] px-6 py-8">
-      <header className="mb-8 flex items-center gap-4">
-        <Avatar name={user.name} size="lg" className="shadow-card" />
-        <div>
-          <h1 className="font-display text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">
-            {user.name}
-          </h1>
-          <p className="mt-0.5 font-mono text-[11px] text-neutral-700">
-            {user.role.replace(/_/g, " ")} · joined {joined}
-          </p>
-        </div>
-      </header>
-
-      <section className="mb-8">
-        <h2 className="mb-3 font-mono text-[10px] text-neutral-700">
-          Lifetime impact
-        </h2>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-          <MetricCard
-            label="meals rescued"
-            value={impact.mealsRescued.toLocaleString()}
-            accent={metricAccent("meals rescued")}
-          />
-          <MetricCard
-            label="lbs saved"
-            value={impact.lbsSaved.toLocaleString()}
-            accent={metricAccent("lbs saved")}
-          />
-          <MetricCard
-            label="hours driven"
-            value={impact.hoursDriven.toLocaleString()}
-            accent={metricAccent("hours driven")}
-          />
-          <MetricCard
-            label="pickups completed"
-            value={impact.pickupsCompleted.toLocaleString()}
-            accent={metricAccent("pickups completed")}
-          />
-          <MetricCard
-            label="restaurants helped"
-            value={impact.restaurantsHelped.toLocaleString()}
-            accent={metricAccent("restaurants helped")}
-          />
-        </div>
-      </section>
-
-      <section className="mb-8 grid max-w-sm place-items-center rounded-2xl bg-card p-6 shadow-card">
-        <p className="mb-2 font-mono text-[10px] text-neutral-700">
-          Your completion rate · lifetime
-        </p>
-        <ReliabilityRing pct={impact.completionRate} label="on time" />
-      </section>
-
-      {!hasActivity && (
-        <p className="text-sm text-neutral-700">
-          Your first rescue is waiting —{" "}
-          <Link
-            href="/"
-            className="font-semibold text-clay-800 underline-offset-2 hover:underline"
-          >
-            claim a pickup
-          </Link>{" "}
-          and your impact shows up here.
-        </p>
-      )}
-    </main>
-  );
+  redirect("/impact");
 }
