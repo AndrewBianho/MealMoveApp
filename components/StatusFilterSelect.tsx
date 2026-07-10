@@ -22,24 +22,18 @@ export function StatusFilterSelect({
   value,
   options,
   onChange,
-  label = "filter",
   selectLabel = "Filter listings",
   className,
 }: {
   value: string;
   options: StatusFilterOption[];
   onChange: (value: string) => void;
-  /** The quiet mono caption before the control. */
-  label?: string;
   /** Accessible name for the select itself. */
   selectLabel?: string;
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-center gap-2", className)}>
-      <span className="font-mono text-[13px] text-neutral-700">
-        {capitalize(label)}
-      </span>
+    <div className={cn("inline-flex items-center", className)}>
       <span className="relative inline-flex">
         <select
           value={value}

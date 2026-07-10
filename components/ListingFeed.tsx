@@ -113,9 +113,6 @@ function SortControl({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="font-mono text-[13px] text-neutral-700">
-        Sort
-      </span>
       <div className="inline-flex rounded-full border border-neutral-200 bg-card p-0.5">
         {SORTS.map((s) => {
           const active = s === sort;
