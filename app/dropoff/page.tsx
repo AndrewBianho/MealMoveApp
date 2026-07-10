@@ -1,20 +1,13 @@
 import { DeliverySections } from "@/components/DeliverySections";
-import { DropOffNotesEditor } from "@/components/DropOffNotesEditor";
-import { DropOffNoticeManager } from "@/components/DropOffNoticeManager";
 import { DropOffChats } from "@/components/DropOffChats";
 import { DropOffConstraintsEditor } from "@/components/DropOffConstraintsEditor";
-import { DropOffImpact } from "@/components/DropOffImpact";
+import { DropOffNotesEditor } from "@/components/DropOffNotesEditor";
+import { DropOffNoticeManager } from "@/components/DropOffNoticeManager";
+import { DropOffNotLinked, DropOffTabShell } from "@/components/DropOffTabShell";
 import { NeedLevelControl } from "@/components/NeedLevelControl";
 import { RetrievalHoursEditor } from "@/components/RetrievalHoursEditor";
 import { TeamPanel } from "@/components/TeamPanel";
-import { getDropOffs } from "@/lib/map";
-import { getListings } from "@/lib/listings";
-import { getActiveNoticesByDropOff } from "@/lib/dropoffNotices";
-import { getDropOffDonations, getDropOffImpactStats } from "@/lib/stats";
-import { isDemo } from "@/lib/mode";
-import { prisma } from "@/lib/prisma";
-import type { DropOffDonation, ImpactStat } from "@/lib/types";
-import { auth } from "@/auth";
+import { dropOffChatThreads, loadDropOffConsole } from "@/lib/dropoffConsole";
 
 export const dynamic = "force-dynamic";
 
@@ -36,111 +29,35 @@ function SettingsCard({
   );
 }
 
-// The drop-off surface. A `drop_off` account sees only the single location it
-// speaks for — its own hours, constraints, need level, inbound deliveries, and
-// three-way chats. An org admin inherits the chapter-wide view: every location
-// at once (the old drop-off-admin console), so oversight survives the role's
-// removal.
+// The drop-off console's first tab. For a `drop_off` account this is "About
+// us" — everything the location is in charge of (hours, team, what it accepts,
+// notices); the other tabs (Conversations / Incoming / Impact) are their own
+// routes. An org admin keeps the chapter-wide view here: every location at once
+// plus the inbound board, since their nav has a single Drop-off link.
 export default async function DropoffPage() {
-  const session = await auth();
-  const viewerId = session?.user?.id;
-  const isOrgAdmin = session?.user?.role === "org_admin";
+  const {
+    isOrgAdmin,
+    myDropOffId,
+    locations,
+    own,
+    demo,
+    noticesByDropOff,
+    members,
+    invites,
+    viewerId,
+    incoming,
+    arrived,
+  } = await loadDropOffConsole();
 
-  // A drop-off account is scoped to its own location; an org admin manages all.
-  let myDropOffId: string | null = null;
-  if (!isOrgAdmin && viewerId) {
-    const me = await prisma.user.findUnique({
-      where: { id: viewerId },
-      select: { dropOffId: true },
-    });
-    myDropOffId = me?.dropOffId ?? null;
-  }
+  if (!isOrgAdmin && !own) return <DropOffNotLinked />;
 
-  const [all, allLocations] = await Promise.all([getListings(), getDropOffs()]);
-  const demo = await isDemo();
-
-  const locations = isOrgAdmin
-    ? allLocations
-    : allLocations.filter((d) => d.id === myDropOffId);
-  const managedIds = new Set(locations.map((d) => d.id));
-
-  const noticesByDropOff = await getActiveNoticesByDropOff(locations.map((d) => d.id));
-
-  // The team that shares this location: its own members + open invites. Org
-  // admins manage roles/accounts on the Members page instead, so no team panel.
-  const [members, invites] =
-    !isOrgAdmin && myDropOffId
-      ? await Promise.all([
-          prisma.user.findMany({
-            where: { dropOffId: myDropOffId },
-            select: { id: true, name: true, email: true },
-            orderBy: { createdAt: "asc" },
-          }),
-          prisma.teamInvite.findMany({
-            where: { dropOffId: myDropOffId, role: "drop_off", status: "pending" },
-            select: { id: true, email: true },
-            orderBy: { createdAt: "asc" },
-          }),
-        ])
-      : [[], []];
-
-  const managed = (l: (typeof all)[number]) =>
-    l.dropOffId != null && managedIds.has(l.dropOffId);
-  const incoming = all.filter(
-    (l) =>
-      managed(l) &&
-      // A multi-car listing stays "open" until every car is claimed, but food
-      // is already headed here once anyone has claimed.
-      (["claimed", "in transit", "taken home"].includes(l.status) ||
-        (l.status === "open" && (l.claimedCount ?? 0) > 0))
-  );
-  const arrived = all.filter((l) => managed(l) && l.status === "delivered");
-
-  const own = !isOrgAdmin ? locations[0] : null;
-
-  // The location's lifetime impact — stats + the record of past donations.
-  // Only the single-location view gets it; org admins have the chapter-wide
-  // /admin/health and /impact surfaces. Fetched sequentially to stay off the
-  // connection-pool ceiling (see lib/stats).
-  let dropOffStats: ImpactStat[] = [];
-  let donations: DropOffDonation[] = [];
-  if (own) {
-    dropOffStats = await getDropOffImpactStats(own.id);
-    donations = await getDropOffDonations(own.id);
-  }
-
-  // A drop-off account whose location hasn't been linked yet (shouldn't happen
-  // after approval) gets a calm explanation instead of an empty console.
-  if (!isOrgAdmin && !own) {
+  if (isOrgAdmin) {
     return (
-      <main className="mx-auto max-w-[720px] px-6 py-8">
-        <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">
-          Drop-off
-        </h1>
-        <p className="mt-2 text-sm text-neutral-700">
-          Your account isn&apos;t linked to a drop-off location yet. An org admin
-          approves new drop-offs — reach out to your chapter&apos;s admin if this
-          looks wrong.
-        </p>
-      </main>
-    );
-  }
-
-  return (
-    <main className="mx-auto max-w-[1760px] px-6 py-8">
-      <header className="mb-8">
-        <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">
-          {isOrgAdmin ? "Drop-off locations" : own!.name}
-        </h1>
-        <p className="mt-1 max-w-md text-sm text-neutral-700">
-          {isOrgAdmin
-            ? "Where rescued food is delivered, and what's inbound to each."
-            : "What you accept, when you're open, and what's on its way to you."}
-        </p>
-      </header>
-
-      {isOrgAdmin ? (
-        <section className="mb-8">
+      <DropOffTabShell
+        title="Drop-off locations"
+        subtitle="Where rescued food is delivered, and what's inbound to each."
+      >
+        <section className="mb-10">
           <h2 className="mb-4 text-lg font-medium">Locations &amp; what they accept</h2>
           <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
             {locations.map((d) => (
@@ -151,10 +68,7 @@ export default async function DropoffPage() {
                 <h3 className="mb-4 text-base font-semibold text-neutral-800">{d.name}</h3>
                 <DropOffConstraintsEditor
                   dropOffId={d.id}
-                  initial={{
-                    categories: d.acceptedCategories,
-                    refrigerated: d.refrigerated,
-                  }}
+                  initial={{ categories: d.acceptedCategories, refrigerated: d.refrigerated }}
                 />
                 <div className="mt-5 border-t border-neutral-200/50 pt-4">
                   <NeedLevelControl dropOffId={d.id} initial={d.needLevel} />
@@ -168,86 +82,62 @@ export default async function DropoffPage() {
             ))}
           </div>
         </section>
-      ) : (
+
         <section className="mb-10">
-          <h2 className="mb-1 text-lg font-medium">About us</h2>
-          <p className="mb-4 max-w-xl text-sm text-neutral-700">
-            What you&apos;re in charge of — your opening times, your team, what
-            you accept, and any notices for volunteers on their way.
-          </p>
-          <div className="grid items-start gap-4 md:grid-cols-2 lg:gap-6">
-            <SettingsCard title="What you accept">
-              <DropOffConstraintsEditor
-                dropOffId={own!.id}
-                initial={{
-                  categories: own!.acceptedCategories,
-                  refrigerated: own!.refrigerated,
-                }}
-              />
-              <div className="mt-5 border-t border-neutral-200/50 pt-4">
-                <NeedLevelControl dropOffId={own!.id} initial={own!.needLevel} />
-              </div>
-            </SettingsCard>
-            <SettingsCard title="Opening times">
-              <RetrievalHoursEditor dropOffId={own!.id} initialHours={own!.retrievalHours} />
-            </SettingsCard>
-            {myDropOffId && (
-              <TeamPanel
-                members={members}
-                invites={invites}
-                title="Your team"
-                description="Everyone here manages this drop-off together. Invite a teammate to add another account for this location."
-                demo={demo}
-              />
-            )}
-            <SettingsCard title="Special notices">
-              <DropOffNotesEditor dropOffId={own!.id} initialNotes={own!.notes ?? ""} />
-              <DropOffNoticeManager dropOffId={own!.id} initial={noticesByDropOff[own!.id] ?? []} />
-            </SettingsCard>
-          </div>
-        </section>
-      )}
-
-      <section className="mb-10">
-        <h2 className="mb-1 text-lg font-medium">Conversations</h2>
-        <p className="mb-4 text-sm text-neutral-700">
-          Every active delivery headed your way, in one place — switch between
-          volunteers without leaving the page.
-        </p>
-        {viewerId ? (
-          <DropOffChats
-            viewerId={viewerId}
-            threads={incoming.map((l) => ({
-              id: l.id,
-              title: l.title,
-              source: l.source,
-              dropOff: l.dropOff,
-              volunteerName: l.claimedBy,
-              status: l.status,
-            }))}
-          />
-        ) : (
-          <p className="text-sm text-neutral-700">Sign in to coordinate deliveries.</p>
-        )}
-      </section>
-
-      <section className={isOrgAdmin ? undefined : "mb-10"}>
-        <h2 className="mb-1 text-lg font-medium">Incoming</h2>
-        <p className="mb-4 text-sm text-neutral-700">
-          Deliveries on their way, and what&apos;s just arrived.
-        </p>
-        <DeliverySections incoming={incoming} arrived={arrived} />
-      </section>
-
-      {!isOrgAdmin && (
-        <section>
-          <h2 className="mb-1 text-lg font-medium">Impact</h2>
+          <h2 className="mb-1 text-lg font-medium">Conversations</h2>
           <p className="mb-4 text-sm text-neutral-700">
-            What this location has helped rescue, and the donations behind it.
+            Every active delivery headed to a location, in one place.
           </p>
-          <DropOffImpact stats={dropOffStats} donations={donations} />
+          {viewerId ? (
+            <DropOffChats viewerId={viewerId} threads={dropOffChatThreads(incoming)} />
+          ) : (
+            <p className="text-sm text-neutral-700">Sign in to coordinate deliveries.</p>
+          )}
         </section>
-      )}
-    </main>
+
+        <section>
+          <h2 className="mb-1 text-lg font-medium">Incoming</h2>
+          <p className="mb-4 text-sm text-neutral-700">
+            Deliveries on their way, and what&apos;s just arrived.
+          </p>
+          <DeliverySections incoming={incoming} arrived={arrived} />
+        </section>
+      </DropOffTabShell>
+    );
+  }
+
+  return (
+    <DropOffTabShell
+      title={own!.name}
+      subtitle="What you're in charge of — your opening times, your team, what you accept, and any notices for volunteers on their way."
+    >
+      <div className="grid items-start gap-4 md:grid-cols-2 lg:gap-6">
+        <SettingsCard title="What you accept">
+          <DropOffConstraintsEditor
+            dropOffId={own!.id}
+            initial={{ categories: own!.acceptedCategories, refrigerated: own!.refrigerated }}
+          />
+          <div className="mt-5 border-t border-neutral-200/50 pt-4">
+            <NeedLevelControl dropOffId={own!.id} initial={own!.needLevel} />
+          </div>
+        </SettingsCard>
+        <SettingsCard title="Opening times">
+          <RetrievalHoursEditor dropOffId={own!.id} initialHours={own!.retrievalHours} />
+        </SettingsCard>
+        {myDropOffId && (
+          <TeamPanel
+            members={members}
+            invites={invites}
+            title="Your team"
+            description="Everyone here manages this drop-off together. Invite a teammate to add another account for this location."
+            demo={demo}
+          />
+        )}
+        <SettingsCard title="Special notices">
+          <DropOffNotesEditor dropOffId={own!.id} initialNotes={own!.notes ?? ""} />
+          <DropOffNoticeManager dropOffId={own!.id} initial={noticesByDropOff[own!.id] ?? []} />
+        </SettingsCard>
+      </div>
+    </DropOffTabShell>
   );
 }

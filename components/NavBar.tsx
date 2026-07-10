@@ -31,6 +31,11 @@ const POST_SURPLUS: Item = { href: "/restaurant", label: "Post surplus", short: 
 const MY_LISTINGS: Item = { href: "/restaurant/listings", label: "Your listings", short: "Listings", icon: "listings" };
 const DROPOFF: Item = { href: "/dropoff", label: "Drop-off", icon: "dropoff" };
 const IMPACT: Item = { href: "/impact", label: "Impact", icon: "impact" };
+// The drop-off account's console, split into four top-level tabs.
+const DROPOFF_ABOUT: Item = { href: "/dropoff", label: "About us", short: "About", icon: "dropoff" };
+const DROPOFF_CHATS: Item = { href: "/dropoff/conversations", label: "Conversations", short: "Chats", icon: "chat" };
+const DROPOFF_INCOMING: Item = { href: "/dropoff/incoming", label: "Incoming", icon: "truck" };
+const DROPOFF_IMPACT: Item = { href: "/dropoff/impact", label: "Impact", icon: "impact" };
 const MEMBERS: Item = { href: "/admin/users", label: "Members", icon: "members" };
 const RELIABILITY: Item = { href: "/admin/reliability", label: "Reliability", short: "Reliability", icon: "reliability" };
 const PARTNERS: Item = { href: "/admin/partners", label: "Partner notes", short: "Partners", icon: "partners" };
@@ -39,7 +44,7 @@ const HEALTH: Item = { href: "/admin/health", label: "Ops health", short: "Healt
 const NAV_BY_ROLE: Record<Role, Item[]> = {
   volunteer: [FEED, MAP, IMPACT],
   restaurant: [POST_SURPLUS, MY_LISTINGS, IMPACT],
-  drop_off: [DROPOFF, IMPACT],
+  drop_off: [DROPOFF_ABOUT, DROPOFF_CHATS, DROPOFF_INCOMING, DROPOFF_IMPACT],
   // Org admins oversee — they don't claim, so no "My pickups". They keep the
   // feed/map (visibility), the restaurant surface (special posts + tracking),
   // impact (the in-depth stats), and members.
@@ -83,6 +88,17 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M12 20V4" />
       <path d="M19 20v-7" />
       <path d="M3 20h18" />
+    </>
+  ),
+  chat: (
+    <path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9l-4 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z" />
+  ),
+  truck: (
+    <>
+      <path d="M3 6h11v9H3z" />
+      <path d="M14 9h4l3 3v3h-7z" />
+      <circle cx="7" cy="18" r="1.6" />
+      <circle cx="17" cy="18" r="1.6" />
     </>
   ),
   reliability: (
