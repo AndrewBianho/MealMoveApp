@@ -81,20 +81,25 @@ export default async function RestaurantPage() {
       </header>
 
       {restaurant ? (
-        <div className="grid items-start gap-4 lg:grid-cols-2 lg:gap-6 xl:grid-cols-3">
+        // Primary action (post + photo) leads in a wider left column; the
+        // supporting cards (recurring schedules, team) stack in a narrower right
+        // one, so heights balance instead of the three-up grid's ragged bottoms.
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           <RestaurantPostHub
             restaurant={restaurant.name}
             restaurantId={restaurant.id}
             restaurantImageUrl={restaurant.imageUrl}
             nearbyVolunteers={nearbyVolunteers}
           />
-          <RecurringPostManager restaurantId={restaurant.id} schedules={schedules} />
-          <TeamPanel
-            members={members}
-            invites={invites}
-            description="Everyone here manages this restaurant together — listings, photos, and pickups are shared."
-            demo={demo}
-          />
+          <div className="flex flex-col gap-6">
+            <RecurringPostManager restaurantId={restaurant.id} schedules={schedules} />
+            <TeamPanel
+              members={members}
+              invites={invites}
+              description="Everyone here manages this restaurant together — listings, photos, and pickups are shared."
+              demo={demo}
+            />
+          </div>
         </div>
       ) : (
         <p className="text-sm text-neutral-700">

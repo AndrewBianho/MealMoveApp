@@ -249,18 +249,15 @@ export function PickupTimelineCard({
             })}
           </div>
 
+          {/* Labels share the four equal columns with the dots above. On a
+              narrow phone the columns get tight (the photo panel eats width),
+              so the label steps down a size and keeps a hair of side padding —
+              centered on its dot, but never touching its neighbour. */}
           <div className="flex">
-            {STEPS.map((name, i) => (
+            {STEPS.map((name) => (
               <div
                 key={name}
-                className={cn(
-                  "flex-1 text-center text-[13px] font-semibold leading-tight",
-                  i <= progress
-                    ? "text-neutral-700"
-                    : !terminal && i === progress + 1
-                      ? "text-neutral-700"
-                      : "text-neutral-700"
-                )}
+                className="flex-1 px-0.5 text-center text-[11px] font-semibold leading-tight text-neutral-700 sm:text-[13px]"
               >
                 {name}
               </div>
