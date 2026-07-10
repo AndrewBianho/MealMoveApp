@@ -12,7 +12,7 @@ import { SuccessPanel, BackToSignIn, CheckIcon } from "./AuthPanels";
 import { passwordValid } from "@/lib/password";
 import { registerUser, findPendingInvite } from "@/app/actions";
 
-type Role = "volunteer" | "restaurant" | "drop_off_admin";
+type Role = "volunteer" | "restaurant" | "drop_off";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TOTAL = 6;
@@ -20,19 +20,19 @@ const TOTAL = 6;
 const ROLES: { id: Role; label: string; blurb: string }[] = [
   { id: "volunteer", label: "Volunteer", blurb: "Claim and deliver surplus food pickups." },
   { id: "restaurant", label: "Restaurant", blurb: "Post surplus food for volunteers to claim." },
-  { id: "drop_off_admin", label: "Drop-off", blurb: "Receive and distribute rescued food." },
+  { id: "drop_off", label: "Drop-off", blurb: "Receive and distribute rescued food." },
 ];
 const ROLE_LABEL: Record<Role, string> = {
   volunteer: "Volunteer",
   restaurant: "Restaurant",
-  drop_off_admin: "Drop-off",
+  drop_off: "Drop-off",
 };
 
 // Notification copy adapts to the role so the promise is concrete, not generic.
 const NOTIF_COPY: Record<Role, { email: string; sms: string }> = {
   volunteer: { email: "New pickups near you.", sms: "Time-sensitive pickup alerts." },
   restaurant: { email: "Claim and reminder updates.", sms: "When a volunteer is on the way." },
-  drop_off_admin: { email: "Incoming drop-off summaries.", sms: "When a delivery is inbound." },
+  drop_off: { email: "Incoming drop-off summaries.", sms: "When a delivery is inbound." },
 };
 
 // Per-step width classes for the progress fill (no inline styles — Tailwind only).
@@ -83,7 +83,7 @@ export function SignupForm() {
     if (s === 3 && !invite) {
       if (role === "restaurant" && (!restaurantName.trim() || !restaurantAddress.trim()))
         return "Please add your restaurant's name and address.";
-      if (role === "drop_off_admin" && (!dropOffName.trim() || !dropOffAddress.trim()))
+      if (role === "drop_off" && (!dropOffName.trim() || !dropOffAddress.trim()))
         return "Please add your site's name and address.";
     }
     return null;
@@ -131,8 +131,8 @@ export function SignupForm() {
       role,
       restaurantName: role === "restaurant" ? restaurantName : undefined,
       restaurantAddress: role === "restaurant" ? restaurantAddress : undefined,
-      dropOffName: role === "drop_off_admin" ? dropOffName : undefined,
-      dropOffAddress: role === "drop_off_admin" ? dropOffAddress : undefined,
+      dropOffName: role === "drop_off" ? dropOffName : undefined,
+      dropOffAddress: role === "drop_off" ? dropOffAddress : undefined,
     });
 
     if (!res.ok) {
@@ -387,7 +387,7 @@ function stepCopy(
         return { title: `Join ${invite.orgName}`, sub: "You were invited — we'll add you to the team." };
       if (role === "restaurant")
         return { title: "Your restaurant", sub: "Where volunteers will pick up surplus." };
-      if (role === "drop_off_admin")
+      if (role === "drop_off")
         return { title: "Your drop-off site", sub: "Where rescued food arrives." };
       return { title: "Your campus", sub: "Where you're rescuing from, if anywhere." };
     case 4:
@@ -458,7 +458,7 @@ function RoleSpecificStep(props: {
       <div className="rounded-md border border-rescued-200 bg-rescued-50 px-4 py-3.5 text-[16px] leading-relaxed text-rescued-800">
         You&apos;ve been invited to join{" "}
         <span className="font-semibold">{props.invite.orgName}</span>{" "}
-        {props.invite.role === "restaurant" ? "as a restaurant teammate" : "as a drop-off admin"}.
+        {props.invite.role === "restaurant" ? "as a restaurant teammate" : "as a drop-off teammate"}.
         Creating your account adds you to the team — no extra details needed.
       </div>
     );
@@ -473,7 +473,7 @@ function RoleSpecificStep(props: {
     );
   }
 
-  if (props.role === "drop_off_admin") {
+  if (props.role === "drop_off") {
     return (
       <>
         <Field id="sitename" label="Site name" placeholder="Eastside Community Fridge" value={props.dropOffName} onChange={props.setDropOffName} />
@@ -536,7 +536,7 @@ function ReviewStep(props: {
   } else if (props.role === "restaurant") {
     rows.push({ label: "Business", value: props.restaurantName || "—", step: 3 });
     rows.push({ label: "Pickup address", value: props.restaurantAddress || "—", step: 3 });
-  } else if (props.role === "drop_off_admin") {
+  } else if (props.role === "drop_off") {
     rows.push({ label: "Site", value: props.dropOffName || "—", step: 3 });
     rows.push({ label: "Site address", value: props.dropOffAddress || "—", step: 3 });
   } else {

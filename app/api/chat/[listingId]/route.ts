@@ -13,8 +13,8 @@ import { tooManyRequests } from "@/lib/rate-limit-http";
 export const runtime = "nodejs";
 
 // Load the acting user + the claim, and authorize. The user is read from the DB
-// (not just the session) because access depends on restaurantId, which the JWT
-// session doesn't carry.
+// (not just the session) because access depends on restaurantId / dropOffId,
+// which the JWT session doesn't carry.
 async function loadContext(listingId: string) {
   const session = await auth();
   const sid = session?.user?.id;
@@ -25,9 +25,9 @@ async function loadContext(listingId: string) {
     } as const;
   }
 
-  // The session (JWT) already carries id + role; only a restaurant member needs
-  // a DB read, for their restaurantId. Skipping it for the other roles halves
-  // the queries on this ~4s poll path.
+  // The session (JWT) already carries id + role; only a restaurant or drop-off
+  // member needs a DB read, for their restaurantId / dropOffId. Skipping it for
+  // the other roles halves the queries on this ~4s poll path.
   const listingP = prisma.foodListing.findUnique({
     where: { id: listingId },
     select: {
@@ -41,15 +41,17 @@ async function loadContext(listingId: string) {
 
   let listing: Awaited<typeof listingP>;
   let restaurantId: string | null = null;
-  if (role === "restaurant") {
+  let dropOffId: string | null = null;
+  if (role === "restaurant" || role === "drop_off") {
     const [u, l] = await Promise.all([
       prisma.user.findUnique({
         where: { id: sid },
-        select: { restaurantId: true },
+        select: { restaurantId: true, dropOffId: true },
       }),
       listingP,
     ]);
     restaurantId = u?.restaurantId ?? null;
+    dropOffId = u?.dropOffId ?? null;
     listing = l;
   } else {
     listing = await listingP;
@@ -58,7 +60,7 @@ async function loadContext(listingId: string) {
   if (!listing) {
     return { error: NextResponse.json({ error: "Not found." }, { status: 404 }) } as const;
   }
-  const user = { id: sid, role, restaurantId };
+  const user = { id: sid, role, restaurantId, dropOffId };
   if (!canAccessChat(user, listing)) {
     return { error: NextResponse.json({ error: "Not allowed." }, { status: 403 }) } as const;
   }

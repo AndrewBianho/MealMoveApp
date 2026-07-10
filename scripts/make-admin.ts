@@ -4,11 +4,11 @@
 //
 //   npm run make-admin <email> [role]
 //
-// role defaults to org_admin; valid: volunteer | restaurant | drop_off_admin | org_admin
+// role defaults to org_admin; valid: volunteer | restaurant | drop_off | org_admin
 import { PrismaClient, type Role } from "@prisma/client";
 
 const prisma = new PrismaClient();
-const VALID: Role[] = ["volunteer", "restaurant", "drop_off_admin", "org_admin"];
+const VALID: Role[] = ["volunteer", "restaurant", "drop_off", "org_admin"];
 
 async function main() {
   const email = process.argv[2]?.trim().toLowerCase();

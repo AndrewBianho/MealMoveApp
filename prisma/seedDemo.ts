@@ -80,7 +80,6 @@ export async function seedDemo(prisma: PrismaClient) {
         lng: d.lng,
         acceptedCategories: d.acceptedCategories,
         refrigerated: d.refrigerated,
-        capacity: d.capacity,
         notes: d.notes,
         demo: true,
         ...relNotes,
@@ -157,13 +156,18 @@ export async function seedDemo(prisma: PrismaClient) {
       dataMode: "demo",
     },
   });
+  // A per-location drop-off account. Linked to St. Mark's Shelter — the
+  // destination of "You"'s in-flight rescue — so the seeded three-way chat and
+  // the drop-off console both showcase a location speaking for itself.
+  const demoDropOffId = dropOffId.get("St. Mark's Shelter") ?? null;
   const dropOffAdmin = await prisma.user.upsert({
     where: { email: "dropoff@campus.edu" },
-    update: { passwordHash, role: "drop_off_admin", dataMode: "demo" },
+    update: { passwordHash, role: "drop_off", dropOffId: demoDropOffId, dataMode: "demo" },
     create: {
-      name: "Drop-off admin",
+      name: "St. Mark's Shelter",
       email: "dropoff@campus.edu",
-      role: "drop_off_admin",
+      role: "drop_off",
+      dropOffId: demoDropOffId,
       passwordHash,
       dataMode: "demo",
     },

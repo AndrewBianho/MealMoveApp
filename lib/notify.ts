@@ -7,8 +7,7 @@ import { absoluteUrl, escapeHtml } from "./email";
  * Every account that shares a restaurant org. Multiple users can belong to one
  * restaurant (`User.restaurantId`), so any restaurant-facing push must fan out
  * to all of them — the seam below should target this whole list, not one user,
- * so notifications stay synced across teammates. (Drop-off admins are
- * chapter-wide, so `sendDropOffPickupNotice` already reaches every admin.)
+ * so notifications stay synced across teammates.
  */
 export async function restaurantMemberIds(
   db: Pick<PrismaClient, "user">,
@@ -16,6 +15,22 @@ export async function restaurantMemberIds(
 ): Promise<string[]> {
   const members = await db.user.findMany({
     where: { restaurantId },
+    select: { id: true },
+  });
+  return members.map((m) => m.id);
+}
+
+/**
+ * Every account that speaks for a drop-off location (`User.dropOffId`). Mirrors
+ * restaurantMemberIds: a drop-off-facing push fans out to that location's
+ * accounts only — not every drop-off in the chapter.
+ */
+export async function dropOffMemberIds(
+  db: Pick<PrismaClient, "user">,
+  dropOffId: string
+): Promise<string[]> {
+  const members = await db.user.findMany({
+    where: { dropOffId },
     select: { id: true },
   });
   return members.map((m) => m.id);
@@ -108,8 +123,9 @@ export function buildBroadcastPayload(push: BroadcastPush): NotifyPayload {
   };
 }
 
-// Reaches every drop-off admin (the schema doesn't tie an admin to one DropOff,
-// mirroring the /dropoff page). Recipient lookup is injectable for tests.
+// Reaches the accounts for the listing's specific drop-off location (the food is
+// headed there), not every drop-off in the chapter. Recipient lookup is
+// injectable for tests.
 export async function sendDropOffPickupNotice(
   notice: DropOffPickupNotice,
   deps: {
@@ -119,14 +135,7 @@ export async function sendDropOffPickupNotice(
 ): Promise<void> {
   const dispatch = deps.dispatch ?? dispatchToUser;
   const recipientIds =
-    deps.recipientIds ??
-    (async (db) =>
-      (
-        await db.user.findMany({
-          where: { role: "drop_off_admin" },
-          select: { id: true },
-        })
-      ).map((u) => u.id));
+    deps.recipientIds ?? ((db) => dropOffMemberIds(db, notice.dropOffId));
   const ids = await recipientIds(prisma);
   const payload = buildDropOffPayload(notice);
   await Promise.all(ids.map((id) => dispatch(id, payload)));

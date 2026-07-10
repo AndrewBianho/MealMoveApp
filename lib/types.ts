@@ -4,7 +4,11 @@
 
 import type { RetrievalHours } from "./hours";
 
-export type Role = "volunteer" | "restaurant" | "drop_off_admin" | "org_admin";
+export type Role = "volunteer" | "restaurant" | "drop_off" | "org_admin";
+
+/** A drop-off's self-reported appetite for food right now — a standing, manual
+ *  signal it sets, shown to volunteers choosing where to deliver. Not urgency. */
+export type NeedLevel = "low" | "steady" | "high";
 
 export type ListingStatus =
   | "open"
@@ -31,7 +35,7 @@ export interface DropOffLocation {
   lng: number;
   acceptedCategories: FoodCategory[];
   refrigerated: boolean;
-  capacity: number;
+  needLevel: NeedLevel;
   notes?: string;
   retrievalHours?: RetrievalHours;
 }
@@ -46,6 +50,7 @@ export interface DropOffChoice {
   /** Straight-line miles from the restaurant. */
   miles: number;
   refrigerated: boolean;
+  needLevel: NeedLevel;
   retrievalHours?: RetrievalHours;
   /** Standing restrictions worth reading before choosing (allergens, access…). */
   notes?: string;

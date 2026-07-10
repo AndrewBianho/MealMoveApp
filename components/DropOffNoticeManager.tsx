@@ -11,7 +11,7 @@ import type { DropOffNoticeKind, DropOffNoticeView } from "@/lib/types";
 
 const KINDS: DropOffNoticeKind[] = ["hours", "conditions", "general"];
 
-// Drop-off admin tool: post a temporary change to this location's normal hours
+// Drop-off tool: post a temporary change to this location's normal hours
 // or conditions, and clear notices once they no longer apply. Volunteers see
 // active notices wherever the drop-off appears.
 export function DropOffNoticeManager({

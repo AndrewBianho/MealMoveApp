@@ -6,8 +6,8 @@ import { isDemo } from "@/lib/mode";
 
 export const dynamic = "force-dynamic";
 
-type ManagedRole = "volunteer" | "drop_off_admin" | "org_admin";
-const MANAGED: ManagedRole[] = ["volunteer", "drop_off_admin", "org_admin"];
+type ManagedRole = "volunteer" | "org_admin";
+const MANAGED: ManagedRole[] = ["volunteer", "org_admin"];
 
 function pendingOrgName(value: unknown): string | null {
   if (!value || typeof value !== "object") return null;
@@ -34,6 +34,7 @@ export default async function AdminUsersPage() {
         email: true,
         role: true,
         restaurant: { select: { name: true } },
+        dropOff: { select: { name: true } },
       },
     }),
     prisma.user.findMany({
@@ -143,6 +144,10 @@ export default async function AdminUsersPage() {
                         isSelf={isSelf}
                         demo={demo}
                       />
+                    ) : u.role === "drop_off" ? (
+                      <span className="font-mono text-xs text-neutral-700">
+                        drop-off · {u.dropOff?.name ?? "—"}
+                      </span>
                     ) : (
                       <span className="font-mono text-xs text-neutral-700">
                         restaurant · {u.restaurant?.name ?? "—"}

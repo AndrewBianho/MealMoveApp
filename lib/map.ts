@@ -74,7 +74,7 @@ export async function getMapData(): Promise<{
     lng: d.lng,
     acceptedCategories: d.acceptedCategories as FoodCategory[],
     refrigerated: d.refrigerated,
-    capacity: d.capacity,
+    needLevel: d.needLevel,
     notes: d.notes ?? undefined,
     retrievalHours: parseStoredHours(d.retrievalHours) ?? undefined,
   }));
@@ -94,7 +94,7 @@ export async function getDropOffs(): Promise<DropOffLocation[]> {
     lng: d.lng,
     acceptedCategories: d.acceptedCategories as FoodCategory[],
     refrigerated: d.refrigerated,
-    capacity: d.capacity,
+    needLevel: d.needLevel,
     notes: d.notes ?? undefined,
     retrievalHours: parseStoredHours(d.retrievalHours) ?? undefined,
   }));

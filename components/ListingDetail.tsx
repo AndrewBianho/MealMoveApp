@@ -857,6 +857,11 @@ export function ListingDetail({
                                         </span>
                                       </>
                                     )}
+                                    {d.needLevel !== "steady" && (
+                                      <span>
+                                        {d.needLevel === "high" ? "high need" : "low need"}
+                                      </span>
+                                    )}
                                   </span>
                                   {d.notes && (
                                     <span className="mt-1 block text-[14px] text-neutral-700">

@@ -24,7 +24,7 @@ function listing(over: Partial<ChatListing> = {}): ChatListing {
 }
 
 function user(over: Partial<ChatUser> = {}): ChatUser {
-  return { id: "vol1", role: "volunteer", restaurantId: null, ...over };
+  return { id: "vol1", role: "volunteer", restaurantId: null, dropOffId: null, ...over };
 }
 
 test("canAccessChat: the claiming volunteer is in", () => {
@@ -56,10 +56,22 @@ test("canAccessChat: the listing's restaurant is in, a different one is out", ()
   );
 });
 
-test("canAccessChat: drop-off admin is in when a drop-off is assigned, out otherwise", () => {
-  assert.equal(canAccessChat(user({ role: "drop_off_admin" }), listing()), true);
+test("canAccessChat: the listing's own drop-off is in, a different one is out", () => {
   assert.equal(
-    canAccessChat(user({ role: "drop_off_admin" }), listing({ dropOffId: null })),
+    canAccessChat(user({ role: "drop_off", dropOffId: "d1" }), listing()),
+    true
+  );
+  assert.equal(
+    canAccessChat(user({ role: "drop_off", dropOffId: "d2" }), listing()),
+    false
+  );
+  // A drop-off account with no location, or a listing with no drop-off, is out.
+  assert.equal(
+    canAccessChat(user({ role: "drop_off", dropOffId: null }), listing()),
+    false
+  );
+  assert.equal(
+    canAccessChat(user({ role: "drop_off", dropOffId: "d1" }), listing({ dropOffId: null })),
     false
   );
 });

@@ -8,8 +8,8 @@ import { Toast, useToast } from "./Toast";
 import { inviteTeammate, cancelTeammateInvite } from "@/app/actions";
 
 // Roster + email-invite manager for an organization. Restaurant members manage
-// their own restaurant's team; drop-off admins manage the (chapter-wide) set of
-// drop-off admins. New invitees join the same org when they sign up.
+// their own restaurant's team; drop-off members manage their own location's
+// team. New invitees join the same org when they sign up.
 export function TeamPanel({
   members,
   invites,

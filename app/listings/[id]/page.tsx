@@ -42,7 +42,7 @@ export default async function ListingDetailPage({
 
   // Destination-first claiming: an open listing with no drop-off yet needs the
   // claiming volunteer to pick one. Offer only locations that can actually take
-  // this food (category, refrigeration, capacity), nearest to the restaurant
+  // this food (category, refrigeration), nearest to the restaurant
   // first — the same ranking the map recommendation uses.
   let dropOffChoices: DropOffChoice[] = [];
   if (canClaim && listingRow && listingRow.status === "open" && !listingRow.dropOffId) {
@@ -68,6 +68,7 @@ export default async function ListingDetailPage({
         lng: x.dropOff.lng,
         miles: x.miles,
         refrigerated: x.dropOff.refrigerated,
+        needLevel: x.dropOff.needLevel,
         retrievalHours: x.dropOff.retrievalHours,
         notes: x.dropOff.notes,
       }));
@@ -98,6 +99,7 @@ export default async function ListingDetailPage({
           id: true,
           role: true,
           restaurantId: true,
+          dropOffId: true,
           notificationsEnabled: true,
           notifyPrimedAt: true,
         },

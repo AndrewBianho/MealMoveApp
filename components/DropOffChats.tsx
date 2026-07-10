@@ -21,7 +21,7 @@ const STATUS_DOT: Record<string, string> = {
   "taken home": "bg-transit-600",
 };
 
-// A coordination inbox for drop-off admins: every active delivery headed here is
+// A coordination inbox for a drop-off: every active delivery headed here is
 // its own thread, and the admin can move between them without leaving the page.
 // Reuses the per-claim ChatPanel (and its polling) for the open conversation.
 export function DropOffChats({

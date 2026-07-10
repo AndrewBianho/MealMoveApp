@@ -23,7 +23,7 @@ const near: DropOffLocation = {
   lng: -75.5,
   acceptedCategories: ["prepared"],
   refrigerated: false, // can't take perishable
-  capacity: 100,
+  needLevel: "steady",
 };
 const mid: DropOffLocation = {
   id: "mid",
@@ -32,7 +32,7 @@ const mid: DropOffLocation = {
   lng: -75.5,
   acceptedCategories: ["prepared"],
   refrigerated: true,
-  capacity: 100,
+  needLevel: "steady",
 };
 const far: DropOffLocation = {
   id: "far",
@@ -41,7 +41,7 @@ const far: DropOffLocation = {
   lng: -75.5,
   acceptedCategories: ["prepared"],
   refrigerated: true,
-  capacity: 100,
+  needLevel: "steady",
 };
 
 test("rankDropOffs: eligible first, then nearest", () => {

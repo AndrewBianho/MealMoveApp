@@ -1599,9 +1599,6 @@ export function RescueMap({
                             <InfoChip tone={activeDrop.refrigerated ? "transit" : "neutral"}>
                               {activeDrop.refrigerated ? "❄ refrigerated" : "ambient"}
                             </InfoChip>
-                            <span className="font-mono text-[11px] text-neutral-700">
-                              holds {activeDrop.capacity}
-                            </span>
                           </div>
                           <div className="mt-1 truncate font-mono text-[11px] text-neutral-700">
                             accepts {activeDrop.acceptedCategories.join(", ")}

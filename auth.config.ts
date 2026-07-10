@@ -9,7 +9,7 @@ import type { Role } from "@prisma/client";
 const ROLE_HOME: Record<Role, string> = {
   volunteer: "/",
   restaurant: "/restaurant",
-  drop_off_admin: "/dropoff",
+  drop_off: "/dropoff",
   org_admin: "/",
 };
 
@@ -20,7 +20,7 @@ const ACCESS: { prefix: string; roles: Role[] }[] = [
   { prefix: "/map", roles: ["volunteer", "org_admin"] },
   { prefix: "/pickups", roles: ["volunteer", "org_admin"] },
   { prefix: "/restaurant", roles: ["restaurant", "org_admin"] },
-  { prefix: "/dropoff", roles: ["drop_off_admin", "org_admin"] },
+  { prefix: "/dropoff", roles: ["drop_off", "org_admin"] },
   { prefix: "/admin", roles: ["org_admin"] },
 ];
 

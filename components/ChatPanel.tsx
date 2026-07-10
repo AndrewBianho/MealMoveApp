@@ -17,7 +17,7 @@ interface Message {
 const ROLE_LABEL: Record<Role, string> = {
   volunteer: "volunteer",
   restaurant: "restaurant",
-  drop_off_admin: "drop-off",
+  drop_off: "drop-off",
   org_admin: "org admin",
 };
 

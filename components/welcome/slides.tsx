@@ -122,7 +122,7 @@ export const SLIDES_BY_ROLE: Record<Role, Deck> = {
     ],
   },
 
-  drop_off_admin: {
+  drop_off: {
     home: "/dropoff",
     cta: "Open drop-off",
     slides: [
@@ -171,7 +171,7 @@ export const SLIDES_BY_ROLE: Record<Role, Deck> = {
         statusCode: "members",
         tone: "clay",
         title: "Provision your teams",
-        body: "Invite restaurants and drop-off admins by email, and manage everyone from one members page.",
+        body: "Approve new restaurants and drop-offs, assign roles, and manage everyone from one members page.",
         art: "team",
       },
       {

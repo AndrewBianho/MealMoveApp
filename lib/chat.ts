@@ -16,6 +16,7 @@ export interface ChatUser {
   id: string;
   role: Role;
   restaurantId: string | null;
+  dropOffId: string | null;
 }
 
 /** The fields of a listing's claims that decide chat access. */
@@ -29,15 +30,15 @@ export interface ChatListing {
 }
 
 /**
- * Who may take part in a claim's coordination thread:
+ * Who may take part in a claim's coordination thread (a three-way conversation):
  *   - the claim's volunteer,
  *   - a member of the listing's restaurant,
- *   - a drop-off admin, when the listing has a drop-off assigned,
+ *   - the account for the listing's assigned drop-off,
  *   - any org admin.
  *
- * NOTE: the schema doesn't link a drop_off_admin to a specific DropOff, so any
- * drop-off admin can access a claim that has a drop-off assigned. This mirrors
- * the /dropoff page, which already shows all drop-offs to any drop-off admin.
+ * The drop-off participant is the specific location the food is headed to
+ * (User.dropOffId === listing.dropOffId), not every drop-off account — a
+ * location only sees the conversations for its own inbound deliveries.
  */
 export function canAccessChat(user: ChatUser, listing: ChatListing): boolean {
   switch (user.role) {
@@ -52,8 +53,10 @@ export function canAccessChat(user: ChatUser, listing: ChatListing): boolean {
       return (
         user.restaurantId != null && user.restaurantId === listing.restaurantId
       );
-    case "drop_off_admin":
-      return listing.dropOffId != null;
+    case "drop_off":
+      return (
+        user.dropOffId != null && user.dropOffId === listing.dropOffId
+      );
     default:
       return false;
   }

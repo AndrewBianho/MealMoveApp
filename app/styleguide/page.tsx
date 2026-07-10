@@ -124,7 +124,7 @@ export default function StyleGuidePage() {
 
       <Section
         title="Listing cards by audience"
-        hint="One claimed listing seen by each account type. Volunteers get servings · distance and the claim affordance. Restaurants drop the meaningless distance and their own (redundant) source line, keeping the → drop-off destination. Drop-off admins drop the distance and the self-referential → drop-off line, and surface 'from {restaurant}' instead."
+        hint="One claimed listing seen by each account type. Volunteers get servings · distance and the claim affordance. Restaurants drop the meaningless distance and their own (redundant) source line, keeping the → drop-off destination. Drop-offs drop the distance and the self-referential → drop-off line, and surface 'from {restaurant}' instead."
       >
         <div className="grid gap-6 md:grid-cols-3">
           <div>

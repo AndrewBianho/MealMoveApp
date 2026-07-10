@@ -106,7 +106,7 @@ export function ListingCard({
       : null;
 
   // Audience tuning: the source line is redundant for a restaurant (it's them);
-  // the → drop-off line is redundant for a drop-off admin (it's them).
+  // the → drop-off line is redundant for a drop-off (it's them).
   // Distance is only meaningful to a volunteer, and only once we actually know it
   // — an unshared location renders "—", so guard against a dangling "· — away".
   const showDistance =

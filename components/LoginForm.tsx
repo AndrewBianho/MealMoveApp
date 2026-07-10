@@ -16,7 +16,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DEMO = [
   { role: "Volunteer", email: "you@campus.edu" },
   { role: "Restaurant", email: "saxbys@campus.edu" },
-  { role: "Drop-off admin", email: "dropoff@campus.edu" },
+  { role: "Drop-off", email: "dropoff@campus.edu" },
   { role: "Org admin", email: "admin@campus.edu" },
 ] as const;
 const DEMO_PASSWORD = "MealMove1";

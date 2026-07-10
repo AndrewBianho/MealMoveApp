@@ -4,7 +4,7 @@ import { createHash, randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import bcrypt from "bcryptjs";
-import { Prisma } from "@prisma/client";
+import { Prisma, type FoodCategory } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, resetLimit, clientIp, LIMITS } from "@/lib/rate-limit";
@@ -55,15 +55,16 @@ async function blockIfDemo(): Promise<{ ok: false; error: string } | null> {
 }
 
 /**
- * Self-serve registration. Only volunteer and restaurant accounts can be
- * created here — drop_off_admin / org_admin are provisioned by an org admin.
+ * Self-serve registration. Volunteer, restaurant, and drop-off accounts can be
+ * created here (partners land pending until an org admin approves); org_admin is
+ * provisioned by an existing org admin.
  */
 export async function registerUser(input: {
   name: string;
   email: string;
   phone: string;
   password: string;
-  role: "volunteer" | "restaurant" | "drop_off_admin";
+  role: "volunteer" | "restaurant" | "drop_off";
   restaurantName?: string;
   restaurantAddress?: string;
   dropOffName?: string;
@@ -109,6 +110,14 @@ export async function registerUser(input: {
         return { ok: false, error: "That invitation is no longer valid." };
       }
     }
+    if (invite.role === "drop_off") {
+      const dropOff = invite.dropOffId
+        ? await prisma.dropOff.findUnique({ where: { id: invite.dropOffId } })
+        : null;
+      if (!dropOff) {
+        return { ok: false, error: "That invitation is no longer valid." };
+      }
+    }
     const passwordHash = await bcrypt.hash(password, 10);
     try {
       await prisma.$transaction(async (tx) => {
@@ -120,6 +129,7 @@ export async function registerUser(input: {
             passwordHash,
             role: invite.role,
             restaurantId: invite.role === "restaurant" ? invite.restaurantId : null,
+            dropOffId: invite.role === "drop_off" ? invite.dropOffId : null,
           },
         });
         await tx.teamInvite.update({
@@ -141,7 +151,7 @@ export async function registerUser(input: {
   if (
     input.role !== "volunteer" &&
     input.role !== "restaurant" &&
-    input.role !== "drop_off_admin"
+    input.role !== "drop_off"
   ) {
     return { ok: false, error: "Invalid account type." };
   }
@@ -151,17 +161,17 @@ export async function registerUser(input: {
   if (input.role === "restaurant" && !input.restaurantAddress?.trim()) {
     return { ok: false, error: "Please enter your restaurant's address." };
   }
-  if (input.role === "drop_off_admin" && !input.dropOffName?.trim()) {
+  if (input.role === "drop_off" && !input.dropOffName?.trim()) {
     return { ok: false, error: "Please enter the drop-off location's name." };
   }
-  if (input.role === "drop_off_admin" && !input.dropOffAddress?.trim()) {
+  if (input.role === "drop_off" && !input.dropOffAddress?.trim()) {
     return { ok: false, error: "Please enter the drop-off location's address." };
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
 
   try {
-    if (input.role === "restaurant" || input.role === "drop_off_admin") {
+    if (input.role === "restaurant" || input.role === "drop_off") {
       // Self-serve partner sign-ups need an org admin's confirmation before the
       // account is usable. We create the account as `pending` (it can't sign in
       // — see auth.ts) and stash the org/location details in `pendingOrg`. The
@@ -213,9 +223,9 @@ export async function registerUser(input: {
 
 /**
  * Invite a teammate (by email) to the caller's organization. Restaurant members
- * invite into their own restaurant; drop-off admins invite chapter-wide (they
- * aren't tied to a specific DropOff). The invite is consumed when the invitee
- * signs up with that email (see registerUser).
+ * invite into their own restaurant; drop-off members invite into their own
+ * drop-off location. The invite is consumed when the invitee signs up with that
+ * email (see registerUser).
  */
 export async function inviteTeammate(emailInput: string): Promise<SignUpResult> {
   const session = await auth();
@@ -224,7 +234,7 @@ export async function inviteTeammate(emailInput: string): Promise<SignUpResult> 
   if (!userId) return { ok: false, error: "Not authenticated." };
   const demoInvite = await blockIfDemo();
   if (demoInvite) return demoInvite;
-  if (role !== "restaurant" && role !== "drop_off_admin" && role !== "org_admin") {
+  if (role !== "restaurant" && role !== "drop_off") {
     return {
       ok: false,
       error: "Only restaurant and drop-off accounts can invite teammates.",
@@ -237,11 +247,19 @@ export async function inviteTeammate(emailInput: string): Promise<SignUpResult> 
   }
 
   // Resolve the org + invite role from the caller, never from the client.
-  let inviteRole: "restaurant" | "drop_off_admin";
-  let restaurantId: string | null;
-  if (role === "drop_off_admin") {
-    inviteRole = "drop_off_admin";
-    restaurantId = null;
+  let inviteRole: "restaurant" | "drop_off";
+  let restaurantId: string | null = null;
+  let dropOffId: string | null = null;
+  if (role === "drop_off") {
+    const me = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { dropOffId: true },
+    });
+    if (!me?.dropOffId) {
+      return { ok: false, error: "Your account isn't linked to a drop-off." };
+    }
+    inviteRole = "drop_off";
+    dropOffId = me.dropOffId;
   } else {
     const me = await prisma.user.findUnique({
       where: { id: userId },
@@ -262,15 +280,15 @@ export async function inviteTeammate(emailInput: string): Promise<SignUpResult> 
     return { ok: false, error: "That email already has an account." };
   }
   const dupe = await prisma.teamInvite.findFirst({
-    where: { email, status: "pending", role: inviteRole, restaurantId },
+    where: { email, status: "pending", role: inviteRole, restaurantId, dropOffId },
     select: { id: true },
   });
   if (dupe) return { ok: false, error: "That email already has a pending invite." };
 
   await prisma.teamInvite.create({
-    data: { email, role: inviteRole, restaurantId, invitedById: userId },
+    data: { email, role: inviteRole, restaurantId, dropOffId, invitedById: userId },
   });
-  revalidatePath(role === "drop_off_admin" ? "/dropoff" : "/restaurant");
+  revalidatePath(role === "drop_off" ? "/dropoff" : "/restaurant");
   return { ok: true };
 }
 
@@ -291,8 +309,12 @@ export async function cancelTeammateInvite(
   }
 
   let authorized = role === "org_admin";
-  if (!authorized && role === "drop_off_admin" && invite.role === "drop_off_admin") {
-    authorized = true;
+  if (!authorized && role === "drop_off" && invite.role === "drop_off") {
+    const me = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { dropOffId: true },
+    });
+    authorized = !!me?.dropOffId && me.dropOffId === invite.dropOffId;
   }
   if (!authorized && role === "restaurant" && invite.role === "restaurant") {
     const me = await prisma.user.findUnique({
@@ -307,7 +329,7 @@ export async function cancelTeammateInvite(
     where: { id: inviteId },
     data: { status: "cancelled", respondedAt: new Date() },
   });
-  revalidatePath(invite.role === "drop_off_admin" ? "/dropoff" : "/restaurant");
+  revalidatePath(invite.role === "drop_off" ? "/dropoff" : "/restaurant");
   return { ok: true };
 }
 
@@ -317,7 +339,7 @@ export async function cancelTeammateInvite(
  */
 export async function findPendingInvite(
   emailInput: string
-): Promise<{ orgName: string; role: "restaurant" | "drop_off_admin" } | null> {
+): Promise<{ orgName: string; role: "restaurant" | "drop_off" } | null> {
   const email = (emailInput ?? "").trim().toLowerCase();
   if (!email) return null;
   const invite = await prisma.teamInvite.findFirst({
@@ -335,7 +357,14 @@ export async function findPendingInvite(
     if (!r) return null;
     return { orgName: r.name, role: "restaurant" };
   }
-  return { orgName: "the drop-off team", role: "drop_off_admin" };
+  const d = invite.dropOffId
+    ? await prisma.dropOff.findUnique({
+        where: { id: invite.dropOffId },
+        select: { name: true },
+      })
+    : null;
+  if (!d) return null;
+  return { orgName: d.name, role: "drop_off" };
 }
 
 // Password reset is single-use and time-boxed. We store only the sha256 of the
@@ -530,9 +559,6 @@ export async function claimListing(listingId: string, dropOffId?: string) {
       }
       if (listing.perishable && !dropOff.refrigerated) {
         throw new Error(`${dropOff.name} isn't refrigerated — this food needs cold storage.`);
-      }
-      if (dropOff.capacity < listing.servings) {
-        throw new Error(`${dropOff.name} can't hold this many servings.`);
       }
       chosenDropOffId = dropOff.id;
     }
@@ -1106,16 +1132,35 @@ export async function setRestaurantImage(
   return { ok: true };
 }
 
-/** A drop-off admin sets the special requests / restraints for a location. */
+/**
+ * Who may edit a drop-off's own settings — notes, hours, notices, constraints,
+ * need level: the account that speaks for that location (its own dropOffId), or
+ * any org admin (chapter-wide oversight). Returns an error message when denied.
+ */
+async function guardDropOffEdit(
+  dropOffId: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await auth();
+  const role = session?.user?.role;
+  if (role === "org_admin") return { ok: true };
+  if (role === "drop_off") {
+    const me = await prisma.user.findUnique({
+      where: { id: session!.user!.id },
+      select: { dropOffId: true },
+    });
+    if (me?.dropOffId && me.dropOffId === dropOffId) return { ok: true };
+    return { ok: false, error: "That isn't your drop-off." };
+  }
+  return { ok: false, error: "Only the drop-off or an org admin can edit this." };
+}
+
+/** The drop-off (or an org admin) sets the special requests / restraints. */
 export async function updateDropOffNotes(
   dropOffId: string,
   notes: string
 ): Promise<SignUpResult> {
-  const session = await auth();
-  const role = session?.user?.role;
-  if (role !== "drop_off_admin" && role !== "org_admin") {
-    return { ok: false, error: "Only drop-off admins can edit this." };
-  }
+  const guard = await guardDropOffEdit(dropOffId);
+  if (!guard.ok) return guard;
   await prisma.dropOff.update({
     where: { id: dropOffId },
     data: { notes: notes.trim() || null },
@@ -1178,8 +1223,8 @@ const NOTICE_KINDS = ["hours", "conditions", "general"] as const;
 /**
  * Post a temporary service notice for a drop-off — a change to its normal hours
  * or conditions that volunteers should see (closing early, fridge down, side
- * door, etc.). Drop-off admins and org admins only. `untilIso` is optional; when
- * set, the notice auto-expires after it.
+ * door, etc.). The drop-off itself or an org admin only. `untilIso` is optional;
+ * when set, the notice auto-expires after it.
  */
 export async function postDropOffNotice(input: {
   dropOffId: string;
@@ -1187,11 +1232,9 @@ export async function postDropOffNotice(input: {
   body: string;
   untilIso?: string;
 }): Promise<SignUpResult> {
+  const guard = await guardDropOffEdit(input.dropOffId);
+  if (!guard.ok) return guard;
   const session = await auth();
-  const role = session?.user?.role;
-  if (role !== "drop_off_admin" && role !== "org_admin") {
-    return { ok: false, error: "Only drop-off admins can post notices." };
-  }
   const body = input.body?.trim();
   if (!body) return { ok: false, error: "Add a short note about the change." };
   const kind = NOTICE_KINDS.includes(input.kind) ? input.kind : "general";
@@ -1225,15 +1268,12 @@ export async function postDropOffNotice(input: {
   return { ok: true };
 }
 
-/** Remove a drop-off service notice. Drop-off admins and org admins only. */
+/** Remove a drop-off service notice. The drop-off itself or an org admin only. */
 export async function removeDropOffNotice(id: string): Promise<SignUpResult> {
-  const session = await auth();
-  const role = session?.user?.role;
-  if (role !== "drop_off_admin" && role !== "org_admin") {
-    return { ok: false, error: "Only drop-off admins can remove notices." };
-  }
   const notice = await prisma.dropOffNotice.findUnique({ where: { id } });
   if (!notice) return { ok: true };
+  const guard = await guardDropOffEdit(notice.dropOffId);
+  if (!guard.ok) return guard;
   await prisma.dropOffNotice.delete({ where: { id } });
   revalidatePath("/dropoff");
   revalidatePath(`/dropoffs/${notice.dropOffId}`);
@@ -1242,16 +1282,13 @@ export async function removeDropOffNotice(id: string): Promise<SignUpResult> {
   return { ok: true };
 }
 
-/** A drop-off admin sets the structured food-retrieval hours for a location. */
+/** The drop-off (or an org admin) sets the structured food-retrieval hours. */
 export async function updateRetrievalHours(
   dropOffId: string,
   hours: unknown
 ): Promise<SignUpResult> {
-  const session = await auth();
-  const role = session?.user?.role;
-  if (role !== "drop_off_admin" && role !== "org_admin") {
-    return { ok: false, error: "Only drop-off admins can edit this." };
-  }
+  const guard = await guardDropOffEdit(dropOffId);
+  if (!guard.ok) return guard;
   const res = validateRetrievalHours(hours);
   if (!res.ok) return { ok: false, error: res.error };
   await prisma.dropOff.update({
@@ -1265,9 +1302,74 @@ export async function updateRetrievalHours(
   return { ok: true };
 }
 
-// Roles an org_admin can assign via the panel. "restaurant" is excluded — it's
-// tied to a Restaurant entity and only set at sign-up.
-type ManagedRole = "volunteer" | "drop_off_admin" | "org_admin";
+const NEED_LEVELS = ["low", "steady", "high"] as const;
+
+/**
+ * The drop-off (or an org admin) sets how much food this location wants right
+ * now — a standing, manual signal shown to volunteers choosing a drop-off.
+ */
+export async function updateNeedLevel(
+  dropOffId: string,
+  level: "low" | "steady" | "high"
+): Promise<SignUpResult> {
+  const guard = await guardDropOffEdit(dropOffId);
+  if (!guard.ok) return guard;
+  if (!NEED_LEVELS.includes(level)) {
+    return { ok: false, error: "Pick a need level." };
+  }
+  await prisma.dropOff.update({
+    where: { id: dropOffId },
+    data: { needLevel: level },
+  });
+  revalidatePath("/dropoff");
+  revalidatePath(`/dropoffs/${dropOffId}`);
+  revalidatePath("/");
+  revalidatePath("/map");
+  return { ok: true };
+}
+
+const FOOD_CATEGORIES: readonly string[] = [
+  "prepared",
+  "produce",
+  "bakery",
+  "packaged",
+  "dairy",
+  "beverages",
+];
+/**
+ * The drop-off (or an org admin) sets what this location can physically take in
+ * — the food categories it accepts and whether it can hold cold/perishable
+ * food. Drives the eligibility rules in lib/recommend, so only reachable
+ * destinations are offered to a claiming volunteer.
+ */
+export async function updateDropOffConstraints(
+  dropOffId: string,
+  input: { acceptedCategories: string[]; refrigerated: boolean }
+): Promise<SignUpResult> {
+  const guard = await guardDropOffEdit(dropOffId);
+  if (!guard.ok) return guard;
+
+  const categories = Array.from(new Set(input.acceptedCategories)).filter((c) =>
+    FOOD_CATEGORIES.includes(c)
+  ) as FoodCategory[];
+
+  await prisma.dropOff.update({
+    where: { id: dropOffId },
+    data: {
+      acceptedCategories: categories,
+      refrigerated: Boolean(input.refrigerated),
+    },
+  });
+  revalidatePath("/dropoff");
+  revalidatePath(`/dropoffs/${dropOffId}`);
+  revalidatePath("/");
+  revalidatePath("/map");
+  return { ok: true };
+}
+
+// Roles an org_admin can assign via the panel. "restaurant" and "drop_off" are
+// excluded — each is tied to a partner entity and only set at sign-up/approval.
+type ManagedRole = "volunteer" | "org_admin";
 
 /** Change a user's role. Org-admin only; never leaves zero org admins. */
 export async function setRole(
@@ -1280,14 +1382,14 @@ export async function setRole(
   }
   const demoRole = await blockIfDemo();
   if (demoRole) return demoRole;
-  if (!["volunteer", "drop_off_admin", "org_admin"].includes(role)) {
+  if (!["volunteer", "org_admin"].includes(role)) {
     return { ok: false, error: "Invalid role." };
   }
 
   const target = await prisma.user.findUnique({ where: { id: userId } });
   if (!target) return { ok: false, error: "User not found." };
-  if (target.role === "restaurant") {
-    return { ok: false, error: "Restaurant accounts are managed at sign-up." };
+  if (target.role === "restaurant" || target.role === "drop_off") {
+    return { ok: false, error: "Partner accounts are managed at sign-up." };
   }
   if (target.role === role) return { ok: true };
 
@@ -1365,26 +1467,28 @@ export async function approveAccount(userId: string): Promise<SignUpResult> {
 
   await prisma.$transaction(async (tx) => {
     let restaurantId: string | null = null;
+    let dropOffId: string | null = null;
     if (pending.kind === "restaurant") {
       const restaurant = await tx.restaurant.create({
         data: { name: pending.name, address: pending.address, lat, lng },
       });
       restaurantId = restaurant.id;
     } else {
-      await tx.dropOff.create({
+      const dropOff = await tx.dropOff.create({
         data: {
           name: pending.name,
           address: pending.address,
           lat,
           lng,
-          // Accept everything by default; the admin can narrow it later.
+          // Accept everything by default; the account can narrow it later.
           acceptedCategories: ["prepared", "produce", "bakery", "packaged", "dairy", "beverages"],
         },
       });
+      dropOffId = dropOff.id;
     }
     await tx.user.update({
       where: { id: userId },
-      data: { status: "active", restaurantId, pendingOrg: Prisma.DbNull },
+      data: { status: "active", restaurantId, dropOffId, pendingOrg: Prisma.DbNull },
     });
     await tx.adminEvent.create({
       data: {

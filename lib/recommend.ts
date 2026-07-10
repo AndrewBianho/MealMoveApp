@@ -10,8 +10,8 @@ export interface RankedDropOff {
   reason?: string;
 }
 
-// Eligible = accepts every category on offer, is refrigerated if anything is
-// perishable, and has the capacity for the servings.
+// Eligible = accepts every category on offer, and is refrigerated if anything
+// is perishable.
 export function eligibility(
   r: MapRestaurant,
   d: DropOffLocation
@@ -19,7 +19,6 @@ export function eligibility(
   const missing = r.categories.filter((c) => !d.acceptedCategories.includes(c));
   if (missing.length) return { eligible: false, reason: `can't take ${missing.join(", ")}` };
   if (r.perishable && !d.refrigerated) return { eligible: false, reason: "not refrigerated" };
-  if (d.capacity < r.servings) return { eligible: false, reason: "over capacity" };
   return { eligible: true };
 }
 

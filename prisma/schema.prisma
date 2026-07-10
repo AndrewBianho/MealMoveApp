@@ -16,8 +16,22 @@ generator client {
 enum Role {
   volunteer
   restaurant
-  drop_off_admin
+  // A single delivery location's own account — mirrors `restaurant`, tied to one
+  // DropOff (User.dropOffId). Manages only itself: hours, constraints, need
+  // level, and the deliveries inbound to it. Chapter-wide oversight of every
+  // location is an org_admin capability, not this role's.
+  drop_off
   org_admin
+}
+
+// A drop-off's self-reported appetite for food right now — a standing, manual
+// signal the location sets, surfaced to volunteers choosing where to deliver and
+// to org admins. Not urgency/time-pressure (so it doesn't use the honey→tomato
+// ramp); just how much this place wants food at the moment.
+enum NeedLevel {
+  low
+  steady
+  high
 }
 
 enum ListingStatus {
@@ -103,6 +117,10 @@ model User {
   dataMode     DataMode      @default(real) // which world this account sees/acts in
   restaurant   Restaurant?   @relation(fields: [restaurantId], references: [id])
   restaurantId String?
+  // For a `drop_off` account: the single location it speaks for. Set on approval
+  // (see approveAccount), mirroring restaurantId. Null for every other role.
+  dropOff      DropOff?      @relation(fields: [dropOffId], references: [id])
+  dropOffId    String?
   pickups      Pickup[]
   buddyPickups Pickup[]    @relation("PickupBuddy") // pickups where this user is the second seat
   events       ListingEvent[]
@@ -205,7 +223,9 @@ model DropOff {
   // Constraints on what this location can actually take in.
   acceptedCategories FoodCategory[]
   refrigerated       Boolean        @default(false) // can hold perishable/cold
-  capacity           Int            @default(100) // max servings it can hold
+  // Self-reported appetite for food right now — set by the location's own
+  // account (or an org admin), shown to volunteers when choosing a drop-off.
+  needLevel          NeedLevel      @default(steady)
   notes              String? // human-readable restrictions (allergens, hours…)
   retrievalHours     Json? // RetrievalHours: per-weekday food-retrieval windows (see lib/hours.ts)
   demo               Boolean        @default(false) // belongs to the curated demo world, not real data
@@ -215,6 +235,9 @@ model DropOff {
   contactInfo    String?
   lastContactAt  DateTime?
   quirks         String?
+  // The account(s) that speak for this location (User.dropOffId). Mirrors
+  // Restaurant.members. Empty until a drop_off account is approved for it.
+  members   User[]
   listings  FoodListing[]
   notices   DropOffNotice[]
   createdAt DateTime      @default(now())
@@ -223,7 +246,7 @@ model DropOff {
 // What a service notice is about — drives the icon/label volunteers see.
 enum DropOffNoticeKind {
   hours // a change to the normal open / retrieval hours
-  conditions // a change to normal conditions (capacity, refrigeration, access)
+  conditions // a change to normal conditions (refrigeration, access)
   general
 }
 
@@ -392,13 +415,15 @@ model Message {
 }
 
 // Pending invitation for a new account to join an existing organization.
-// Restaurant invites carry the target restaurantId; drop-off invites leave it
-// null (drop-off admins are chapter-wide). Consumed at sign-up by registerUser.
+// Restaurant invites carry the target restaurantId; drop-off invites carry the
+// target dropOffId (an account speaks for one location). Consumed at sign-up by
+// registerUser.
 model TeamInvite {
   id           String    @id @default(cuid())
   email        String // lowercased invitee email
-  role         Role // restaurant | drop_off_admin
-  restaurantId String? // set for restaurant invites; null = chapter-wide drop-off
+  role         Role // restaurant | drop_off
+  restaurantId String? // set for restaurant invites
+  dropOffId    String? // set for drop_off invites
   invitedById  String? // inviter user id (scalar — no FK, keeps the migration small)
   status       String    @default("pending") // pending | accepted | cancelled
   createdAt    DateTime  @default(now())

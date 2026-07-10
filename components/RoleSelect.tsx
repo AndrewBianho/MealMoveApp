@@ -4,11 +4,10 @@ import { useState, useTransition } from "react";
 import { Toast, useToast } from "./Toast";
 import { setRole } from "@/app/actions";
 
-type ManagedRole = "volunteer" | "drop_off_admin" | "org_admin";
+type ManagedRole = "volunteer" | "org_admin";
 
 const OPTIONS: { value: ManagedRole; label: string }[] = [
   { value: "volunteer", label: "Volunteer" },
-  { value: "drop_off_admin", label: "Drop-off admin" },
   { value: "org_admin", label: "Org admin" },
 ];
 

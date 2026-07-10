@@ -5,7 +5,7 @@ import { Button } from "./Button";
 import { Toast, useToast } from "./Toast";
 import { updateDropOffNotes } from "@/app/actions";
 
-// Lets a drop-off admin set the special requests / restraints for a location.
+// Lets a drop-off (or an org admin) set the special requests / restraints.
 export function DropOffNotesEditor({
   dropOffId,
   initialNotes,

@@ -14,7 +14,6 @@ export const DROP_OFFS: {
   name: string;
   acceptedCategories: FoodCategory[];
   refrigerated: boolean;
-  capacity: number;
   notes: string;
   lat: number;
   lng: number;
@@ -24,7 +23,6 @@ export const DROP_OFFS: {
     name: "Community Fridge — 4th & Elm",
     acceptedCategories: ["prepared", "produce", "dairy", "bakery", "beverages"],
     refrigerated: true,
-    capacity: 60,
     notes: "Refrigerated. No nut-containing items.",
     lat: 40.0362, // Malvern
     lng: -75.5138,
@@ -42,7 +40,6 @@ export const DROP_OFFS: {
     name: "St. Mark's Shelter",
     acceptedCategories: ["prepared", "bakery", "packaged", "beverages"],
     refrigerated: false,
-    capacity: 120,
     notes: "Hot meals welcome before 7pm. Not refrigerated.",
     lat: 40.0429, // Paoli
     lng: -75.4707,
@@ -60,7 +57,6 @@ export const DROP_OFFS: {
     name: "Campus Pantry — Student Union",
     acceptedCategories: ["packaged", "bakery", "beverages", "produce"],
     refrigerated: false,
-    capacity: 200,
     notes: "Shelf-stable & produce only. No prepared or dairy.",
     lat: 40.0454, // Berwyn
     lng: -75.4438,
@@ -69,7 +65,6 @@ export const DROP_OFFS: {
     name: "Grace Kitchen",
     acceptedCategories: ["prepared", "dairy", "produce", "bakery", "packaged", "beverages"],
     refrigerated: true,
-    capacity: 80,
     notes: "Full-service kitchen. Accepts everything.",
     lat: 40.0370, // Frazer
     lng: -75.5550,

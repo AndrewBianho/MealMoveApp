@@ -46,7 +46,6 @@ export default async function DropOffDetailPage({
           </span>
         }
         stats={[
-          { label: "capacity", value: dropOff.capacity },
           { label: "incoming", value: incoming.length },
           { label: "arrived", value: arrived.length },
         ]}
@@ -64,9 +63,6 @@ export default async function DropOffDetailPage({
             </span>
           ))}
         </div>
-        <p className="font-mono text-xs text-neutral-700">
-          holds up to {dropOff.capacity} servings
-        </p>
         {dropOff.notes && (
           <p className="mt-2 text-sm text-neutral-700">{dropOff.notes}</p>
         )}

@@ -39,7 +39,7 @@ const HEALTH: Item = { href: "/admin/health", label: "Ops health", short: "Healt
 const NAV_BY_ROLE: Record<Role, Item[]> = {
   volunteer: [FEED, MAP, IMPACT],
   restaurant: [POST_SURPLUS, MY_LISTINGS, IMPACT],
-  drop_off_admin: [DROPOFF, IMPACT],
+  drop_off: [DROPOFF, IMPACT],
   // Org admins oversee — they don't claim, so no "My pickups". They keep the
   // feed/map (visibility), the restaurant surface (special posts + tracking),
   // impact (the in-depth stats), and members.
