@@ -2,11 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Two themes share one token set (RGB channels consumed by tailwind.config).
-   :root = "Arctic Blue" (light): cool off-white surface, navy ink, white cards.
-   .dark = "Deep Forest": near-black green surface, lifted charcoal cards, light
-   text, brightened status hues. The neutral scale flips direction in dark so
-   bg-neutral-50 is always the app background and text-neutral-900 the ink. */
+/* One theme, "Arctic Blue" (light): a cool off-white surface, navy ink, white
+   cards. Tokens are RGB channels consumed by tailwind.config so /opacity
+   utilities keep working. bg-neutral-50 is the app background; text-neutral-900
+   is the ink. */
 :root {
   color-scheme: light;
   --n-50: 237 241 246;
@@ -58,57 +57,6 @@
   --route-alt: 154 147 133; /* warm grey — alternative routes */
 }
 
-.dark {
-  color-scheme: dark;
-  --n-50: 22 26 23;
-  --n-100: 27 32 28;
-  --n-200: 46 53 47;
-  --n-300: 58 66 59;
-  --n-400: 107 117 104;
-  --n-500: 155 166 151;
-  --n-600: 174 184 170;
-  --n-700: 198 206 194;
-  --n-800: 220 225 216;
-  --n-900: 233 236 230;
-  --card: 31 36 31;
-  --chrome: 31 36 31;
-
-  --rescued-50: 31 42 26;
-  --rescued-100: 44 59 36;
-  --rescued-200: 61 82 50;
-  --rescued-400: 127 156 111;
-  --rescued-600: 110 145 89;
-  --rescued-800: 169 199 154;
-  --urgent-50: 42 36 18;
-  --urgent-100: 61 52 23;
-  --urgent-200: 90 77 34;
-  --urgent-400: 231 180 84;
-  --urgent-600: 199 154 69;
-  --urgent-800: 231 193 115;
-  --failed-50: 42 24 18;
-  --failed-100: 61 33 26;
-  --failed-200: 90 49 40;
-  --failed-400: 212 101 79;
-  --failed-600: 196 90 68;
-  --failed-800: 231 154 134;
-  --transit-50: 34 26 42;
-  --transit-100: 47 37 64;
-  --transit-200: 69 55 90;
-  --transit-400: 154 127 176;
-  --transit-600: 138 111 166;
-  --transit-800: 195 169 220;
-  --clay-50: 42 29 18;
-  --clay-100: 61 42 26;
-  --clay-200: 90 61 40;
-  --clay-400: 217 138 95;
-  --clay-600: 206 123 69;
-  --clay-800: 226 160 106;
-
-  /* Brightened for the dark surface; alt warms slightly to stay legible. */
-  --route: 78 143 214; /* maps blue — active/selected route */
-  --route-alt: 124 134 120; /* muted grey — alternative routes */
-}
-
 /* Headlines use the display serif by default (Fraunces). The soft aesthetic
    leans on a slightly looser tracking and the optical-size axis weight. */
 h1,
@@ -118,29 +66,16 @@ h3 {
   letter-spacing: -0.02em;
 }
 
-/* Two soft, blurred washes give the surface depth instead of a flat fill.
-   Light: cool blue + sage. Dark: sage + plum glow on near-black. */
+/* Two soft, blurred washes (cool blue + sage) give the surface depth instead
+   of a flat fill, over a faint dot-grid for texture. */
 body {
   background-color: rgb(var(--n-50));
-  /* A faint dot-grid for texture, plus two soft color washes for depth. */
   background-image:
     radial-gradient(rgb(var(--n-900) / 0.035) 1px, transparent 1.7px),
     radial-gradient(620px 340px at 12% -8%, rgba(70, 120, 175, 0.1), transparent 70%),
     radial-gradient(560px 320px at 96% 2%, rgba(95, 126, 80, 0.08), transparent 72%);
   background-size: 22px 22px, 100% 100%, 100% 100%;
   background-attachment: fixed;
-}
-.dark body {
-  background-image:
-    radial-gradient(rgb(var(--n-900) / 0.05) 1px, transparent 1.7px),
-    radial-gradient(620px 340px at 12% -8%, rgba(95, 126, 80, 0.12), transparent 70%),
-    radial-gradient(560px 320px at 96% 2%, rgba(110, 86, 132, 0.1), transparent 72%);
-  background-size: 22px 22px, 100% 100%, 100% 100%;
-}
-.dark body {
-  background-image:
-    radial-gradient(620px 340px at 12% -8%, rgba(95, 126, 80, 0.12), transparent 70%),
-    radial-gradient(560px 320px at 96% 2%, rgba(110, 86, 132, 0.1), transparent 72%);
 }
 
 /* Map popups: a frosted, rounded "Soft Harvest" card that sits in front of the

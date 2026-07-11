@@ -1,4 +1,3 @@
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { DataModeToggle } from "@/components/DataModeToggle";
 import { NotificationsToggle } from "@/components/NotificationsToggle";
 import { QuietHoursControl } from "@/components/QuietHoursControl";
@@ -37,16 +36,6 @@ export default async function SettingsPage() {
       </header>
 
       <section className="rounded-2xl border border-neutral-900/5 bg-card p-5 shadow-card">
-        <h2 className="text-lg font-medium">Appearance</h2>
-        <p className="mt-1 text-sm text-neutral-700">
-          Light is Arctic Blue; dark is Deep Forest. System follows your device.
-        </p>
-        <div className="mt-4">
-          <ThemeToggle />
-        </div>
-      </section>
-
-      <section className="mt-6 rounded-2xl border border-neutral-900/5 bg-card p-5 shadow-card">
         <h2 className="text-lg font-medium">Notifications</h2>
         <p className="mt-1 text-sm text-neutral-700">
           Get a gentle nudge when it&apos;s time to check in on a pickup, when

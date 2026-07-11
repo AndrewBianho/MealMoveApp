@@ -5,7 +5,6 @@ import type { Config } from "tailwindcss";
 // components re-skin from these tokens; the values are an earthy, soft set
 // (sage / honey / tomato / plum on a cream paper surface).
 const config: Config = {
-  darkMode: "class",
   content: [
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -18,9 +17,8 @@ const config: Config = {
         mono: ["var(--font-mono)", "monospace"], // JetBrains Mono
       },
       // All color tokens resolve to CSS variables (RGB channels) defined in
-      // globals.css, so the whole palette re-skins per theme: :root = Arctic
-      // Blue (light), .dark = Deep Forest. Channel form keeps `/opacity`
-      // utilities working. Status hues stay meaningful in both themes.
+      // globals.css (:root = the "Arctic Blue" light theme). The channel form
+      // keeps `/opacity` utilities working.
       colors: {
         rescued: {
           50: "rgb(var(--rescued-50) / <alpha-value>)",
@@ -54,8 +52,8 @@ const config: Config = {
           600: "rgb(var(--transit-600) / <alpha-value>)",
           800: "rgb(var(--transit-800) / <alpha-value>)",
         },
-        // Surfaces / text / borders. The scale flips direction in .dark (50 is
-        // the app background, 900 the primary text, in both themes).
+        // Surfaces / text / borders: 50 is the app background, 900 the primary
+        // text (ink).
         neutral: {
           50: "rgb(var(--n-50) / <alpha-value>)",
           100: "rgb(var(--n-100) / <alpha-value>)",
