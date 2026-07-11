@@ -208,22 +208,31 @@ export function ListingDetail({
     }
     return chosenDropOffPin ? [chosenDropOffPin] : [];
   }, [needsDropOff, dropOffChoices, chosenDropOffPin]);
-  // While a rescue is in transit, hand the map a pickup → drop-off journey so it
-  // draws the blue route and loops a tracer along it (imitated live tracking).
+  // Hand the map the journey to draw a blue route + tracer along. The map
+  // prepends the volunteer's current location, so on a live listing it shows
+  // "you → pickup" as soon as they're located, and extends to "→ drop-off" once
+  // a destination is chosen (a picker choice, or the committed drop-off in
+  // transit) — redrawn in place as they switch. Terminal listings show nothing.
   const liveRoute = useMemo<LiveRoute | null>(() => {
-    if (
-      listing?.status === "in transit" &&
-      listing.lat != null &&
-      listing.lng != null &&
-      chosenDropOffPin
-    ) {
-      return {
-        pickup: [listing.lng, listing.lat],
-        dropOff: [chosenDropOffPin.lng, chosenDropOffPin.lat],
-      };
+    if (listing?.lat == null || listing?.lng == null) return null;
+    if (["delivered", "expired", "failed"].includes(listing.status)) return null;
+    let dropOff: [number, number] | null = null;
+    if (chosenDropOffPin) {
+      dropOff = [chosenDropOffPin.lng, chosenDropOffPin.lat];
+    } else if (needsDropOff && chosenDropOff) {
+      const d = dropOffChoices.find((c) => c.id === chosenDropOff);
+      if (d) dropOff = [d.lng, d.lat];
     }
-    return null;
-  }, [listing?.status, listing?.lat, listing?.lng, chosenDropOffPin]);
+    return { pickup: [listing.lng, listing.lat], dropOff };
+  }, [
+    listing?.status,
+    listing?.lat,
+    listing?.lng,
+    needsDropOff,
+    chosenDropOff,
+    dropOffChoices,
+    chosenDropOffPin,
+  ]);
 
   if (!listing) {
     return (

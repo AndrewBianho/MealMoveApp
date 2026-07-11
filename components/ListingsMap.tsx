@@ -1,7 +1,7 @@
 "use client";
 
 import "mapbox-gl/dist/mapbox-gl.css";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Map as MapboxMap, Marker as MapboxMarker } from "mapbox-gl";
 import type { Feature } from "geojson";
 import type { Listing } from "@/lib/types";
@@ -24,10 +24,12 @@ const ICON_DROP = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" s
 // DESIGN.md's `route` token), over a white casing so it reads on satellite tiles.
 const ROUTE = RAMP.route;
 
-// A live-route journey to draw + trace: pickup → drop-off, each [lng, lat].
+// A live-route journey to draw + trace, each point [lng, lat]. The map prepends
+// the volunteer's current location (once geolocated) as the origin, so the drawn
+// route is you → pickup → drop-off; dropOff is null until one is chosen.
 export interface LiveRoute {
   pickup: [number, number];
-  dropOff: [number, number];
+  dropOff?: [number, number] | null;
 }
 
 // Inject the tracer's pulsing halo once. The tracer is a raw-DOM marker (Mapbox
@@ -100,15 +102,25 @@ function addLiveRouteLayers(map: MapboxMap, coords: [number, number][]) {
   });
 }
 
+// Tear down the route line + casing so a new destination can redraw in place
+// (the source is single-use; addLiveRouteLayers early-returns while it exists).
+function removeLiveRouteLayers(map: MapboxMap) {
+  for (const id of ["live-route-line", "live-route-casing"]) {
+    if (map.getLayer(id)) map.removeLayer(id);
+  }
+  if (map.getSource("live-route")) map.removeSource("live-route");
+}
+
 // Driving geometry pickup → drop-off (follows roads); null on any failure so the
 // caller can fall back to a straight 2-point line.
 async function fetchDriveRoute(
-  a: [number, number],
-  b: [number, number]
+  waypoints: [number, number][]
 ): Promise<[number, number][] | null> {
+  if (waypoints.length < 2) return null;
   try {
+    const coords = waypoints.map((p) => `${p[0]},${p[1]}`).join(";");
     const url =
-      `https://api.mapbox.com/directions/v5/mapbox/driving/${a[0]},${a[1]};${b[0]},${b[1]}` +
+      `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}` +
       `?geometries=geojson&overview=full&access_token=${TOKEN}`;
     const res = await fetch(url);
     if (!res.ok) return null;
@@ -220,10 +232,19 @@ export function ListingsMap({
   const tracerRef = useRef<MapboxMarker>();
   const rafRef = useRef<number>();
   const routeCoordsRef = useRef<[number, number][] | null>(null);
-  // Serialize the route into a stable primitive so the build effect only re-runs
+  // Cached mapbox-gl module so the route can be (re)drawn from applyRoute
+  // without re-importing or rebuilding the map when the destination changes.
+  const glRef = useRef<typeof import("mapbox-gl")["default"]>();
+  // Bumped on every applyRoute call so a slower in-flight draw (its directions
+  // fetch still resolving) bails when a newer destination has superseded it.
+  const routeTokenRef = useRef(0);
+  // The volunteer's current location [lng, lat], once the GeolocateControl
+  // resolves it — prepended to the route so it reads "you → pickup → drop-off".
+  const userLocRef = useRef<[number, number] | null>(null);
+  // Serialize the route into a stable primitive so the route effect only re-runs
   // when the actual coordinates change, not on every parent render.
   const routeKey = route
-    ? `${route.pickup[0]},${route.pickup[1]};${route.dropOff[0]},${route.dropOff[1]}`
+    ? `${route.pickup[0]},${route.pickup[1]};${route.dropOff ? `${route.dropOff[0]},${route.dropOff[1]}` : ""}`
     : "";
   const routeRef = useRef(route);
   routeRef.current = route;
@@ -234,6 +255,100 @@ export function ListingsMap({
   selectedRef.current = selectedDropOffId;
   const onSelectRef = useRef(onSelectDropOff);
   onSelectRef.current = onSelectDropOff;
+
+  // Draw (or clear) the blue route line + its looping tracer on the live map.
+  // Safe to call repeatedly: it tears down the previous route first, so
+  // switching the destination redraws in place instead of rebuilding the map.
+  const applyRoute = useCallback(async (nextRoute: LiveRoute | null) => {
+    const map = mapRef.current;
+    const mapboxgl = glRef.current;
+    if (!map || !mapboxgl) return;
+    const token = ++routeTokenRef.current;
+
+    // Clear any existing route line + tracer + animation loop.
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = undefined;
+    tracerRef.current?.remove();
+    tracerRef.current = undefined;
+    removeLiveRouteLayers(map);
+    routeCoordsRef.current = null;
+    if (!nextRoute) return;
+
+    // Chain the legs the volunteer actually travels: current location →
+    // pickup → drop-off. Drop any leg we don't have yet (no GPS fix, no chosen
+    // destination) and collapse near-duplicate points so the request is valid.
+    const raw: [number, number][] = [];
+    if (userLocRef.current) raw.push(userLocRef.current);
+    raw.push(nextRoute.pickup);
+    if (nextRoute.dropOff) raw.push(nextRoute.dropOff);
+    const waypoints = raw.filter(
+      (p, i) => i === 0 || Math.abs(p[0] - raw[i - 1][0]) > 1e-6 || Math.abs(p[1] - raw[i - 1][1]) > 1e-6
+    );
+    // Need at least two distinct points to draw a line at all.
+    if (waypoints.length < 2) return;
+
+    // Roads if we can get them; a straight polyline through the waypoints else.
+    const drive = await fetchDriveRoute(waypoints);
+    // Bail if the map was rebuilt/removed, or a newer destination superseded us.
+    if (mapRef.current !== map || routeTokenRef.current !== token) return;
+    const coords = drive ?? waypoints;
+    routeCoordsRef.current = coords;
+    const reduce =
+      typeof window !== "undefined" &&
+      !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+    const drawLine = () => addLiveRouteLayers(map, coords);
+    if (map.isStyleLoaded()) drawLine();
+    else map.once("load", drawLine);
+
+    // Frame the whole journey so the entire route is visible (you → pickup →
+    // drop-off), not just centered on the volunteer. Eased so switching drop-
+    // offs pans smoothly instead of jumping; snaps instantly under reduced
+    // motion. Padded for the route overlay card (top-left) and map controls.
+    const bounds = new mapboxgl.LngLatBounds();
+    coords.forEach((c) => bounds.extend(c));
+    map.fitBounds(bounds, {
+      padding: { top: 72, bottom: 56, left: 56, right: 72 },
+      maxZoom: 15,
+      duration: reduce ? 0 : 700,
+    });
+
+    // The tracer: a route-blue dot with a soft pulsing halo, positioned by
+    // Mapbox so it never lags the map as it pans.
+    ensureTracerStyle();
+    const tEl = document.createElement("div");
+    tEl.style.cssText = `width:32px;height:32px;display:grid;place-items:center;pointer-events:none;`;
+    const pulse = document.createElement("div");
+    pulse.className = "mm-tracer-pulse";
+    const dot = document.createElement("div");
+    dot.style.cssText = `position:relative;width:15px;height:15px;border-radius:50%;background:${ROUTE};border:3px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.2),0 2px 6px rgba(51,52,44,.45);`;
+    tEl.appendChild(pulse);
+    tEl.appendChild(dot);
+    tracerRef.current = new mapboxgl.Marker({ element: tEl })
+      .setLngLat(coords[0])
+      .addTo(map);
+
+    // Steady sweep pickup → drop-off, then restart — a medium ~6s pass, with a
+    // quick fade at the loop seam so the jump back reads softly. Under reduced
+    // motion the dot simply rests at the route's midpoint.
+    const { cum, total } = buildPath(coords);
+    if (reduce) {
+      tracerRef.current.setLngLat(pointAt(coords, cum, total, 0.5));
+    } else {
+      const DURATION = 6000;
+      let startT = 0;
+      const tick = (now: number) => {
+        if (mapRef.current !== map || !tracerRef.current) return;
+        if (!startT) startT = now;
+        const p = ((now - startT) % DURATION) / DURATION;
+        tracerRef.current.setLngLat(pointAt(coords, cum, total, p));
+        const fade = p < 0.06 ? p / 0.06 : p > 0.94 ? (1 - p) / 0.06 : 1;
+        tEl.style.opacity = String(fade);
+        rafRef.current = requestAnimationFrame(tick);
+      };
+      rafRef.current = requestAnimationFrame(tick);
+    }
+  }, []);
 
   useEffect(() => {
     if (!TOKEN || !ref.current) return;
@@ -250,6 +365,7 @@ export function ListingsMap({
       const mapboxgl = (await import("mapbox-gl")).default;
       if (cancelled || !ref.current) return;
       mapboxgl.accessToken = TOKEN;
+      glRef.current = mapboxgl;
 
       map = new mapboxgl.Map({
         container: ref.current,
@@ -295,11 +411,14 @@ export function ListingsMap({
         "top-right"
       );
 
-      // "You are here" — live location with a recenter button.
+      // "You are here" — live location with a recenter button. On the route/
+      // detail map we locate once but don't let the camera follow the dot, so
+      // it can't fight the whole-route framing; the feed keeps live tracking.
+      const routeMode = !!routeRef.current;
       const geolocate = new mapboxgl.GeolocateControl({
         positionOptions: { enableHighAccuracy: true },
-        trackUserLocation: true,
-        showUserHeading: true,
+        trackUserLocation: !routeMode,
+        showUserHeading: !routeMode,
       });
       map.addControl(geolocate, "top-right");
 
@@ -336,75 +455,31 @@ export function ListingsMap({
         dropEls.set(d.id, el);
       }
 
-      // Once located, fold "distance from you" into every popup.
+      // Once located, fold "distance from you" into every popup, and anchor the
+      // route at the volunteer's position — redrawing when the fix first lands
+      // or they move enough to matter (~50m), so "you → pickup" appears without
+      // needing to pick a drop-off first.
       geolocate.on("geolocate", (e) => {
         const { latitude, longitude } = (e as GeolocationPosition).coords;
         for (const { listing, popup } of entries) {
           const d = milesBetween(latitude, longitude, listing.lat, listing.lng);
           popup.setHTML(popupHtml(listing, d));
         }
+        const prev = userLocRef.current;
+        const moved =
+          !prev || milesBetween(prev[1], prev[0], latitude, longitude) > 0.03;
+        userLocRef.current = [longitude, latitude];
+        if (moved && routeRef.current) void applyRoute(routeRef.current);
       });
 
       map.on("load", () => {
         if (points.length > 1) resetView();
         // Auto-locate the volunteer (prompts for permission; harmless if denied).
         geolocate.trigger();
+        // Draw the initial route (if any) now the base style is ready; the
+        // routeKey effect handles later destination switches in place.
+        void applyRoute(routeRef.current);
       });
-
-      // --- Live delivery route + tracer (in-transit only) ------------------
-      // Draw a blue driving route pickup → drop-off and loop a dot along it, so
-      // an ongoing rescue reads as "on the move" without any real GPS tracking.
-      const liveRoute = routeRef.current;
-      if (liveRoute) {
-        // Roads if we can get them; a straight 2-point line otherwise.
-        const drive = await fetchDriveRoute(liveRoute.pickup, liveRoute.dropOff);
-        if (cancelled || !map) return;
-        const coords = drive ?? [liveRoute.pickup, liveRoute.dropOff];
-        routeCoordsRef.current = coords;
-
-        const drawLine = () => addLiveRouteLayers(map!, coords);
-        if (map.isStyleLoaded()) drawLine();
-        else map.once("load", drawLine);
-
-        // The tracer: a route-blue dot with a soft pulsing halo, positioned by
-        // Mapbox so it never lags the map as it pans.
-        ensureTracerStyle();
-        const tEl = document.createElement("div");
-        tEl.style.cssText = `width:32px;height:32px;display:grid;place-items:center;pointer-events:none;`;
-        const pulse = document.createElement("div");
-        pulse.className = "mm-tracer-pulse";
-        const dot = document.createElement("div");
-        dot.style.cssText = `position:relative;width:15px;height:15px;border-radius:50%;background:${ROUTE};border:3px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.2),0 2px 6px rgba(51,52,44,.45);`;
-        tEl.appendChild(pulse);
-        tEl.appendChild(dot);
-        tracerRef.current = new mapboxgl.Marker({ element: tEl })
-          .setLngLat(coords[0])
-          .addTo(map);
-
-        // Steady sweep pickup → drop-off, then restart — a medium ~6s pass, with
-        // a quick fade at the loop seam so the jump back reads softly. Under
-        // reduced motion the dot simply rests at the route's midpoint.
-        const { cum, total } = buildPath(coords);
-        const reduce =
-          typeof window !== "undefined" &&
-          !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-        if (reduce) {
-          tracerRef.current.setLngLat(pointAt(coords, cum, total, 0.5));
-        } else {
-          const DURATION = 6000;
-          let startT = 0;
-          const tick = (now: number) => {
-            if (cancelled || !tracerRef.current) return;
-            if (!startT) startT = now;
-            const p = ((now - startT) % DURATION) / DURATION;
-            tracerRef.current.setLngLat(pointAt(coords, cum, total, p));
-            const fade = p < 0.06 ? p / 0.06 : p > 0.94 ? (1 - p) / 0.06 : 1;
-            tEl.style.opacity = String(fade);
-            rafRef.current = requestAnimationFrame(tick);
-          };
-          rafRef.current = requestAnimationFrame(tick);
-        }
-      }
     })();
 
     return () => {
@@ -418,7 +493,18 @@ export function ListingsMap({
       map?.remove();
       mapRef.current = undefined;
     };
-  }, [listings, dropOffs, routeKey]);
+  }, [listings, dropOffs, applyRoute]);
+
+  // Redraw the route when the destination changes (e.g. the volunteer picks a
+  // different drop-off) — in place on the live map, so switching drop-offs
+  // never tears down and refits the whole map. The build effect draws the
+  // first route itself once the style loads; this covers every change after.
+  useEffect(() => {
+    if (!mapRef.current) return;
+    void applyRoute(routeRef.current);
+    // routeRef holds the latest route; routeKey is its stable serialization.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeKey, applyRoute]);
 
   // Restyle the drop-off halo when the picker selection changes — the markers
   // are raw DOM, so this bypasses React and never rebuilds the map.
