@@ -21,12 +21,15 @@ export default async function AdminUsersPage() {
   // server blocks them from approving, declining, or changing real accounts, so
   // disable the controls and say why rather than let a click fail.
   const demo = await isDemo();
+  // Scope the roster to the viewer's world — demo and real never mix. A demo
+  // org-admin (or any account browsing demo) sees only the curated demo
+  // accounts, never real people; a real admin sees only real accounts.
   // Explicit select — phone is deliberately omitted so a volunteer's number is
   // never even fetched into admin-facing code (the sign-up promise, kept in code).
   const [users, pending] = await Promise.all([
     prisma.user.findMany({
       // Active accounts only — pending partners live in their own queue below.
-      where: { status: "active" },
+      where: { status: "active", demo },
       orderBy: [{ role: "asc" }, { name: "asc" }],
       select: {
         id: true,
@@ -38,7 +41,7 @@ export default async function AdminUsersPage() {
       },
     }),
     prisma.user.findMany({
-      where: { status: "pending" },
+      where: { status: "pending", demo },
       orderBy: { createdAt: "asc" },
       select: { id: true, name: true, email: true, role: true, pendingOrg: true },
     }),
