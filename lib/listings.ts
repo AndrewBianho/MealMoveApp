@@ -95,6 +95,8 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
     dropOffHours: parseStoredHours(l.dropOff?.retrievalHours) ?? undefined,
     lat: l.restaurant.lat,
     lng: l.restaurant.lng,
+    dropOffLat: l.dropOff?.lat ?? undefined,
+    dropOffLng: l.dropOff?.lng ?? undefined,
     category: l.category,
     perishable: l.perishable,
     allergens: l.allergens.length > 0 ? l.allergens : undefined,

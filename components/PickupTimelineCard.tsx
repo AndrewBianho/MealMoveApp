@@ -3,6 +3,7 @@ import Image from "next/image";
 import { cn } from "./cn";
 import { MapPin, ArrowRight } from "./icons";
 import { StatusBadge } from "./StatusBadge";
+import { OpenInMapsButton } from "./OpenInMapsButton";
 import type { Listing } from "@/lib/types";
 
 // The "My pickups" card — one pickup's full story told through a horizontal
@@ -276,16 +277,31 @@ export function PickupTimelineCard({
             outcome chip. */}
         <div className="mt-4">
           {!terminal && !delivered ? (
-            <Link
-              href={`/listings/${id}`}
-              className={cn(
-                "block w-full rounded-2xl px-4 py-2 text-center text-[15px] font-bold transition-all duration-200",
-                "bg-gradient-to-b from-rescued-400 to-rescued-600 text-white shadow-glow hover:-translate-y-0.5 hover:shadow-lift",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50"
-              )}
-            >
-              {actionLabel}
-            </Link>
+            <div className="flex flex-col gap-2">
+              <Link
+                href={`/listings/${id}`}
+                className={cn(
+                  "block w-full rounded-2xl px-4 py-2 text-center text-[15px] font-bold transition-all duration-200",
+                  "bg-gradient-to-b from-rescued-400 to-rescued-600 text-white shadow-glow hover:-translate-y-0.5 hover:shadow-lift",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50"
+                )}
+              >
+                {actionLabel}
+              </Link>
+              <OpenInMapsButton
+                pickup={
+                  listing.lat != null && listing.lng != null
+                    ? { lat: listing.lat, lng: listing.lng }
+                    : null
+                }
+                dropOff={
+                  listing.dropOffLat != null && listing.dropOffLng != null
+                    ? { lat: listing.dropOffLat, lng: listing.dropOffLng }
+                    : null
+                }
+                className="py-2 text-[15px]"
+              />
+            </div>
           ) : delivered ? (
             <p className="flex items-center justify-center gap-2 rounded-2xl bg-rescued-50 px-4 py-2.5 text-[15px] font-semibold text-rescued-800">
               <Check className="h-3.5 w-3.5" />

@@ -121,6 +121,9 @@ export interface Listing {
   /** Source restaurant coordinates, for the map (present on DB-backed data). */
   lat?: number;
   lng?: number;
+  /** Chosen drop-off's coordinates, for directions (present once claimed). */
+  dropOffLat?: number;
+  dropOffLng?: number;
   category?: FoodCategory;
   perishable?: boolean;
   /** Allergens present in this food, as free-form labels (food-safety surfacing). */

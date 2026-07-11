@@ -25,6 +25,7 @@ import { ChatPanel } from "./ChatPanel";
 import { Avatar } from "./Avatar";
 import { BuddyInvitePicker } from "./BuddyInvitePicker";
 import { ImageUploadField } from "./ImageUploadField";
+import { OpenInMapsButton } from "./OpenInMapsButton";
 import { SafetyChecklist } from "./SafetyChecklist";
 import { RescueAccuracySignal } from "./RescueAccuracySignal";
 import type { SafetyAnswers } from "@/lib/safety";
@@ -280,6 +281,15 @@ export function ListingDetail({
     listing.lat != null && listing.lng != null && chosenDropOffPin
       ? milesBetween(listing.lat, listing.lng, chosenDropOffPin.lat, chosenDropOffPin.lng)
       : null;
+  // Coordinates handed to the "Open in Google Maps" button — pickup (restaurant)
+  // and the committed drop-off, so a claimed volunteer can navigate the rescue.
+  const mapsPickup =
+    listing.lat != null && listing.lng != null
+      ? { lat: listing.lat, lng: listing.lng }
+      : null;
+  const mapsDropOff = chosenDropOffPin
+    ? { lat: chosenDropOffPin.lat, lng: chosenDropOffPin.lng }
+    : null;
 
   function onClaim() {
     startTransition(async () => {
@@ -915,6 +925,11 @@ export function ListingDetail({
               {listing.status === "claimed" &&
                 (listing.mine ? (
                   <>
+                    <OpenInMapsButton
+                      pickup={mapsPickup}
+                      dropOff={mapsDropOff}
+                      className="mb-4"
+                    />
                     <SafetyChecklist answers={safety} onChange={setSafety} />
                     <ImageUploadField
                       label="Pickup photo"
@@ -950,6 +965,11 @@ export function ListingDetail({
                         </p>
                       </div>
                     </div>
+                    <OpenInMapsButton
+                      pickup={mapsPickup}
+                      dropOff={mapsDropOff}
+                      className="mb-4"
+                    />
                     <ImageUploadField
                       label="Delivery photo"
                       optional={false}

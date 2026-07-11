@@ -30,6 +30,15 @@ export function MapPin(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+// Navigation arrow — the "get directions" glyph, mirrors Google Maps' cue.
+export function Navigation(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Base {...props}>
+      <path d="M12 2 5 20l7-4 7 4-7-18z" />
+    </Base>
+  );
+}
+
 export function Clock(props: SVGProps<SVGSVGElement>) {
   return (
     <Base {...props}>

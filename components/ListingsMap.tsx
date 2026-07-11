@@ -297,9 +297,12 @@ export function ListingsMap({
       typeof window !== "undefined" &&
       !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
+    // isStyleLoaded() can briefly read false right at load; defer to "idle"
+    // (which fires after the current load handler) rather than "load", which
+    // may have already fired — otherwise the layer would never get added.
     const drawLine = () => addLiveRouteLayers(map, coords);
     if (map.isStyleLoaded()) drawLine();
-    else map.once("load", drawLine);
+    else map.once("idle", drawLine);
 
     // Frame the whole journey so the entire route is visible (you → pickup →
     // drop-off), not just centered on the volunteer. Eased so switching drop-
