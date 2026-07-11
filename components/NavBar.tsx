@@ -165,7 +165,15 @@ function TabIcon({ icon }: { icon: string }) {
   );
 }
 
-export function NavBar({ role, name }: { role: Role; name: string }) {
+export function NavBar({
+  role,
+  name,
+  image = null,
+}: {
+  role: Role;
+  name: string;
+  image?: string | null;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   // Portal target only exists after mount; the bar/sheet are portaled to <body>.
@@ -251,7 +259,7 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
           aria-current={isActive("/profile") ? "page" : undefined}
           className="rounded-full transition duration-150 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
         >
-          <Avatar name={name} className="shadow-card" />
+          <Avatar name={name} src={image} className="shadow-card" />
         </Link>
         <button
           onClick={onSignOut}
@@ -316,7 +324,7 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
               moreActive && "ring-2 ring-neutral-900"
             )}
           >
-            <Avatar name={name} />
+            <Avatar name={name} src={image} />
           </span>
           <span
             className={cn(
@@ -341,7 +349,7 @@ export function NavBar({ role, name }: { role: Role; name: string }) {
           <div className="fixed inset-x-0 bottom-0 z-modal animate-fade-up rounded-t-3xl border-t border-neutral-200/50 bg-neutral-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-lift">
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-neutral-200" />
             <div className="mb-3 flex items-center gap-3 px-1">
-              <Avatar name={name} size="lg" />
+              <Avatar name={name} src={image} size="lg" />
               <div className="min-w-0">
                 <div className="truncate font-display text-base font-semibold text-neutral-900">
                   {name}

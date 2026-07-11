@@ -1,8 +1,10 @@
+import Image from "next/image";
 import { cn } from "./cn";
 
 // Brand avatar — a warm clay gradient disc with lowercase display-serif
 // initials (identity, not metadata, so display over mono; sentence-case per the
-// design rules). Shadowless by default; pass shadow-card where it should lift.
+// design rules). When the account has a profile photo (`src`), it fills the disc
+// instead. Shadowless by default; pass shadow-card where it should lift.
 function initials(name: string): string {
   return name
     .trim()
@@ -17,12 +19,16 @@ const SIZES = {
   lg: "h-14 w-14 text-base",
 } as const;
 
+const PX = { sm: 32, lg: 56 } as const;
+
 export function Avatar({
   name = "?",
+  src,
   size = "sm",
   className,
 }: {
   name?: string;
+  src?: string | null;
   size?: "sm" | "lg";
   className?: string;
 }) {
@@ -30,12 +36,22 @@ export function Avatar({
     <span
       aria-hidden="true"
       className={cn(
-        "grid shrink-0 place-items-center rounded-full bg-gradient-to-br from-clay-200 to-clay-400 font-display font-semibold text-clay-800",
+        "relative grid shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-clay-200 to-clay-400 font-display font-semibold text-clay-800",
         SIZES[size],
         className
       )}
     >
-      {initials(name)}
+      {src ? (
+        <Image
+          src={src}
+          alt=""
+          width={PX[size]}
+          height={PX[size]}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        initials(name)
+      )}
     </span>
   );
 }

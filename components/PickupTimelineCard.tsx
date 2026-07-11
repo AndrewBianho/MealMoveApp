@@ -72,10 +72,15 @@ function Check({ className }: { className?: string }) {
 export function PickupTimelineCard({
   listing,
   priorityImage = false,
+  featured = false,
   className,
 }: {
   listing: Listing;
   priorityImage?: boolean;
+  /** Hero scale for the volunteer's single in-flight rescue at the top of the
+   * feed — larger photo, title, padding and CTA so the priority action reads
+   * above the browse cards. Past-pickup cards (impact page) stay default. */
+  featured?: boolean;
   className?: string;
 }) {
   const { id, title, source, servings, status, dropOff, imageUrl } = listing;
@@ -126,7 +131,8 @@ export function PickupTimelineCard({
         href={`/listings/${id}`}
         aria-label={`View ${title}`}
         className={cn(
-          "relative w-28 shrink-0 self-stretch overflow-hidden sm:w-44 lg:w-[212px]",
+          "relative shrink-0 self-stretch overflow-hidden",
+          featured ? "w-32 sm:w-52 lg:w-[300px]" : "w-28 sm:w-44 lg:w-[212px]",
           isPlaceholder ? "bg-card" : "bg-neutral-100"
         )}
       >
@@ -140,7 +146,7 @@ export function PickupTimelineCard({
             src={img}
             alt={title}
             fill
-            sizes="212px"
+            sizes={featured ? "300px" : "212px"}
             priority={priorityImage}
             className={cn(
               "object-cover transition-transform duration-300 group-hover:scale-[1.03]",
@@ -154,8 +160,13 @@ export function PickupTimelineCard({
       </Link>
 
       {/* Body */}
-      <div className="flex min-w-0 flex-1 flex-col p-5 sm:p-6">
-        <h3 className="font-display text-[24px] font-medium leading-[1.18] tracking-tight text-balance sm:text-[24px]">
+      <div className={cn("flex min-w-0 flex-1 flex-col", featured ? "p-6 sm:p-8" : "p-5 sm:p-6")}>
+        <h3
+          className={cn(
+            "font-display font-medium leading-[1.18] tracking-tight text-balance",
+            featured ? "text-[26px] sm:text-[30px]" : "text-[24px] sm:text-[24px]"
+          )}
+        >
           <Link
             href={`/listings/${id}`}
             className="rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
@@ -281,7 +292,8 @@ export function PickupTimelineCard({
               <Link
                 href={`/listings/${id}`}
                 className={cn(
-                  "block w-full rounded-2xl px-4 py-2 text-center text-[15px] font-bold transition-all duration-200",
+                  "block w-full rounded-2xl px-4 text-center font-bold transition-all duration-200",
+                  featured ? "py-3 text-[16px]" : "py-2 text-[15px]",
                   "bg-gradient-to-b from-rescued-400 to-rescued-600 text-white shadow-glow hover:-translate-y-0.5 hover:shadow-lift",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50"
                 )}

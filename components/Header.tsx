@@ -13,12 +13,14 @@ export async function Header() {
   // The first-run welcome is gated on account age, so fetch when the account was
   // created (indexed PK lookup). 0 = unknown → the intro simply won't auto-open.
   let createdAt = 0;
+  let image: string | null = null;
   if (user) {
     const row = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { createdAt: true },
+      select: { createdAt: true, imageUrl: true },
     });
     createdAt = row?.createdAt.getTime() ?? 0;
+    image = row?.imageUrl ?? null;
   }
 
   return (
@@ -52,7 +54,9 @@ export async function Header() {
             </Link>
           )}
 
-          {user && <NavBar role={user.role} name={user.name ?? "?"} />}
+          {user && (
+            <NavBar role={user.role} name={user.name ?? "?"} image={image} />
+          )}
         </div>
       </header>
 

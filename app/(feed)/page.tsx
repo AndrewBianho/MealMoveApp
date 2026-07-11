@@ -68,7 +68,7 @@ export default async function FeedPage() {
       </header>
 
       {current && (
-        <section className="mb-8 lg:max-w-2xl">
+        <section className="mb-8 lg:max-w-3xl">
           <div className="mb-3.5 flex items-center gap-2">
             <h2 className="text-[16px] font-semibold text-neutral-800">
               Your current rescue
@@ -77,7 +77,7 @@ export default async function FeedPage() {
               One at a time
             </span>
           </div>
-          <PickupTimelineCard listing={current} priorityImage />
+          <PickupTimelineCard listing={current} priorityImage featured />
         </section>
       )}
 

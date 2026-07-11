@@ -23,7 +23,8 @@ export const dynamic = "force-dynamic";
 // folded in here). The identity header is the same for everyone; the numbers
 // below it always match the account type — a volunteer sees their harvest, a
 // restaurant its donations, a drop-off what it received, an org admin the whole
-// chapter. `/profile` redirects here.
+// chapter. A volunteer's `/profile` is now its own editable identity page; the
+// other roles' avatars still redirect from `/profile` to here.
 export default async function ImpactPage() {
   const session = await auth();
   const userId = session?.user?.id;
@@ -36,6 +37,7 @@ export default async function ImpactPage() {
       role: true,
       createdAt: true,
       dropOffId: true,
+      imageUrl: true,
       restaurant: { select: { id: true, name: true } },
     },
   });
@@ -106,7 +108,7 @@ export default async function ImpactPage() {
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">
       <header className="mb-8 flex items-center gap-4">
-        <Avatar name={user.name} size="lg" className="shadow-card" />
+        <Avatar name={user.name} src={user.imageUrl} size="lg" className="shadow-card" />
         <div>
           <h1 className="font-display text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">
             {user.name}

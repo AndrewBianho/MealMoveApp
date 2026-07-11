@@ -675,6 +675,46 @@ export async function setQuietHours(
   return { ok: true };
 }
 
+/**
+ * Update the signed-in account's own profile (name, phone, photo). Email is the
+ * login identifier and organization is the fixed chapter, so neither is editable
+ * here. The image URL is trusted the same way listing photos are — it only
+ * becomes visible once attached to the caller's own row.
+ */
+export async function updateProfile(input: {
+  name: string;
+  phone: string;
+  imageUrl: string | null;
+}): Promise<SignUpResult> {
+  const userId = await currentUserId();
+
+  const name = input.name.trim();
+  if (name.length < 2) {
+    return { ok: false, error: "Please enter your name." };
+  }
+
+  // Phone is optional here; when present it must be a real 10-digit number,
+  // matching sign-up. Empty clears it.
+  const digits = (input.phone ?? "").replace(/\D/g, "");
+  if (digits.length > 0 && digits.length !== 10) {
+    return { ok: false, error: "Please enter a valid 10-digit phone number." };
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      name,
+      phone: digits.length === 10 ? digits : null,
+      imageUrl: input.imageUrl,
+    },
+  });
+
+  revalidatePath("/profile");
+  revalidatePath("/impact");
+  revalidatePath("/"); // the nav avatar reflects the new photo/name
+  return { ok: true };
+}
+
 /** Volunteers the caller can invite to buddy this pickup. */
 export async function getInvitableVolunteers(listingId: string) {
   const inviterId = await currentUserId();

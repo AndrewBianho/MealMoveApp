@@ -49,7 +49,7 @@ export function DeliverySections({
         <section className="mb-8">
           <h3 className="mb-4 text-base font-semibold text-neutral-800">In the process</h3>
           {shownIncoming.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               {shownIncoming.map((l) => (
                 <ListingCard key={l.id} listing={l} audience="dropoff" />
               ))}
@@ -73,7 +73,7 @@ export function DeliverySections({
         <section>
           <h3 className="mb-4 text-base font-semibold text-neutral-800">Arrived</h3>
           {shownArrived.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               {shownArrived.map((l) => (
                 <ListingCard key={l.id} listing={l} audience="dropoff" />
               ))}
