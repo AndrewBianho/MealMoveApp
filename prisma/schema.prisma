@@ -114,7 +114,12 @@ model User {
   // { kind: "restaurant" | "drop_off", name: string, address: string }.
   pendingOrg   Json?
   passwordHash String? // bcrypt hash for the Credentials provider
-  dataMode     DataMode      @default(real) // which world this account sees/acts in
+  dataMode     DataMode      @default(real) // which world this account currently sees/acts in
+  // Permanent account type (not the current view): true only for the seeded
+  // demo-world accounts. A demo account is locked to the demo world — it can
+  // never switch to real. A real account keeps `demo = false` even while it's
+  // browsing the demo world (dataMode = "demo"), so the two never conflate.
+  demo         Boolean       @default(false)
   restaurant   Restaurant?   @relation(fields: [restaurantId], references: [id])
   restaurantId String?
   // For a `drop_off` account: the single location it speaks for. Set on approval

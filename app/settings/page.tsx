@@ -22,6 +22,7 @@ export default async function SettingsPage() {
           notificationsEnabled: true,
           quietHoursStart: true,
           quietHoursEnd: true,
+          demo: true,
         },
       })
     : null;
@@ -84,14 +85,28 @@ export default async function SettingsPage() {
 
       <section className="mt-6 rounded-2xl border border-neutral-900/5 bg-card p-5 shadow-card">
         <h2 className="text-lg font-medium">Data</h2>
-        <p className="mt-1 text-sm text-neutral-700">
-          Demo shows a sample of rescues so you can explore how everything works.
-          Real shows your chapter&apos;s live listings and locations. You can
-          claim, post, and deliver in either — they stay separate.
-        </p>
-        <div className="mt-4">
-          <DataModeToggle current={mode} />
-        </div>
+        {me?.demo ? (
+          <>
+            <p className="mt-1 text-sm text-neutral-700">
+              You&apos;re exploring the demo world — a sample of rescues to try
+              things out. Demo accounts stay in the demo world.
+            </p>
+            <p className="mt-3 inline-flex items-center rounded-full bg-neutral-100 px-4 py-1.5 font-mono text-[13px] text-neutral-700">
+              Demo
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="mt-1 text-sm text-neutral-700">
+              Demo shows a sample of rescues so you can explore how everything
+              works. Real shows your chapter&apos;s live listings and locations.
+              You can claim, post, and deliver in either — they stay separate.
+            </p>
+            <div className="mt-4">
+              <DataModeToggle current={mode} />
+            </div>
+          </>
+        )}
       </section>
     </main>
   );

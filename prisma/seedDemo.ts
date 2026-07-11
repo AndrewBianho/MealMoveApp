@@ -132,8 +132,8 @@ export async function seedDemo(prisma: PrismaClient) {
     const geo = { lat, lng, notificationsEnabled: true };
     const u = await prisma.user.upsert({
       where: { email },
-      update: { name, role: "volunteer", passwordHash, dataMode: "demo", ...geo },
-      create: { name, email, role: "volunteer", passwordHash, dataMode: "demo", ...geo },
+      update: { name, role: "volunteer", passwordHash, dataMode: "demo", demo: true, ...geo },
+      create: { name, email, role: "volunteer", passwordHash, dataMode: "demo", demo: true, ...geo },
     });
     volunteerId.set(name, u.id);
   }
@@ -146,6 +146,7 @@ export async function seedDemo(prisma: PrismaClient) {
       role: "restaurant",
       restaurantId: restaurantId.get(RESTAURANT),
       dataMode: "demo",
+      demo: true,
     },
     create: {
       name: "Saxbys manager",
@@ -154,6 +155,7 @@ export async function seedDemo(prisma: PrismaClient) {
       passwordHash,
       restaurantId: restaurantId.get(RESTAURANT),
       dataMode: "demo",
+      demo: true,
     },
   });
   // A per-location drop-off account. Linked to St. Mark's Shelter — the
@@ -162,7 +164,13 @@ export async function seedDemo(prisma: PrismaClient) {
   const demoDropOffId = dropOffId.get("St. Mark's Shelter") ?? null;
   const dropOffAdmin = await prisma.user.upsert({
     where: { email: "dropoff@campus.edu" },
-    update: { passwordHash, role: "drop_off", dropOffId: demoDropOffId, dataMode: "demo" },
+    update: {
+      passwordHash,
+      role: "drop_off",
+      dropOffId: demoDropOffId,
+      dataMode: "demo",
+      demo: true,
+    },
     create: {
       name: "St. Mark's Shelter",
       email: "dropoff@campus.edu",
@@ -170,17 +178,19 @@ export async function seedDemo(prisma: PrismaClient) {
       dropOffId: demoDropOffId,
       passwordHash,
       dataMode: "demo",
+      demo: true,
     },
   });
   await prisma.user.upsert({
     where: { email: "admin@campus.edu" },
-    update: { passwordHash, role: "org_admin", dataMode: "demo" },
+    update: { passwordHash, role: "org_admin", dataMode: "demo", demo: true },
     create: {
       name: "Org admin",
       email: "admin@campus.edu",
       role: "org_admin",
       passwordHash,
       dataMode: "demo",
+      demo: true,
     },
   });
 

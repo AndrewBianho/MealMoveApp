@@ -1075,6 +1075,17 @@ export async function setDataMode(
   if (mode !== "real" && mode !== "demo") {
     return { ok: false, error: "Invalid mode." };
   }
+  // Demo accounts are locked to the demo world — they can never switch to real.
+  // (A real account browsing demo keeps demo = false, so it's unaffected.)
+  if (mode === "real") {
+    const me = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { demo: true },
+    });
+    if (me?.demo) {
+      return { ok: false, error: "Demo accounts stay in the demo world." };
+    }
+  }
   await prisma.user.update({
     where: { id: session.user.id },
     data: { dataMode: mode },

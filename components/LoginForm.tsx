@@ -20,6 +20,9 @@ const DEMO = [
   { role: "Org admin", email: "admin@campus.edu" },
 ] as const;
 const DEMO_PASSWORD = "MealMove1";
+// The demo volunteer — the "Explore the demo" one-tap lands here (the primary,
+// first-time-volunteer view of the sample world).
+const DEMO_VOLUNTEER = DEMO[0].email;
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -31,25 +34,25 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  // Shared sign-in: used by the form submit and the one-tap "Explore the demo"
+  // button. A failed sign-in has two very different causes that must read
+  // differently: genuinely wrong credentials, vs. the server/DB being
+  // unreachable. Auth.js only returns code "credentials" for an explicit
+  // authorize rejection (wrong email/password); a thrown error inside authorize
+  // — e.g. a database connection failure — comes back as a different error
+  // (CallbackRouteError) with no "credentials" code, and a network failure
+  // rejects outright. Only the first is the user's fault, so only it blames
+  // their credentials.
+  async function doSignIn(emailArg: string, passwordArg: string) {
     setError(null);
-    if (!EMAIL_RE.test(email) || !password) {
-      setError("Enter your email and password to continue.");
-      return;
-    }
     setLoading(true);
-
-    // A failed sign-in has two very different causes that must read differently:
-    // genuinely wrong credentials, vs. the server/DB being unreachable. Auth.js
-    // only returns code "credentials" for an explicit authorize rejection (wrong
-    // email/password); a thrown error inside authorize — e.g. a database
-    // connection failure — comes back as a different error (CallbackRouteError)
-    // with no "credentials" code, and a network failure rejects outright. Only
-    // the first is the user's fault, so only it blames their credentials.
     let res: Awaited<ReturnType<typeof signIn>> | undefined;
     try {
-      res = await signIn("credentials", { email, password, redirect: false });
+      res = await signIn("credentials", {
+        email: emailArg,
+        password: passwordArg,
+        redirect: false,
+      });
     } catch {
       setLoading(false);
       setError("We're having trouble signing you in right now. Please try again in a moment.");
@@ -71,6 +74,23 @@ export function LoginForm() {
     setTimeout(() => {
       window.location.href = "/";
     }, 900);
+  }
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    if (!EMAIL_RE.test(email) || !password) {
+      setError("Enter your email and password to continue.");
+      return;
+    }
+    await doSignIn(email, password);
+  }
+
+  // One tap into the demo world — signs straight in as the demo volunteer.
+  function exploreDemo() {
+    setEmail(DEMO_VOLUNTEER);
+    setPassword(DEMO_PASSWORD);
+    void doSignIn(DEMO_VOLUNTEER, DEMO_PASSWORD);
   }
 
   function prefillDemo(demoEmail: string) {
@@ -174,6 +194,25 @@ export function LoginForm() {
           Create an account
         </Link>
       </p>
+
+      <div className="mt-5 flex items-center gap-3" aria-hidden>
+        <span className="h-px flex-1 bg-neutral-200/70" />
+        <span className="font-mono text-[13px] text-neutral-700">or</span>
+        <span className="h-px flex-1 bg-neutral-200/70" />
+      </div>
+
+      <button
+        type="button"
+        onClick={exploreDemo}
+        disabled={loading}
+        className={cn(
+          "mt-5 flex w-full items-center justify-center gap-2 rounded-2xl bg-card px-6 py-3 text-[16px] font-bold text-neutral-900 transition-all duration-200",
+          "shadow-[inset_0_0_0_2px_rgb(var(--n-900)_/_0.14)] hover:-translate-y-0.5 hover:shadow-[inset_0_0_0_2px_rgb(var(--n-900)_/_0.3)]",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 disabled:opacity-70 disabled:hover:translate-y-0"
+        )}
+      >
+        Explore the demo
+      </button>
 
       <div className="mt-6 border-t border-neutral-200/70 pt-5">
         <p className="mb-2.5 font-mono text-[13px] text-neutral-700">
