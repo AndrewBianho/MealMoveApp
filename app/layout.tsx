@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Fraunces, Nunito_Sans, JetBrains_Mono } from "next/font/google";
 import { Header } from "@/components/Header";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { AnalyticsProvider } from "@/components/AnalyticsProvider";
 import "./globals.css";
 
 // Display: soft characterful serif. Body: warm humanist sans. Data: mono.
@@ -44,6 +47,9 @@ export default function RootLayout({
       <body className="min-h-screen bg-neutral-50 pb-[calc(4.5rem+env(safe-area-inset-bottom))] font-sans text-neutral-900 antialiased md:pb-0">
         <Header />
         {children}
+        <AnalyticsProvider />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
