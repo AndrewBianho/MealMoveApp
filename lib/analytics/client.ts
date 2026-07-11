@@ -7,16 +7,20 @@ export function initClient(): void {
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
   if (!key || started || typeof window === "undefined") return;
   started = true;
-  posthog.init(key, {
-    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com",
-    autocapture: false, // no autocapture of input values — PII safety
-    capture_pageview: true,
-    mask_all_text: false,
-    mask_all_element_attributes: true,
-    persistence: "memory", // cookieless
-    session_recording: { maskAllInputs: true },
-    disable_session_recording: true, // enabled only for gated flows (Task 8)
-  });
+  try {
+    posthog.init(key, {
+      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com",
+      autocapture: false, // no autocapture of input values — PII safety
+      capture_pageview: true,
+      mask_all_text: false,
+      mask_all_element_attributes: true,
+      persistence: "memory", // cookieless
+      session_recording: { maskAllInputs: true },
+      disable_session_recording: true, // enabled only for gated flows (Task 8)
+    });
+  } catch {
+    /* no-op */
+  }
 }
 
 export function trackClient<E extends AnalyticsEvent>(
