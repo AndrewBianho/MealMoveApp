@@ -22,6 +22,7 @@ const ListingsMap = dynamic(
 import { StatusFilterSelect } from "./StatusFilterSelect";
 import { useGeolocation } from "./useGeolocation";
 import { haversineMiles, formatMiles } from "@/lib/distance";
+import { trackClient } from "@/lib/analytics/client";
 import type { Listing, ListingStatus, FoodCategory } from "@/lib/types";
 
 // Per-card entrance delay (arbitrary animation-delay utilities), capped so a
@@ -388,6 +389,16 @@ export function ListingFeed({
     return c;
   }, [listings]);
 
+  // Fire once on mount — a snapshot of what the volunteer saw when the feed
+  // first loaded, not a re-count on every filter/sort change.
+  useEffect(() => {
+    trackClient("feed_viewed", {
+      openCount: counts.open ?? 0,
+      scheduledCount: counts["coming up"] ?? 0,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Food types actually present, in canonical order — drives the category row.
   const availableCategories = useMemo(
     () => CATEGORY_ORDER.filter((c) => listings.some((l) => l.category === c)),
@@ -500,17 +511,31 @@ export function ListingFeed({
           <StatusFilterSelect
             value={filter}
             options={FILTERS.map((f) => ({ value: f, label: f, count: counts[f] ?? 0 }))}
-            onChange={(v) => setFilter(v as Filter)}
+            onChange={(v) => {
+              setFilter(v as Filter);
+              trackClient("filter_applied", { kind: "status", value: v });
+            }}
           />
           {/* Map rides beside the list on wide (lg+) screens and is hidden
               entirely on phones, so the toggle only appears on tablet. */}
-          {!wide && !phone && <ViewToggle view={view} onChange={setView} />}
+          {!wide && !phone && (
+            <ViewToggle
+              view={view}
+              onChange={(v) => {
+                setView(v);
+                trackClient("view_toggled", { to: v });
+              }}
+            />
+          )}
         </div>
         {availableCategories.length >= 2 && (
           <CategoryFilter
             available={availableCategories}
             choice={activeCategory}
-            onChange={setCategory}
+            onChange={(c) => {
+              setCategory(c);
+              trackClient("filter_applied", { kind: "foodType", value: c });
+            }}
           />
         )}
       </div>

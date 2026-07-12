@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Button } from "./Button";
 import { StatusBadge } from "./StatusBadge";
 import { InfoRows } from "./InfoRows";
@@ -36,6 +36,7 @@ import { RescueCelebration } from "./RescueCelebration";
 import { currentDayKey, formatDay, isOpenNow } from "@/lib/hours";
 import { formatTimeLeft } from "@/lib/time";
 import { milesBetween } from "@/lib/geo";
+import { trackClient } from "@/lib/analytics/client";
 import type {
   DropOffChoice,
   DropOffNoticeView,
@@ -234,6 +235,25 @@ export function ListingDetail({
     dropOffChoices,
     chosenDropOffPin,
   ]);
+
+  // Client intent events — fire once each, guarded by a ref so remounts of
+  // dependent state (e.g. needsDropOff flipping) don't re-fire them.
+  const firedListingOpened = useRef(false);
+  const firedClaimFlowViewed = useRef(false);
+  useEffect(() => {
+    if (listing && listing.status === "open" && !firedListingOpened.current) {
+      firedListingOpened.current = true;
+      const band =
+        listing.minutesLeft < 10 ? "closing_soon" : listing.minutesLeft < 35 ? "soon" : "open";
+      trackClient("listing_opened", { listingId: listing.id, urgencyBand: band });
+    }
+  }, [listing?.status, listing?.minutesLeft, listing?.id]);
+  useEffect(() => {
+    if (needsDropOff && listing && !firedClaimFlowViewed.current) {
+      firedClaimFlowViewed.current = true;
+      trackClient("claim_flow_viewed", { listingId: listing.id });
+    }
+  }, [needsDropOff, listing?.id]);
 
   if (!listing) {
     return (
@@ -833,7 +853,14 @@ export function ListingDetail({
                                   key={d.id}
                                   type="button"
                                   aria-pressed={sel}
-                                  onClick={() => setChosenDropOff(d.id)}
+                                  onClick={() => {
+                                    setChosenDropOff(d.id);
+                                    trackClient("drop_off_selected", {
+                                      listingId: listing.id,
+                                      dropOffId: d.id,
+                                      wasNearest: i === 0,
+                                    });
+                                  }}
                                   disabled={isPending}
                                   className={cn(
                                     "w-full rounded-xl border-2 px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",

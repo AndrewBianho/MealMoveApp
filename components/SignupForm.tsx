@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
@@ -11,6 +11,7 @@ import { inputCls, labelCls, errorBannerCls } from "./authStyles";
 import { SuccessPanel, BackToSignIn, CheckIcon } from "./AuthPanels";
 import { passwordValid } from "@/lib/password";
 import { registerUser, findPendingInvite } from "@/app/actions";
+import { trackClient } from "@/lib/analytics/client";
 
 type Role = "volunteer" | "restaurant" | "drop_off";
 
@@ -67,6 +68,17 @@ export function SignupForm() {
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
 
+  // signup_started fires once, the first time a role is chosen (real intent,
+  // not just landing on step 1).
+  const firedSignupStarted = useRef(false);
+  function pickRole(r: Role) {
+    setRole(r);
+    if (!firedSignupStarted.current) {
+      firedSignupStarted.current = true;
+      trackClient("signup_started", { role: r });
+    }
+  }
+
   const phoneDigits = phone.replace(/\D/g, "");
   const isLast = step === TOTAL - 1;
 
@@ -96,6 +108,7 @@ export function SignupForm() {
       return;
     }
     setError(null);
+    trackClient("signup_step_completed", { role, step });
     // Leaving the login step: see whether this email was invited to an org.
     if (step === 2) {
       setInvite(await findPendingInvite(email));
@@ -241,7 +254,7 @@ export function SignupForm() {
 
       {/* Keyed so the step re-mounts and replays the enter animation. */}
       <div key={step} className="motion-safe:animate-slide-in-right space-y-[18px]">
-        {step === 0 && <RoleStep role={role} onPick={setRole} />}
+        {step === 0 && <RoleStep role={role} onPick={pickRole} />}
 
         {step === 1 && (
           <>
