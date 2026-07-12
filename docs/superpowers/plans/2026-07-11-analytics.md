@@ -4,9 +4,9 @@
 
 **Goal:** Add a privacy-first, full-stack analytics setup (operational, product, web/perf, observability) behind one vendor-agnostic `lib/analytics` layer.
 
-**Architecture:** Approach A — Consolidated. A typed event taxonomy with a PII firewall is the single import surface; PostHog (product + errors + replay) and Vercel Analytics (web/perf) sit behind it; operational mission metrics are computed from our own Supabase DB and rendered in the org-admin console. Client events cover intent/navigation; server events (fired inside `app/actions.ts` server actions) carry DB-state truth.
+**Architecture:** Approach A — Consolidated. A typed event taxonomy with a PII firewall is the single import surface; **PostHog** sits behind it for product + errors + replay **and** web/perf (pageviews + Core Web Vitals); operational mission metrics are computed from our own Supabase DB and rendered in the org-admin console. Client events cover intent/navigation; server events (fired inside `app/actions.ts` server actions) carry DB-state truth. No Vercel Analytics — web/perf routes through PostHog to keep incremental cost at zero on the Pro plan.
 
-**Tech Stack:** Next.js 14 App Router, TypeScript, Prisma/Postgres (Supabase), `posthog-js`, `posthog-node`, `@vercel/analytics`, `@vercel/speed-insights`. Tests use Node's built-in runner (`node:test` + `node:assert/strict`) per the existing `lib/*.test.ts` convention.
+**Tech Stack:** Next.js 14 App Router, TypeScript, Prisma/Postgres (Supabase), `posthog-js`, `posthog-node`, and Next's built-in `useReportWebVitals` (no `@vercel/*` analytics packages). Tests use Node's built-in runner (`node:test` + `node:assert/strict`) per the existing `lib/*.test.ts` convention.
 
 ## Global Constraints
 
@@ -338,22 +338,31 @@ git commit -m "feat(analytics): env-gated PostHog server + client transports"
 
 ---
 
-### Task 3: Web + performance (Vercel Analytics) + client init
+### Task 3: Web + performance (PostHog web vitals) + client init
 
-Mount the browser analytics once, app-wide.
+Mount browser analytics once, app-wide. **No Vercel Analytics** — web/perf routes
+through PostHog to keep incremental cost at zero on the Pro plan. (Superseded the
+original Vercel-based version on 2026-07-11; the `web_vitals` event was added to
+`lib/analytics/events.ts`.)
 
 **Files:**
-- Create: `components/AnalyticsProvider.tsx`
-- Modify: `app/layout.tsx` (add provider + Vercel components inside `<body>`)
-- Modify: `package.json` (`@vercel/analytics`, `@vercel/speed-insights`)
+- Create: `components/AnalyticsProvider.tsx` — calls `initClient()` on mount.
+- Create: `components/WebVitals.tsx` — pipes Core Web Vitals into PostHog.
+- Modify: `app/layout.tsx` (mount both inside `<body>`).
+- Modify: `lib/analytics/events.ts` (add the `web_vitals` event to the union).
 
 **Interfaces:**
-- Consumes: `initClient` (Task 2 `client.ts`).
-- Produces: `<AnalyticsProvider />` — a client component that calls `initClient()` on mount.
+- Consumes: `initClient`, `trackClient` (Task 2 `client.ts`).
+- Produces: `<AnalyticsProvider />`, `<WebVitals />`.
 
-- [ ] **Step 1: Add dependencies**
+- [ ] **Step 1: Add `web_vitals` to the taxonomy**
 
-Run: `npm install @vercel/analytics @vercel/speed-insights`
+In `lib/analytics/events.ts`, add to the `AnalyticsEvent` union:
+
+```ts
+  // web performance — Core Web Vitals (RUM), reported via next/web-vitals → PostHog
+  | { name: "web_vitals"; props: { metric: string; value: number; rating: string; navigationType: string } }
+```
 
 - [ ] **Step 2: Write `AnalyticsProvider.tsx`**
 
@@ -369,34 +378,53 @@ export function AnalyticsProvider() {
 }
 ```
 
-- [ ] **Step 3: Mount in the root layout**
+- [ ] **Step 3: Write `WebVitals.tsx`** (uses Next's built-in hook — no dependency)
+
+```tsx
+// components/WebVitals.tsx
+"use client";
+import { useReportWebVitals } from "next/web-vitals";
+import { trackClient } from "@/lib/analytics/client";
+
+export function WebVitals() {
+  useReportWebVitals((metric) => {
+    trackClient("web_vitals", {
+      metric: metric.name,
+      value: Math.round(metric.value),
+      rating: "rating" in metric ? (metric.rating ?? "") : "",
+      navigationType: "navigationType" in metric ? (metric.navigationType ?? "") : "",
+    });
+  });
+  return null;
+}
+```
+
+- [ ] **Step 4: Mount in the root layout**
 
 In `app/layout.tsx`, add imports at the top:
 
 ```tsx
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AnalyticsProvider } from "@/components/AnalyticsProvider";
+import { WebVitals } from "@/components/WebVitals";
 ```
 
 Inside `<body>`, after `{children}` and before `</body>`:
 
 ```tsx
         <AnalyticsProvider />
-        <Analytics />
-        <SpeedInsights />
+        <WebVitals />
 ```
 
-- [ ] **Step 4: Verify build**
+- [ ] **Step 5: Verify**
 
-Run: `npm run typecheck`
-Expected: clean. (Do NOT run `npm run build` if a dev server is live — see project memory.)
+Run: `npm run typecheck` (Do NOT run `npm run build` if a dev server is live — see project memory.)
+Expected: clean.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add components/AnalyticsProvider.tsx app/layout.tsx package.json package-lock.json
-git commit -m "feat(analytics): mount Vercel Analytics + PostHog client init"
+git add lib/analytics/events.ts components/AnalyticsProvider.tsx components/WebVitals.tsx app/layout.tsx
+git commit -m "feat(analytics): PostHog client init + PostHog-based web vitals (no Vercel cost)"
 ```
 
 ---
@@ -739,6 +767,6 @@ git commit -m "docs(analytics): PostHog setup runbook + gated failure replay"
 
 ## Self-Review
 
-- **Spec coverage:** event layer (T1–T2) ✓; PII firewall (T1) ✓; operational own-DB layer (T6–T7) ✓; product/behavior events (T4–T5) ✓; web/perf Vercel (T3) ✓; observability/replay (T8) ✓; every taxonomy event mapped to an emit site (T4 server, T5 client) ✓; privacy/consent (T2 init config + T1 firewall) ✓; testing (T1, T2, T6 unit tests) ✓.
+- **Spec coverage:** event layer (T1–T2) ✓; PII firewall (T1) ✓; operational own-DB layer (T6–T7) ✓; product/behavior events (T4–T5) ✓; web/perf via PostHog web vitals (T3) ✓; observability/replay (T8) ✓; every taxonomy event mapped to an emit site (T4 server, T5 client) ✓; privacy/consent (T2 init config + T1 firewall) ✓; testing (T1, T2, T6 unit tests) ✓.
 - **Placeholder scan:** code shown for every code step; the two spots requiring codebase-specific adaptation (Prisma model names in T7, exact feed component in T5) are flagged with the contract the adaptation must satisfy, not left vague.
 - **Type consistency:** `trackServer(event, userId?)`, `trackClient(name, props)`, `PickupRecord`, `computeFunnel/computeFlakeRate/computeServingsRescued` names are identical across T2, T4, T5, T6, T7.

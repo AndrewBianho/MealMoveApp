@@ -2,7 +2,7 @@
 
 Date: 2026-07-11
 Status: approved (brainstorm), ready for implementation plan
-Approach: **A — Consolidated** (PostHog + Vercel Analytics + own-DB operational dashboard)
+Approach: **A — Consolidated** (PostHog for product + errors + web/perf, own-DB operational dashboard; no Vercel Analytics — see 2026-07-11 change under Web & performance)
 
 ## Goal
 
@@ -13,8 +13,10 @@ Give the org a full-stack, privacy-first analytics setup covering four layers:
    own Supabase DB.
 2. **Product / behavior** — how users move through the app; where the claim flow
    leaks; retention. PostHog.
-3. **Web traffic & performance** — pageviews, sources, Core Web Vitals. Vercel
-   Web Analytics + Speed Insights.
+3. **Web traffic & performance** — pageviews, sources, Core Web Vitals, via
+   PostHog (pageview capture + Next.js `useReportWebVitals` → PostHog). No Vercel
+   Analytics/Speed Insights — those bill past quota on the Pro plan, and the
+   requirement is zero incremental cost.
 4. **Error & session observability** — exceptions, failed-rescue session replay,
    API error rates. PostHog error tracking + session replay.
 
@@ -28,9 +30,10 @@ shame a person.
 - Free / cheap, privacy-first (student org; handles volunteer PII).
 - Next.js 14 App Router, Prisma + Postgres (Supabase), NextAuth (JWT, 4 roles),
   deployed on Vercel.
-- Two external vendors only: **PostHog** (free tier, EU host option) and
-  **Vercel Analytics** (native to the deploy). Operational layer is our own DB —
-  no vendor.
+- **One external vendor only: PostHog** (free tier, EU host option) — product,
+  errors/replay, *and* web/perf all consolidate here. Operational layer is our
+  own DB — no vendor. Vercel Analytics/Speed Insights were removed to keep
+  incremental cost at zero on the Pro plan (2026-07-11 change).
 
 ## Architecture
 
@@ -134,9 +137,14 @@ funnel leak*, *what predicts a flake* (time-to-expiry, held-minutes, stage), and
 
 ## Web & performance layer
 
-- `@vercel/analytics` and `@vercel/speed-insights` mounted once in the root
-  layout. Cookieless, privacy-friendly, native to the Vercel deploy. Core Web
-  Vitals + pageviews/sources with no extra vendor.
+- **No Vercel Analytics/Speed Insights** — they bill past the included quota on
+  the Pro plan and the constraint is zero incremental spend. Routed through
+  PostHog instead (the free vendor already in the stack):
+  - **Pageviews / sources** — PostHog client init with `capture_pageview: true`.
+  - **Core Web Vitals (RUM)** — a `WebVitals` client component using Next.js's
+    built-in `useReportWebVitals` hook (zero dependencies, ships with Next),
+    piping LCP/CLS/INP/FCP/TTFB into PostHog as the `web_vitals` event.
+  - No `@vercel/*` analytics packages; nothing meters against the Vercel plan.
 
 ## Observability layer
 
@@ -169,8 +177,8 @@ funnel leak*, *what predicts a flake* (time-to-expiry, held-minutes, stage), and
 
 ## Rollout
 
-1. Foundation: `lib/analytics` + PII firewall + PostHog/Vercel wiring (env-gated,
-   no-ops without keys).
+1. Foundation: `lib/analytics` + PII firewall + PostHog wiring + PostHog-based
+   web vitals (env-gated, no-ops without keys).
 2. Instrument client events (browsing, claim flow, signup).
 3. Instrument server truth events (claim/pickup lifecycle, listings).
 4. Operational org-admin dashboard from own DB.
