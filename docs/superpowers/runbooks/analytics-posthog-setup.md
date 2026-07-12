@@ -14,11 +14,13 @@ context. Meal Move ships two analytics layers:
    from Postgres, independent of PostHog. That page keeps working even if
    PostHog is down or was never configured.
 
-## 1. Create the PostHog project (EU cloud, free tier)
+## 1. Create the PostHog project (US cloud, free tier)
 
-Meal Move is EU-hosted analytics by policy — always use the EU cloud, not US.
+Meal Move uses the **US** PostHog cloud (US-based volunteers and data). Pick the
+region once at project creation — a PostHog project cannot be moved between US
+and EU later, so be deliberate here.
 
-1. Go to https://eu.posthog.com and sign up (or sign in if the org already
+1. Go to https://us.posthog.com and sign up (or sign in if the org already
    has an account — check with the outgoing admin first, PostHog orgs can
    have multiple projects).
 2. Create a new project, e.g. "Meal Move — production". The free tier
@@ -32,9 +34,9 @@ Meal Move is EU-hosted analytics by policy — always use the EU cloud, not US.
      client key (safe to ship to the browser) — used for both
      `POSTHOG_KEY` and `NEXT_PUBLIC_POSTHOG_KEY` below (same project key,
      PostHog doesn't distinguish server/client keys for capture).
-   - **Project ID** and the **host** — for EU cloud this is always
-     `https://eu.i.posthog.com`. (US cloud would be `https://us.i.posthog.com`
-     — do not use it for this project.)
+   - **Project ID** and the **host** — for US cloud this is
+     `https://us.i.posthog.com`. (EU cloud would be `https://eu.i.posthog.com`;
+     this project is US, so keep the US host in the env vars below.)
 
 ## 2. The four env vars
 
@@ -47,9 +49,9 @@ Next.js convention).
 | Var | Value | Used by |
 |---|---|---|
 | `POSTHOG_KEY` | the `phc_...` project API key | `lib/analytics/server.ts` |
-| `POSTHOG_HOST` | `https://eu.i.posthog.com` | `lib/analytics/server.ts` |
+| `POSTHOG_HOST` | `https://us.i.posthog.com` | `lib/analytics/server.ts` |
 | `NEXT_PUBLIC_POSTHOG_KEY` | the same `phc_...` project API key | `lib/analytics/client.ts` |
-| `NEXT_PUBLIC_POSTHOG_HOST` | `https://eu.i.posthog.com` | `lib/analytics/client.ts` |
+| `NEXT_PUBLIC_POSTHOG_HOST` | `https://us.i.posthog.com` | `lib/analytics/client.ts` |
 
 In this codebase, all four are optional — `client.ts`'s `initClient()` and
 every `trackClient`/`identifyClient`/`startFailureReplay` call checks
@@ -65,9 +67,9 @@ simply run with analytics off, no crashes, no build failures.
 
 ```
 POSTHOG_KEY=phc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-POSTHOG_HOST=https://eu.i.posthog.com
+POSTHOG_HOST=https://us.i.posthog.com
 NEXT_PUBLIC_POSTHOG_KEY=phc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
+NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 ```
 
 Restart `next dev` after editing `.env` — env vars are read at process start.
@@ -218,9 +220,9 @@ to preserve:
 - **Cookieless / memory persistence.** `persistence: "memory"` — no
   PostHog cookie or localStorage identity persists across page loads/tabs;
   identity resets each session unless `identifyClient` is called again.
-- **EU host.** `api_host` defaults to `https://eu.i.posthog.com` in
-  `client.ts` (and should default the same way in `server.ts`) — keep EU
-  routing even if `NEXT_PUBLIC_POSTHOG_HOST`/`POSTHOG_HOST` are left unset.
+- **US host.** `api_host` defaults to `https://us.i.posthog.com` in
+  `client.ts`, and `host` defaults the same way in `server.ts` — US routing
+  holds even if `NEXT_PUBLIC_POSTHOG_HOST`/`POSTHOG_HOST` are left unset.
 - **Session replay is off by default, gated to failure flows.**
   `posthog.init(..., { disable_session_recording: true })` turns replay off
   globally. The only way replay starts is an explicit call to

@@ -10,7 +10,7 @@ export function initClient(): void {
   started = true;
   try {
     posthog.init(key, {
-      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com",
+      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
       autocapture: false, // no autocapture of input values — PII safety
       capture_pageview: true,
       mask_all_text: false,

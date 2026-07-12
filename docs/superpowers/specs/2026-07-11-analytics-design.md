@@ -30,7 +30,7 @@ shame a person.
 - Free / cheap, privacy-first (student org; handles volunteer PII).
 - Next.js 14 App Router, Prisma + Postgres (Supabase), NextAuth (JWT, 4 roles),
   deployed on Vercel.
-- **One external vendor only: PostHog** (free tier, EU host option) — product,
+- **One external vendor only: PostHog** (free tier, US-hosted) — product,
   errors/replay, *and* web/perf all consolidate here. Operational layer is our
   own DB — no vendor. Vercel Analytics/Speed Insights were removed to keep
   incremental cost at zero on the Pro plan (2026-07-11 change).
@@ -73,7 +73,7 @@ Every event passes through a sanitizer before leaving the process:
 - Bucket location to a coarse area label (campus/neighborhood), never exact
   coordinates.
 - PostHog configured with input masking on, autocapture of input *values* off,
-  cookieless/consent-aware mode, EU host.
+  cookieless/consent-aware mode, US host.
 
 ### 3. Operational layer — own DB → org-admin console
 
@@ -156,7 +156,7 @@ funnel leak*, *what predicts a flake* (time-to-expiry, held-minutes, stage), and
 ## Privacy & consent
 
 - Identify by hashed id only; PII denylist enforced in `identify.ts`.
-- PostHog EU host, input masking on, autocapture values off.
+- PostHog US host, input masking on, autocapture values off.
 - Consent-aware init (respect a do-not-track / consent flag); analytics is
   non-blocking and degrades silently if disabled or blocked.
 - No event ever carries chat content, names, phones, emails, or exact locations.
@@ -173,7 +173,7 @@ funnel leak*, *what predicts a flake* (time-to-expiry, held-minutes, stage), and
 
 - Sentry / Datadog / Amplitude (revisit if PostHog gaps appear).
 - A/B experimentation, marketing attribution, cohort email.
-- Self-hosting PostHog (start on free cloud, EU region).
+- Self-hosting PostHog (start on free cloud, US region).
 
 ## Rollout
 

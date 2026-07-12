@@ -221,7 +221,7 @@ function get(): PostHog | null {
   if (!key) return null;
   if (!client) {
     client = new PostHog(key, {
-      host: process.env.POSTHOG_HOST ?? "https://eu.i.posthog.com",
+      host: process.env.POSTHOG_HOST ?? "https://us.i.posthog.com",
       flushAt: 1,
       flushInterval: 0,
     });
@@ -268,7 +268,7 @@ export function initClient(): void {
   if (!key || started || typeof window === "undefined") return;
   started = true;
   posthog.init(key, {
-    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://eu.i.posthog.com",
+    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com",
     autocapture: false, // no autocapture of input values — PII safety
     capture_pageview: true,
     mask_all_text: false,
@@ -319,9 +319,9 @@ Add to `.env.example` (create if missing):
 ```
 # Analytics (PostHog) — leave blank to disable (all tracking no-ops)
 POSTHOG_KEY=
-POSTHOG_HOST=https://eu.i.posthog.com
+POSTHOG_HOST=https://us.i.posthog.com
 NEXT_PUBLIC_POSTHOG_KEY=
-NEXT_PUBLIC_POSTHOG_HOST=https://eu.i.posthog.com
+NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
 ```
 
 - [ ] **Step 8: Run tests + typecheck**
@@ -754,7 +754,7 @@ Call `startFailureReplay()` from the claim-abandon / take-home / cancel client p
 
 - [ ] **Step 2: Write the runbook**
 
-Document, with exact steps: creating the PostHog EU project, where the 4 env vars go (local `.env`, Vercel project settings), building the **claim funnel** (`claim_flow_viewed → drop_off_selected → claim_completed`) and **rescue funnel** (`claim_completed → pickup_photo_uploaded → delivered`), the **flake-rate** insight (`flaked` vs `delivered`), the **signup funnel** (`signup_step_completed` by step), and enabling error tracking. Note the privacy settings already enforced in code (autocapture off, input masking, EU host, cookieless).
+Document, with exact steps: creating the PostHog US project, where the 4 env vars go (local `.env`, Vercel project settings), building the **claim funnel** (`claim_flow_viewed → drop_off_selected → claim_completed`) and **rescue funnel** (`claim_completed → pickup_photo_uploaded → delivered`), the **flake-rate** insight (`flaked` vs `delivered`), the **signup funnel** (`signup_step_completed` by step), and enabling error tracking. Note the privacy settings already enforced in code (autocapture off, input masking, US host, cookieless).
 
 - [ ] **Step 3: Commit**
 
