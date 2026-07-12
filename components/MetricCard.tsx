@@ -7,7 +7,7 @@ import { capitalize } from "@/lib/text";
 // row of identical white cards. Static class strings so Tailwind keeps them.
 export type MetricAccent = "rescued" | "clay" | "transit" | "urgent";
 
-const ACCENTS: Record<MetricAccent, { value: string; glow: string }> = {
+export const ACCENTS: Record<MetricAccent, { value: string; glow: string }> = {
   rescued: { value: "text-rescued-600", glow: "bg-rescued-200" },
   clay: { value: "text-clay-600", glow: "bg-clay-200" },
   transit: { value: "text-transit-600", glow: "bg-transit-200" },
