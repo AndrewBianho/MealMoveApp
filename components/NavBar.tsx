@@ -40,6 +40,7 @@ const MEMBERS: Item = { href: "/admin/users", label: "Members", icon: "members" 
 const RELIABILITY: Item = { href: "/admin/reliability", label: "Reliability", short: "Reliability", icon: "reliability" };
 const PARTNERS: Item = { href: "/admin/partners", label: "Partner notes", short: "Partners", icon: "partners" };
 const HEALTH: Item = { href: "/admin/health", label: "Ops health", short: "Health", icon: "health" };
+const ANALYTICS: Item = { href: "/admin/analytics", label: "Analytics", short: "Analytics", icon: "health" };
 
 const NAV_BY_ROLE: Record<Role, Item[]> = {
   volunteer: [FEED, MAP, IMPACT],
@@ -48,7 +49,7 @@ const NAV_BY_ROLE: Record<Role, Item[]> = {
   // Org admins oversee — they don't claim, so no "My pickups". They keep the
   // feed/map (visibility), the restaurant surface (special posts + tracking),
   // impact (the in-depth stats), and members.
-  org_admin: [FEED, MAP, POST_SURPLUS, MY_LISTINGS, DROPOFF, IMPACT, HEALTH, RELIABILITY, PARTNERS, MEMBERS],
+  org_admin: [FEED, MAP, POST_SURPLUS, MY_LISTINGS, DROPOFF, IMPACT, HEALTH, ANALYTICS, RELIABILITY, PARTNERS, MEMBERS],
 };
 
 // Line icons for the mobile bottom bar / more-sheet, keyed by Item.icon.
