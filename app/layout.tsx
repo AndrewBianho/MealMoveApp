@@ -3,6 +3,9 @@ import { Fraunces, Nunito_Sans, JetBrains_Mono } from "next/font/google";
 import { Header } from "@/components/Header";
 import { WebVitals } from "@/components/WebVitals";
 import { AnalyticsProvider } from "@/components/AnalyticsProvider";
+import { auth } from "@/auth";
+import { hashUserId } from "@/lib/analytics/identify";
+import type { Role } from "@/lib/analytics/events";
 import "./globals.css";
 
 // Display: soft characterful serif. Body: warm humanist sans. Data: mono.
@@ -33,11 +36,15 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
+  const userHash = session?.user?.id ? hashUserId(session.user.id) : undefined;
+  const role = session?.user?.role as Role | undefined;
+
   return (
     <html
       lang="en"
@@ -46,7 +53,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-neutral-50 pb-[calc(4.5rem+env(safe-area-inset-bottom))] font-sans text-neutral-900 antialiased md:pb-0">
         <Header />
         {children}
-        <AnalyticsProvider />
+        <AnalyticsProvider userHash={userHash} role={role} />
         <WebVitals />
       </body>
     </html>

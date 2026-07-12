@@ -9,6 +9,7 @@ import {
 } from "@/lib/chat";
 import { rateLimit, LIMITS } from "@/lib/rate-limit";
 import { tooManyRequests } from "@/lib/rate-limit-http";
+import { trackServer } from "@/lib/analytics";
 
 export const runtime = "nodejs";
 
@@ -118,6 +119,12 @@ export async function POST(
       ctx.listing,
       typeof body === "string" ? body : ""
     );
+    if (ctx.user.role) {
+      trackServer({
+        name: "chat_message_sent",
+        props: { pickupId: params.listingId, senderRole: ctx.user.role },
+      });
+    }
     return NextResponse.json({ id: m.id });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Couldn't send.";

@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "./auth.config";
 import { rateLimit, resetLimit, clientIp, LIMITS } from "@/lib/rate-limit";
+import { trackServer, identifyServer } from "@/lib/analytics";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -43,6 +44,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (user.status !== "active") return null;
 
         await resetLimit(limitKey);
+        trackServer({ name: "login", props: { role: user.role } }, user.id);
+        identifyServer(user.id, user.role);
         return { id: user.id, email: user.email, name: user.name, role: user.role };
       },
     }),

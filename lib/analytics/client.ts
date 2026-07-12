@@ -56,3 +56,14 @@ export function identifyClient(hashedId: string, role: Role): void {
     /* no-op */
   }
 }
+
+// Reset on logout / anonymous so the next user on a shared campus device
+// isn't merged into the previous person's identity.
+export function resetClient(): void {
+  try {
+    if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return;
+    posthog.reset();
+  } catch {
+    /* no-op */
+  }
+}
