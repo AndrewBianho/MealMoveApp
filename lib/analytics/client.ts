@@ -35,6 +35,18 @@ export function trackClient<E extends AnalyticsEvent>(
   }
 }
 
+// Session replay is off by default (see disable_session_recording above);
+// call this only from a failure/abandonment path (take-home, cancel pickup,
+// flake) to capture the moments most worth reviewing.
+export function startFailureReplay(): void {
+  try {
+    if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return;
+    posthog.startSessionRecording();
+  } catch {
+    /* no-op */
+  }
+}
+
 export function identifyClient(hashedId: string, role: Role): void {
   try {
     if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return;

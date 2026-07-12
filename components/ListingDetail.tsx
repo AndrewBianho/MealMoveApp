@@ -28,6 +28,7 @@ import { ImageUploadField } from "./ImageUploadField";
 import { OpenInMapsButton } from "./OpenInMapsButton";
 import { SafetyChecklist } from "./SafetyChecklist";
 import { RescueAccuracySignal } from "./RescueAccuracySignal";
+import { startFailureReplay } from "@/lib/analytics/client";
 import type { SafetyAnswers } from "@/lib/safety";
 import type { RescueAccuracy } from "@/lib/accuracy";
 import { OpenNowBadge } from "./RetrievalHoursDisplay";
@@ -347,6 +348,7 @@ export function ListingDetail({
     });
   }
   function onTakeHome() {
+    startFailureReplay();
     startTransition(async () => {
       try {
         await takeHomeForTomorrow(id);
@@ -390,6 +392,7 @@ export function ListingDetail({
     });
   }
   function onCancelPickup() {
+    startFailureReplay();
     startTransition(async () => {
       try {
         await releaseClaim(id);
