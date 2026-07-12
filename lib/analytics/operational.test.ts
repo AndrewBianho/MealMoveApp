@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeFunnel, computeFlakeRate, computeServingsRescued, type PickupRecord } from "./operational";
+import { computeFunnel, computeFlakeRate, computeServingsRescued, deriveListingStatus, type PickupRecord } from "./operational";
 
 const sample: PickupRecord[] = [
   { status: "delivered", servings: 10 },
@@ -21,4 +21,27 @@ test("computeFlakeRate = flaked / (flaked + delivered)", () => {
 
 test("computeFunnel counts each stage reached", () => {
   assert.deepEqual(computeFunnel(sample), { claimed: 5, pickedUp: 3, delivered: 2 });
+});
+
+test("deriveListingStatus: delivered wins even alongside released", () => {
+  assert.equal(deriveListingStatus(new Set(["released", "delivered"])), "delivered");
+});
+
+test("deriveListingStatus: claimed only", () => {
+  assert.equal(deriveListingStatus(new Set(["claimed"])), "claimed");
+});
+
+test("deriveListingStatus: claimed + released is flaked", () => {
+  assert.equal(deriveListingStatus(new Set(["claimed", "released"])), "flaked");
+});
+
+test("deriveListingStatus: claimed + in_transit is in_transit", () => {
+  assert.equal(deriveListingStatus(new Set(["claimed", "in_transit"])), "in_transit");
+});
+
+test("deriveListingStatus: claimed + in_transit + taken_home is taken_home", () => {
+  assert.equal(
+    deriveListingStatus(new Set(["claimed", "in_transit", "taken_home"])),
+    "taken_home",
+  );
 });

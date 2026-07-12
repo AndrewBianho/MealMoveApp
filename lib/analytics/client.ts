@@ -1,6 +1,7 @@
 "use client";
 import posthog from "posthog-js";
 import type { AnalyticsEvent, Role } from "./events";
+import { sanitizeProps } from "./sanitize";
 
 let started = false;
 export function initClient(): void {
@@ -29,7 +30,7 @@ export function trackClient<E extends AnalyticsEvent>(
 ): void {
   try {
     if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return;
-    posthog.capture(name, props as Record<string, unknown>);
+    posthog.capture(name, sanitizeProps(props as Record<string, unknown>));
   } catch {
     /* no-op */
   }

@@ -42,39 +42,53 @@ export default async function AnalyticsPage() {
         </p>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <MetricCard label="meals rescued" value={String(d.servingsRescued)} accent="rescued" />
-        <MetricCard label="pickups delivered" value={String(d.funnel.delivered)} accent="clay" />
-        <MetricCard label="completion rate" value={`${completion}%`} accent="transit" />
-      </div>
-
-      <section className="mt-8 rounded-3xl bg-card p-6 shadow-card">
-        <h2 className="font-display text-lg font-semibold">Claim funnel</h2>
-        <p className="mt-1 font-mono text-[11px] text-neutral-700">
-          claimed &rarr; picked up &rarr; delivered
-        </p>
-        <div className="mt-5 space-y-4">
-          <FunnelBar label="Claimed" count={d.funnel.claimed} total={total} />
-          <FunnelBar label="Picked up" count={d.funnel.pickedUp} total={total} />
-          <FunnelBar label="Delivered" count={d.funnel.delivered} total={total} />
-        </div>
-      </section>
-
-      <section className="mt-4 rounded-3xl bg-card p-6 shadow-card">
-        <h2 className="font-display text-lg font-semibold">Completion rate</h2>
-        <p className="mt-1 font-mono text-[11px] text-neutral-700">
-          share of claims that reached delivery, not a grade on anyone
-        </p>
-        <div className="mt-4 flex items-center gap-4">
-          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-neutral-100">
-            <div
-              className="h-full rounded-full bg-rescued-400"
-              style={{ width: `${completion}%` }}
-            />
+      {total === 0 ? (
+        <section className="rounded-3xl bg-card p-6 shadow-card">
+          <h2 className="font-display text-lg font-semibold text-neutral-900">
+            No claims yet
+          </h2>
+          <p className="mt-1 max-w-md text-sm text-neutral-700">
+            Metrics appear here once volunteers start claiming pickups —
+            there&apos;s nothing to measure yet.
+          </p>
+        </section>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <MetricCard label="meals rescued" value={String(d.servingsRescued)} accent="rescued" />
+            <MetricCard label="pickups delivered" value={String(d.funnel.delivered)} accent="clay" />
+            <MetricCard label="completion rate" value={`${completion}%`} accent="transit" />
           </div>
-          <span className="font-mono text-[13px] text-neutral-800">{completion}%</span>
-        </div>
-      </section>
+
+          <section className="mt-8 rounded-3xl bg-card p-6 shadow-card">
+            <h2 className="font-display text-lg font-semibold">Claim funnel</h2>
+            <p className="mt-1 font-mono text-[11px] text-neutral-700">
+              claimed &rarr; picked up &rarr; delivered
+            </p>
+            <div className="mt-5 space-y-4">
+              <FunnelBar label="Claimed" count={d.funnel.claimed} total={total} />
+              <FunnelBar label="Picked up" count={d.funnel.pickedUp} total={total} />
+              <FunnelBar label="Delivered" count={d.funnel.delivered} total={total} />
+            </div>
+          </section>
+
+          <section className="mt-4 rounded-3xl bg-card p-6 shadow-card">
+            <h2 className="font-display text-lg font-semibold">Completion rate</h2>
+            <p className="mt-1 font-mono text-[11px] text-neutral-700">
+              share of claims that reached delivery, not a grade on anyone
+            </p>
+            <div className="mt-4 flex items-center gap-4">
+              <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-neutral-100">
+                <div
+                  className="h-full rounded-full bg-rescued-400"
+                  style={{ width: `${completion}%` }}
+                />
+              </div>
+              <span className="font-mono text-[13px] text-neutral-800">{completion}%</span>
+            </div>
+          </section>
+        </>
+      )}
     </main>
   );
 }
