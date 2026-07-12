@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { occurrencesWithin, SCHEDULE_HORIZON_DAYS } from "./recurring";
+import { trackServer } from "@/lib/analytics";
 
 // How far ahead we materialize scheduled listings. Every account sees at most
 // the next week of upcoming pickups; the sweep tops this up (and prunes past
@@ -180,6 +181,17 @@ export async function runSweep(): Promise<{
         },
       }),
     ]);
+    trackServer(
+      {
+        name: "flaked",
+        props: {
+          pickupId: pickup.id,
+          stage: pickup.photoAtPickupUrl ? "photographed" : "claimed",
+          minutesHeld: Math.max(0, Math.round((Date.now() - pickup.claimedAt.getTime()) / 60000)),
+        },
+      },
+      pickup.volunteerId,
+    );
     released++;
   }
 

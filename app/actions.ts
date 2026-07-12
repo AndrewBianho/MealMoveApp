@@ -622,7 +622,7 @@ export async function releaseClaim(listingId: string) {
   const userId = await currentUserId();
   // Read the pickup before releasing — a sole-volunteer release deletes the
   // row, so this is the only chance to capture its claimedAt/photo state for
-  // the flaked event below.
+  // the cancelled event below.
   const pickupBefore = await prisma.pickup.findFirst({
     where: { listingId, OR: [{ volunteerId: userId }, { buddyId: userId }] },
     select: { id: true, claimedAt: true, photoAtPickupUrl: true },
@@ -632,11 +632,10 @@ export async function releaseClaim(listingId: string) {
   if (pickupBefore) {
     trackServer(
       {
-        name: "flaked",
+        name: "pickup_cancelled",
         props: {
           pickupId: pickupBefore.id,
           stage: pickupBefore.photoAtPickupUrl ? "photographed" : "claimed",
-          minutesHeld: Math.max(0, Math.round((Date.now() - pickupBefore.claimedAt.getTime()) / 60000)),
         },
       },
       userId,
