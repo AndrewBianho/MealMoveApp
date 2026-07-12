@@ -30,6 +30,8 @@ export type AnalyticsEvent =
   | { name: "listing_posted"; props: { servings: number; foodType: string; handling: string; minutesToExpiry: number; carsRequested: number } }
   | { name: "listing_expired_unclaimed"; props: { servings: number; minutesLive: number } }
   | { name: "drop_off_need_updated"; props: { dropOffId: string; needLevel: string } }
+  // web performance — Core Web Vitals (RUM), reported via next/web-vitals → PostHog
+  | { name: "web_vitals"; props: { metric: string; value: number; rating: string; navigationType: string } }
   // coordination
   | { name: "chat_message_sent"; props: { pickupId: string; senderRole: Role } };
 
