@@ -1,14 +1,21 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { computeFunnel, computeFlakeRate, computeServingsRescued, deriveListingStatus, type PickupRecord } from "./operational";
+import { computeFunnel, computeServingsRescued, deriveListingStatus, type PickupRecord } from "./operational";
 
 // Lifecycle truth lives in ListingEvent (append-only), not Pickup (no status
 // column; flaked/cancelled pickups are deleted rows). One record per claimed
 // listing so multi-car listings aren't double-counted, since servings live on
-// the listing, not the pickup.
-export async function getDashboardData() {
+// the listing, not the pickup. Windowed by postedAt + demo-scoped so it lines
+// up with getHealthMetrics on the merged Analytics dashboard.
+export async function getDashboardData(windowDays: number, demo: boolean) {
+  const windowEnd = Date.now();
+  const windowStart = windowEnd - windowDays * 24 * 60 * 60 * 1000;
   const claimed = await prisma.foodListing.findMany({
-    where: { demo: false, events: { some: { type: "claimed" } } },
+    where: {
+      demo,
+      postedAt: { gte: new Date(windowStart), lte: new Date(windowEnd) },
+      events: { some: { type: "claimed" } },
+    },
     select: { servings: true, events: { select: { type: true } } },
   });
   const pickups: PickupRecord[] = claimed.map((l) => {
@@ -17,7 +24,6 @@ export async function getDashboardData() {
   });
   return {
     servingsRescued: computeServingsRescued(pickups),
-    flakeRate: computeFlakeRate(pickups),
     funnel: computeFunnel(pickups),
   };
 }
