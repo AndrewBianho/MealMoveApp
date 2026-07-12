@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import bcrypt from "bcryptjs";
 import { Prisma, type FoodCategory } from "@prisma/client";
 import { auth } from "@/auth";
+import { trackServer, identifyServer } from "@/lib/analytics";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, resetLimit, clientIp, LIMITS } from "@/lib/rate-limit";
 import { passwordValid } from "@/lib/password";
@@ -120,8 +121,9 @@ export async function registerUser(input: {
     }
     const passwordHash = await bcrypt.hash(password, 10);
     try {
+      let newUserId = "";
       await prisma.$transaction(async (tx) => {
-        await tx.user.create({
+        const newUser = await tx.user.create({
           data: {
             name,
             email,
@@ -132,12 +134,15 @@ export async function registerUser(input: {
             dropOffId: invite.role === "drop_off" ? invite.dropOffId : null,
           },
         });
+        newUserId = newUser.id;
         await tx.teamInvite.update({
           where: { id: invite.id },
           data: { status: "accepted", respondedAt: new Date() },
         });
       });
       await resetLimit(`register:${ip}`);
+      trackServer({ name: "signup_submitted", props: { role: invite.role, hadInvite: true } }, newUserId);
+      identifyServer(newUserId, invite.role);
       return { ok: true };
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
@@ -189,7 +194,7 @@ export async function registerUser(input: {
               name: input.dropOffName!.trim(),
               address: input.dropOffAddress!.trim(),
             };
-      await prisma.user.create({
+      const newUser = await prisma.user.create({
         data: {
           name,
           email,
@@ -201,15 +206,19 @@ export async function registerUser(input: {
         },
       });
       await resetLimit(`register:${ip}`);
+      trackServer({ name: "signup_submitted", props: { role: input.role, hadInvite: false } }, newUser.id);
+      identifyServer(newUser.id, input.role);
       return { ok: true, pending: true };
     }
 
     // Volunteers are active immediately — low-stakes, and the whole point is a
     // first-timer claiming a pickup without friction.
-    await prisma.user.create({
+    const newUser = await prisma.user.create({
       data: { name, email, phone, passwordHash, role: "volunteer" },
     });
     await resetLimit(`register:${ip}`);
+    trackServer({ name: "signup_submitted", props: { role: "volunteer", hadInvite: false } }, newUser.id);
+    identifyServer(newUser.id, "volunteer");
     return { ok: true };
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
@@ -510,6 +519,7 @@ export async function claimListing(listingId: string, dropOffId?: string) {
     throw new Error("Org admins oversee rescues — claiming is for volunteers.");
   }
   const volunteerId = session.user.id;
+  let trackData: { expiresAt: Date; servings: number; dropOffId: string } | null = null;
   await prisma.$transaction(async (tx) => {
     const listing = await tx.foodListing.findUnique({
       where: { id: listingId },
@@ -582,15 +592,56 @@ export async function claimListing(listingId: string, dropOffId?: string) {
     await tx.listingEvent.create({
       data: { listingId, type: "claimed", actorId: volunteerId },
     });
+    trackData = {
+      expiresAt: listing.expiresAt,
+      servings: listing.servings ?? 0,
+      dropOffId: chosenDropOffId,
+    };
   });
   refreshViews(listingId);
+  if (trackData) {
+    const claimTrackData: { expiresAt: Date; servings: number; dropOffId: string } = trackData;
+    const { expiresAt, servings, dropOffId: trackedDropOffId } = claimTrackData;
+    trackServer(
+      {
+        name: "claim_completed",
+        props: {
+          listingId,
+          dropOffId: trackedDropOffId,
+          minutesToExpiry: Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / 60000)),
+          servings,
+        },
+      },
+      volunteerId,
+    );
+  }
 }
 
 /** Voluntarily release the caller's claim, reopening the listing. */
 export async function releaseClaim(listingId: string) {
   const userId = await currentUserId();
+  // Read the pickup before releasing — a sole-volunteer release deletes the
+  // row, so this is the only chance to capture its claimedAt/photo state for
+  // the flaked event below.
+  const pickupBefore = await prisma.pickup.findFirst({
+    where: { listingId, OR: [{ volunteerId: userId }, { buddyId: userId }] },
+    select: { id: true, claimedAt: true, photoAtPickupUrl: true },
+  });
   await releaseClaimFor(prisma, userId, listingId);
   refreshViews(listingId);
+  if (pickupBefore) {
+    trackServer(
+      {
+        name: "flaked",
+        props: {
+          pickupId: pickupBefore.id,
+          stage: pickupBefore.photoAtPickupUrl ? "photographed" : "claimed",
+          minutesHeld: Math.max(0, Math.round((Date.now() - pickupBefore.claimedAt.getTime()) / 60000)),
+        },
+      },
+      userId,
+    );
+  }
 }
 
 /**
@@ -605,6 +656,18 @@ export async function startDelivery(
   const userId = await currentUserId();
   await startDeliveryWithPhotoFor(prisma, userId, listingId, photoUrl, safety);
   refreshViews(listingId);
+  const pickup = await prisma.pickup.findFirst({
+    where: { listingId, OR: [{ volunteerId: userId }, { buddyId: userId }] },
+    select: { id: true, claimedAt: true },
+  });
+  if (pickup) {
+    const minutesSinceClaim = Math.max(0, Math.round((Date.now() - pickup.claimedAt.getTime()) / 60000));
+    trackServer(
+      { name: "pickup_photo_uploaded", props: { pickupId: pickup.id, minutesSinceClaim } },
+      userId,
+    );
+    trackServer({ name: "in_transit_started", props: { pickupId: pickup.id } }, userId);
+  }
 }
 
 /**
@@ -616,6 +679,27 @@ export async function markDelivered(listingId: string, photoUrl: string) {
   const userId = await currentUserId();
   await markDeliveredWithPhotoFor(prisma, userId, listingId, photoUrl);
   refreshViews(listingId);
+  const pickup = await prisma.pickup.findFirst({
+    where: { listingId, OR: [{ volunteerId: userId }, { buddyId: userId }] },
+    select: { id: true, claimedAt: true, deliveredAt: true, listing: { select: { servings: true } } },
+  });
+  if (pickup) {
+    const minutesClaimToDelivered = Math.max(
+      0,
+      Math.round(((pickup.deliveredAt ?? new Date()).getTime() - pickup.claimedAt.getTime()) / 60000),
+    );
+    trackServer(
+      {
+        name: "delivered",
+        props: {
+          pickupId: pickup.id,
+          servings: pickup.listing.servings ?? 0,
+          minutesClaimToDelivered,
+        },
+      },
+      userId,
+    );
+  }
   return getVolunteerImpact(userId);
 }
 
@@ -629,6 +713,13 @@ export async function takeHomeForTomorrow(listingId: string) {
   const userId = await currentUserId();
   await takeHomeForTomorrowFor(prisma, userId, listingId);
   refreshViews(listingId);
+  const pickup = await prisma.pickup.findFirst({
+    where: { listingId, OR: [{ volunteerId: userId }, { buddyId: userId }] },
+    select: { id: true },
+  });
+  if (pickup) {
+    trackServer({ name: "taken_home", props: { pickupId: pickup.id } }, userId);
+  }
 }
 
 /**
@@ -876,6 +967,19 @@ export async function postListing(input: {
     },
   });
   refreshViews(listing.id);
+  trackServer(
+    {
+      name: "listing_posted",
+      props: {
+        servings,
+        foodType: listing.category,
+        handling: tempHandling ?? "",
+        minutesToExpiry: minutes,
+        carsRequested: carsNeeded ?? 0,
+      },
+    },
+    session.user.id,
+  );
   return listing.id;
 }
 
@@ -1376,6 +1480,7 @@ export async function updateNeedLevel(
   revalidatePath(`/dropoffs/${dropOffId}`);
   revalidatePath("/");
   revalidatePath("/map");
+  trackServer({ name: "drop_off_need_updated", props: { dropOffId, needLevel: level } });
   return { ok: true };
 }
 
