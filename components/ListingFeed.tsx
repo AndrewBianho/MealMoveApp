@@ -128,6 +128,57 @@ function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => voi
   );
 }
 
+type Sort = "closing_soon" | "nearest" | "most_meals";
+const SORT_LABELS: Record<Sort, string> = {
+  closing_soon: "Closing soon",
+  nearest: "Nearest",
+  most_meals: "Most meals",
+};
+
+// Order claimable food by the volunteer's real constraint. "Nearest" needs a
+// shared location, so it's disabled (not hidden — avoids layout shift) until the
+// browser grants one.
+function SortControl({
+  sort,
+  onChange,
+  canSortNearest,
+}: {
+  sort: Sort;
+  onChange: (s: Sort) => void;
+  canSortNearest: boolean;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Sort listings"
+      className="inline-flex rounded-full border border-neutral-200 bg-card p-0.5"
+    >
+      {(["closing_soon", "nearest", "most_meals"] as Sort[]).map((s) => {
+        const active = s === sort;
+        const disabled = s === "nearest" && !canSortNearest;
+        return (
+          <button
+            key={s}
+            type="button"
+            aria-pressed={active}
+            disabled={disabled}
+            title={disabled ? "Share your location to sort by nearest" : undefined}
+            onClick={() => onChange(s)}
+            className={cn(
+              "rounded-full px-3 py-1.5 text-[14px] font-semibold transition-colors duration-150",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",
+              active ? "bg-neutral-900 text-neutral-50" : "text-neutral-700 hover:text-neutral-900",
+              disabled && "cursor-not-allowed opacity-40 hover:text-neutral-700"
+            )}
+          >
+            {SORT_LABELS[s]}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function isSpent(status: ListingStatus): boolean {
   return ["delivered", "expired", "failed"].includes(status);
 }
@@ -336,6 +387,7 @@ export function ListingFeed({
   const [filter, setFilter] = useState<Filter>("open");
   const [category, setCategory] = useState<CategoryChoice>("all types");
   const [view, setView] = useState<View>("list");
+  const [sort, setSort] = useState<Sort>("closing_soon");
   // On wide screens (lg+) the list and map sit side by side, so the List/Map
   // toggle is moot there. `phone` (below md) never gets the map at all — the
   // toggle only shows on tablet (md–lg). Both start false so the server-rendered
@@ -358,6 +410,10 @@ export function ListingFeed({
       phoneMq.removeEventListener("change", sync);
     };
   }, []);
+  // The list (vs. the map) is visible on wide screens (side by side), on
+  // phones (no map at all), or on tablet when the list view is chosen — sort
+  // only applies there, per "sort hides in map view".
+  const showList = wide || phone || view === "list";
   // "Claimed & closed" is tracking, not browsing — collapsed by default for
   // volunteers (who have a dedicated "My pickups" page), expanded for org admins
   // who use the feed for oversight.
@@ -428,15 +484,26 @@ export function ListingFeed({
     if (activeCategory !== "all types") {
       list = list.filter((l) => l.category === activeCategory);
     }
-    // Always closing-soonest first — the volunteer's real constraint on
-    // time-sensitive food; spent listings sink to the bottom regardless.
+    // "Nearest" is meaningless without a location — fall back to closing-soon.
+    const effectiveSort: Sort = sort === "nearest" && !here ? "closing_soon" : sort;
+    const distanceOf = (l: Listing) =>
+      here && l.lat != null && l.lng != null
+        ? haversineMiles(here, { lat: l.lat, lng: l.lng })
+        : Infinity;
     return [...list].sort((a, b) => {
+      // Spent listings always sink to the bottom, regardless of sort.
       if (isSpent(a.status) !== isSpent(b.status)) {
         return Number(isSpent(a.status)) - Number(isSpent(b.status));
       }
-      return a.minutesLeft - b.minutesLeft;
+      if (effectiveSort === "most_meals") return b.servings - a.servings;
+      if (effectiveSort === "nearest") {
+        const d = distanceOf(a) - distanceOf(b);
+        if (d !== 0) return d;
+        return a.minutesLeft - b.minutesLeft; // tiebreak: closing soonest
+      }
+      return a.minutesLeft - b.minutesLeft; // closing_soon (default)
     });
-  }, [located, filter, activeCategory]);
+  }, [located, filter, activeCategory, sort, here]);
 
   // Split what's shown into three bands so the eye goes to claimable food first.
   const claimable = shown.filter((l) => l.status === "open" && !l.scheduled);
@@ -516,17 +583,29 @@ export function ListingFeed({
               trackClient("filter_applied", { kind: "status", value: v });
             }}
           />
-          {/* Map rides beside the list on wide (lg+) screens and is hidden
-              entirely on phones, so the toggle only appears on tablet. */}
-          {!wide && !phone && (
-            <ViewToggle
-              view={view}
-              onChange={(v) => {
-                setView(v);
-                trackClient("view_toggled", { to: v });
-              }}
-            />
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            {showList && (
+              <SortControl
+                sort={sort}
+                canSortNearest={!!here}
+                onChange={(s) => {
+                  setSort(s);
+                  trackClient("sort_changed", { sort: s });
+                }}
+              />
+            )}
+            {/* Map rides beside the list on wide (lg+) screens and is hidden
+                entirely on phones, so the toggle only appears on tablet. */}
+            {!wide && !phone && (
+              <ViewToggle
+                view={view}
+                onChange={(v) => {
+                  setView(v);
+                  trackClient("view_toggled", { to: v });
+                }}
+              />
+            )}
+          </div>
         </div>
         {availableCategories.length >= 2 && (
           <CategoryFilter
