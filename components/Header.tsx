@@ -44,13 +44,27 @@ export async function Header() {
 
           {demo && (
             // Calm, neutral cue (never a status hue) so it's clear the data on
-            // screen is the sample world, not the chapter's live listings.
+            // screen is the sample world, not the chapter's live listings. The
+            // flask glyph carries the "sample" meaning by icon + label, so it
+            // reads without relying on color.
             <Link
               href="/settings"
               title="You're viewing demo data — change in Settings"
-              className="rounded-full border border-neutral-200 bg-neutral-100 px-2.5 py-1.5 font-mono text-[10px] text-neutral-700 transition-colors hover:text-neutral-900"
+              className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-100 py-1.5 pl-2 pr-2.5 font-mono text-[11px] leading-none text-neutral-700 transition-colors hover:border-neutral-300 hover:bg-neutral-200 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1 focus-visible:ring-offset-neutral-50"
             >
-              demo data
+              <svg
+                aria-hidden
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.75}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-3 w-3 opacity-70"
+              >
+                <path d="M9 3h6M10 3v6l-5 8a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-8V3" />
+              </svg>
+              Demo data
             </Link>
           )}
 
