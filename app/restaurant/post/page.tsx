@@ -13,9 +13,9 @@ export const dynamic = "force-dynamic";
 export default async function PostSurplusPage() {
   const session = await auth();
   const role = session?.user?.role;
-  // Only restaurants (and org admins, who can post on a restaurant's behalf)
-  // reach the wizard; anyone else goes back to the feed.
-  if (role !== "restaurant" && role !== "org_admin") redirect("/");
+  // Only restaurants reach the wizard; anyone else — including org admins, who
+  // oversee the chapter rather than post for any one account — goes to the feed.
+  if (role !== "restaurant") redirect("/");
 
   const me = session?.user?.id
     ? await prisma.user.findUnique({

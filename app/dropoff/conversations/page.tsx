@@ -6,11 +6,11 @@ import { dropOffChatThreads, loadDropOffConsole } from "@/lib/dropoffConsole";
 export const dynamic = "force-dynamic";
 
 // The Conversations tab of the drop-off console: the three-way coordination
-// chats for every delivery headed here, in one place. Org admins coordinate
-// from the chapter-wide /dropoff view instead.
+// chats for every delivery headed here, in one place. The drop-off console
+// belongs to `drop_off` accounts; org admins oversee the chapter elsewhere.
 export default async function DropOffConversationsPage() {
   const { isOrgAdmin, own, viewerId, incoming } = await loadDropOffConsole();
-  if (isOrgAdmin) redirect("/dropoff");
+  if (isOrgAdmin) redirect("/");
   if (!own) return <DropOffNotLinked />;
 
   return (

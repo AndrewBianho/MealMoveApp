@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { RestaurantPostHub } from "@/components/RestaurantPostHub";
 import { RecurringPostManager } from "@/components/RecurringPostManager";
 import { TeamPanel } from "@/components/TeamPanel";
@@ -16,6 +17,9 @@ export const dynamic = "force-dynamic";
  */
 export default async function RestaurantPage() {
   const session = await auth();
+  // Org admins oversee the chapter; they don't run a restaurant account, so the
+  // posting surface is off-limits — back to the feed.
+  if (session?.user?.role === "org_admin") redirect("/");
   const me = session?.user?.id
     ? await prisma.user.findUnique({
         where: { id: session.user.id },

@@ -5,11 +5,11 @@ import { loadDropOffConsole } from "@/lib/dropoffConsole";
 
 export const dynamic = "force-dynamic";
 
-// The Incoming tab: what's on its way and what's just arrived. Org admins see
-// the chapter-wide inbound board on /dropoff instead.
+// The Incoming tab: what's on its way and what's just arrived. Scoped to a
+// single `drop_off` account; org admins oversee the chapter elsewhere.
 export default async function DropOffIncomingPage() {
   const { isOrgAdmin, own, incoming, arrived } = await loadDropOffConsole();
-  if (isOrgAdmin) redirect("/dropoff");
+  if (isOrgAdmin) redirect("/");
   if (!own) return <DropOffNotLinked />;
 
   return (

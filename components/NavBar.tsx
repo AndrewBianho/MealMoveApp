@@ -29,7 +29,6 @@ const FEED: Item = { href: "/", label: "Available", icon: "feed" };
 const MAP: Item = { href: "/map", label: "Map", icon: "map" };
 const POST_SURPLUS: Item = { href: "/restaurant", label: "Post surplus", short: "Post", icon: "restaurant" };
 const MY_LISTINGS: Item = { href: "/restaurant/listings", label: "Your listings", short: "Listings", icon: "listings" };
-const DROPOFF: Item = { href: "/dropoff", label: "Drop-off", icon: "dropoff" };
 const IMPACT: Item = { href: "/impact", label: "Impact", icon: "impact" };
 // The drop-off account's console, split into four top-level tabs.
 const DROPOFF_ABOUT: Item = { href: "/dropoff", label: "About us", short: "About", icon: "dropoff" };
@@ -45,10 +44,13 @@ const NAV_BY_ROLE: Record<Role, Item[]> = {
   volunteer: [FEED, MAP, IMPACT],
   restaurant: [POST_SURPLUS, MY_LISTINGS, IMPACT],
   drop_off: [DROPOFF_ABOUT, DROPOFF_CHATS, DROPOFF_INCOMING, DROPOFF_IMPACT],
-  // Org admins oversee — they don't claim, so no "My pickups". They keep the
-  // feed/map (visibility), the restaurant surface (special posts + tracking),
-  // impact (the in-depth stats), and members.
-  org_admin: [FEED, MAP, POST_SURPLUS, MY_LISTINGS, DROPOFF, IMPACT, ANALYTICS, RELIABILITY, PARTNERS, MEMBERS],
+  // Org admins oversee the chapter — people, partner restaurants, and the
+  // numbers — they don't run any one account. So no posting or drop-off console
+  // (those belong to the individual restaurant / drop-off accounts) and no
+  // per-listing management. They keep feed/map (visibility), impact and
+  // analytics (the stats), reliability + partner notes (restaurants), and
+  // members (people).
+  org_admin: [FEED, MAP, IMPACT, ANALYTICS, RELIABILITY, PARTNERS, MEMBERS],
 };
 
 // Line icons for the mobile bottom bar / more-sheet, keyed by Item.icon.

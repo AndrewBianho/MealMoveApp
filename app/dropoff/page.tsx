@@ -1,5 +1,4 @@
-import { DeliverySections } from "@/components/DeliverySections";
-import { DropOffChats } from "@/components/DropOffChats";
+import { redirect } from "next/navigation";
 import { DropOffConstraintsEditor } from "@/components/DropOffConstraintsEditor";
 import { DropOffNotesEditor } from "@/components/DropOffNotesEditor";
 import { DropOffNoticeManager } from "@/components/DropOffNoticeManager";
@@ -7,7 +6,7 @@ import { DropOffNotLinked, DropOffTabShell } from "@/components/DropOffTabShell"
 import { NeedLevelControl } from "@/components/NeedLevelControl";
 import { RetrievalHoursEditor } from "@/components/RetrievalHoursEditor";
 import { TeamPanel } from "@/components/TeamPanel";
-import { dropOffChatThreads, loadDropOffConsole } from "@/lib/dropoffConsole";
+import { loadDropOffConsole } from "@/lib/dropoffConsole";
 
 export const dynamic = "force-dynamic";
 
@@ -29,82 +28,25 @@ function SettingsCard({
   );
 }
 
-// The drop-off console's first tab. For a `drop_off` account this is "About
-// us" — everything the location is in charge of (hours, team, what it accepts,
+// The drop-off console's first tab — "About us" for a `drop_off` account:
+// everything the location is in charge of (hours, team, what it accepts,
 // notices); the other tabs (Conversations / Incoming / Impact) are their own
-// routes. An org admin keeps the chapter-wide view here: every location at once
-// plus the inbound board, since their nav has a single Drop-off link.
+// routes. Org admins oversee the chapter elsewhere (analytics, members) and are
+// redirected out of the drop-off console entirely.
 export default async function DropoffPage() {
   const {
     isOrgAdmin,
     myDropOffId,
-    locations,
     own,
     demo,
     noticesByDropOff,
     members,
     invites,
-    viewerId,
-    incoming,
-    arrived,
   } = await loadDropOffConsole();
 
-  if (!isOrgAdmin && !own) return <DropOffNotLinked />;
-
-  if (isOrgAdmin) {
-    return (
-      <DropOffTabShell
-        title="Drop-off locations"
-        subtitle="Where rescued food is delivered, and what's inbound to each."
-      >
-        <section className="mb-10">
-          <h2 className="mb-4 text-lg font-medium">Locations &amp; what they accept</h2>
-          <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {locations.map((d) => (
-              <div
-                key={d.id}
-                className="rounded-2xl border border-neutral-200/40 bg-card p-5 shadow-card"
-              >
-                <h3 className="mb-4 text-base font-semibold text-neutral-800">{d.name}</h3>
-                <DropOffConstraintsEditor
-                  dropOffId={d.id}
-                  initial={{ categories: d.acceptedCategories, refrigerated: d.refrigerated }}
-                />
-                <div className="mt-5 border-t border-neutral-200/50 pt-4">
-                  <NeedLevelControl dropOffId={d.id} initial={d.needLevel} />
-                </div>
-                <div className="mt-4 border-t border-neutral-200/50 pt-4">
-                  <DropOffNotesEditor dropOffId={d.id} initialNotes={d.notes ?? ""} />
-                  <RetrievalHoursEditor dropOffId={d.id} initialHours={d.retrievalHours} />
-                  <DropOffNoticeManager dropOffId={d.id} initial={noticesByDropOff[d.id] ?? []} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <section className="mb-10">
-          <h2 className="mb-1 text-lg font-medium">Conversations</h2>
-          <p className="mb-4 text-sm text-neutral-700">
-            Every active delivery headed to a location, in one place.
-          </p>
-          {viewerId ? (
-            <DropOffChats viewerId={viewerId} threads={dropOffChatThreads(incoming)} />
-          ) : (
-            <p className="text-sm text-neutral-700">Sign in to coordinate deliveries.</p>
-          )}
-        </section>
-
-        <section>
-          <h2 className="mb-1 text-lg font-medium">Incoming</h2>
-          <p className="mb-4 text-sm text-neutral-700">
-            Deliveries on their way, and what&apos;s just arrived.
-          </p>
-          <DeliverySections incoming={incoming} arrived={arrived} />
-        </section>
-      </DropOffTabShell>
-    );
-  }
+  // Org admins oversee the chapter, not any single location's console.
+  if (isOrgAdmin) redirect("/");
+  if (!own) return <DropOffNotLinked />;
 
   return (
     <DropOffTabShell

@@ -8,10 +8,10 @@ export const dynamic = "force-dynamic";
 
 // The Impact tab: this location's lifetime stats and the record of past
 // donations behind them. Scoped to the single-location account; org admins
-// have the chapter-wide /admin/analytics and /impact surfaces.
+// have the chapter-wide /admin/analytics and /impact surfaces instead.
 export default async function DropOffImpactPage() {
   const { isOrgAdmin, own } = await loadDropOffConsole();
-  if (isOrgAdmin) redirect("/dropoff");
+  if (isOrgAdmin) redirect("/");
   if (!own) return <DropOffNotLinked />;
 
   // Sequential to stay off the connection-pool ceiling (see lib/stats).
