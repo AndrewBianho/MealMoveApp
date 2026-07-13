@@ -6,9 +6,6 @@ import { isDemo } from "@/lib/mode";
 
 export const dynamic = "force-dynamic";
 
-type ManagedRole = "volunteer" | "org_admin";
-const MANAGED: ManagedRole[] = ["volunteer", "org_admin"];
-
 function pendingOrgName(value: unknown): string | null {
   if (!value || typeof value !== "object") return null;
   const name = (value as Record<string, unknown>).name;
@@ -52,8 +49,8 @@ export default async function AdminUsersPage() {
       <header className="mb-6">
         <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">Members</h1>
         <p className="mt-1 text-sm text-neutral-700">
-          Assign roles. Restaurant accounts are set at sign-up; the last org
-          admin can&apos;t be removed.
+          Manage org admins. Volunteer and partner accounts are set at sign-up;
+          the last org admin can&apos;t be removed.
         </p>
       </header>
 
@@ -125,7 +122,6 @@ export default async function AdminUsersPage() {
           <tbody>
             {users.map((u) => {
               const isSelf = u.id === session?.user?.id;
-              const managed = MANAGED.includes(u.role as ManagedRole);
               return (
                 <tr key={u.id} className="border-b border-neutral-200/40 transition-colors last:border-0 hover:bg-rescued-50/40">
                   <td className="px-4 py-3">
@@ -140,13 +136,18 @@ export default async function AdminUsersPage() {
                     {u.email}
                   </td>
                   <td className="px-4 py-3">
-                    {managed ? (
+                    {u.role === "org_admin" ? (
                       <RoleSelect
                         userId={u.id}
-                        current={u.role as ManagedRole}
+                        current="org_admin"
                         isSelf={isSelf}
                         demo={demo}
                       />
+                    ) : u.role === "volunteer" ? (
+                      // Volunteers keep a fixed role — no dropdown to change it.
+                      <span className="font-mono text-xs text-neutral-700">
+                        volunteer
+                      </span>
                     ) : u.role === "drop_off" ? (
                       <span className="font-mono text-xs text-neutral-700">
                         drop-off · {u.dropOff?.name ?? "—"}
