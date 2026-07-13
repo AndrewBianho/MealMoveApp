@@ -128,7 +128,7 @@ export default async function AnalyticsPage({
         <Metric
           value={d.servingsRescued.toLocaleString()}
           label="Meals rescued"
-          caption={`delivered in the last ${m.windowDays} days`}
+          caption={`from posts in the last ${m.windowDays} days`}
           accent="rescued"
         />
         <Metric
