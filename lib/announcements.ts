@@ -2,6 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import { prisma } from "./prisma";
 import { dispatchToUser, type NotifyPayload } from "./notify-dispatch";
 import { absoluteUrl, escapeHtml } from "./email";
+import { resolveAudience, type Audience } from "./segments";
 
 export type World = "real" | "demo";
 
@@ -31,35 +32,58 @@ export function buildAnnouncementPayload(a: {
   };
 }
 
-type SendDb = Pick<PrismaClient, "announcement" | "user">;
+type SendDb = Pick<
+  PrismaClient,
+  "announcement" | "user" | "listingEvent" | "pickup" | "restaurant" | "dropOff"
+>;
 
 export async function sendAnnouncement(
-  input: { authorId: string; title: string; body: string; world: World },
-  deps: { db?: SendDb; dispatch?: typeof dispatchToUser } = {}
+  input: {
+    authorId: string;
+    title: string;
+    body: string;
+    world: World;
+    audience: Audience;
+  },
+  deps: {
+    db?: SendDb;
+    dispatch?: typeof dispatchToUser;
+    resolve?: typeof resolveAudience;
+    now?: Date;
+  } = {}
 ): Promise<{ announcementId: string; recipientCount: number }> {
   const db = deps.db ?? prisma;
   const dispatch = deps.dispatch ?? dispatchToUser;
+  const resolve = deps.resolve ?? resolveAudience;
   const demo = input.world === "demo";
 
-  const announcement = await db.announcement.create({
-    data: { authorId: input.authorId, title: input.title, body: input.body, demo },
-    select: { id: true },
+  // Who hears it. `{ kind: "everyone" }` is the whole active in-world roster —
+  // the original behavior.
+  const { ids, label } = await resolve(input.audience, input.world, {
+    db,
+    now: deps.now,
   });
 
-  const volunteers = await db.user.findMany({
-    where: { role: "volunteer", status: "active", dataMode: input.world },
+  const announcement = await db.announcement.create({
+    data: {
+      authorId: input.authorId,
+      title: input.title,
+      body: input.body,
+      demo,
+      audienceLabel: label,
+    },
     select: { id: true },
   });
 
   const payload = buildAnnouncementPayload(input);
-  await Promise.all(volunteers.map((v) => dispatch(v.id, payload, { force: true })));
+  await Promise.all(ids.map((id) => dispatch(id, payload, { force: true })));
 
   await db.announcement.update({
     where: { id: announcement.id },
-    data: { recipientCount: volunteers.length },
+    data: { recipientCount: ids.length },
   });
 
-  return { announcementId: announcement.id, recipientCount: volunteers.length };
+  return { announcementId: announcement.id, recipientCount: ids.length };
 }
 
 export async function listAnnouncements(
@@ -70,7 +94,14 @@ export async function listAnnouncements(
   return db.announcement.findMany({
     where: { demo: world === "demo" },
     orderBy: { createdAt: "desc" },
-    select: { id: true, title: true, body: true, createdAt: true, recipientCount: true },
+    select: {
+      id: true,
+      title: true,
+      body: true,
+      createdAt: true,
+      recipientCount: true,
+      audienceLabel: true,
+    },
   });
 }
 

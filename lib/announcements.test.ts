@@ -23,7 +23,7 @@ test("buildAnnouncementPayload truncates a long push body", () => {
   assert.ok(p.body.endsWith("…"));
 });
 
-test("sendAnnouncement targets active in-world volunteers and force-dispatches", async () => {
+test("sendAnnouncement dispatches to the resolved audience and stamps the label", async () => {
   const created: any[] = [];
   const updated: any[] = [];
   const findWhere: any[] = [];
@@ -39,9 +39,13 @@ test("sendAnnouncement targets active in-world volunteers and force-dispatches",
     user: {
       findMany: async (args: any) => {
         findWhere.push(args.where);
-        return [{ id: "v1" }, { id: "v2" }];
+        return [{ id: "v1", lat: null, lng: null }, { id: "v2", lat: null, lng: null }];
       },
     },
+    listingEvent: { groupBy: async () => [], findMany: async () => [] },
+    pickup: { groupBy: async () => [] },
+    restaurant: { findFirst: async () => null },
+    dropOff: { findFirst: async () => null },
   };
   const dispatch = (async (id: string, _p: any, opts: any) => {
     dispatched.push({ id, opts });
@@ -49,16 +53,52 @@ test("sendAnnouncement targets active in-world volunteers and force-dispatches",
   }) as any;
 
   const res = await sendAnnouncement(
-    { authorId: "admin1", title: "T", body: "B", world: "real" },
+    { authorId: "admin1", title: "T", body: "B", world: "real", audience: { kind: "everyone" } },
     { db, dispatch }
   );
 
   assert.equal(res.recipientCount, 2);
-  assert.deepEqual(created[0], { authorId: "admin1", title: "T", body: "B", demo: false });
+  assert.deepEqual(created[0], {
+    authorId: "admin1",
+    title: "T",
+    body: "B",
+    demo: false,
+    audienceLabel: "Everyone",
+  });
   assert.deepEqual(findWhere[0], { role: "volunteer", status: "active", dataMode: "real" });
   assert.equal(dispatched.length, 2);
   assert.equal(dispatched[0].opts.force, true);
   assert.deepEqual(updated[0], { where: { id: "ann1" }, data: { recipientCount: 2 } });
+});
+
+test("sendAnnouncement only reaches the audience's members", async () => {
+  const dispatched: string[] = [];
+  const db: any = {
+    announcement: {
+      create: async () => ({ id: "ann1" }),
+      update: async () => {},
+    },
+    user: {
+      findMany: async () => [{ id: "v1", lat: null, lng: null }, { id: "v2", lat: null, lng: null }],
+    },
+    // v1 has completed a rescue, so only v2 is `new`.
+    listingEvent: { groupBy: async () => [], findMany: async () => [{ actorId: "v1" }] },
+    pickup: { groupBy: async () => [] },
+    restaurant: { findFirst: async () => null },
+    dropOff: { findFirst: async () => null },
+  };
+  const dispatch = (async (id: string) => {
+    dispatched.push(id);
+    return { channel: "push" as const };
+  }) as any;
+
+  const res = await sendAnnouncement(
+    { authorId: "a1", title: "T", body: "B", world: "real", audience: { kind: "new" } },
+    { db, dispatch }
+  );
+
+  assert.equal(res.recipientCount, 1);
+  assert.deepEqual(dispatched, ["v2"]);
 });
 
 test("unseenCount counts announcements newer than the seen timestamp", async () => {
