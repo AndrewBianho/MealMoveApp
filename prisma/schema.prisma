@@ -486,6 +486,9 @@ model Announcement {
   authorId       String
   title          String
   body           String   @db.Text
+  // Human label of who this went to ("Everyone", "New volunteers",
+  // "Volunteers near Maple St Cafe · 5 mi"). Denormalized at send for the log.
+  audienceLabel  String   @default("Everyone")
   demo           Boolean // sent to volunteers whose dataMode matches this world
   recipientCount Int      @default(0) // reach, stamped once at send time
   createdAt      DateTime @default(now())
