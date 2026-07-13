@@ -2,9 +2,12 @@ import { ListingFeed } from "@/components/ListingFeed";
 import { ListingCard } from "@/components/ListingCard";
 import { PickupTimelineCard } from "@/components/PickupTimelineCard";
 import { FirstRescueTracker } from "@/components/FirstRescueTracker";
+import { UpdatesBanner } from "@/components/UpdatesBanner";
 import { redirect } from "next/navigation";
 import { getListings } from "@/lib/listings";
 import { getVolunteerOnboarding } from "@/lib/onboarding";
+import { unseenCount } from "@/lib/announcements";
+import { getDataMode } from "@/lib/mode";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 
@@ -20,6 +23,8 @@ export default async function FeedPage() {
   if (session?.user?.role === "org_admin") redirect("/admin/analytics");
   const viewerId = session?.user?.id;
   const listings = await getListings(viewerId);
+  const world = await getDataMode();
+  const updatesUnseen = viewerId ? await unseenCount(viewerId, world) : 0;
   // Org admins (the only non-claiming role) were redirected out above, so every
   // viewer who reaches the feed can claim.
   const canClaim = true;
@@ -72,6 +77,8 @@ export default async function FeedPage() {
               : "No open pickups right now — new surplus posts throughout the evening."}
         </p>
       </header>
+
+      <UpdatesBanner unseen={updatesUnseen} />
 
       {current && (
         <section className="mb-8 lg:max-w-3xl">

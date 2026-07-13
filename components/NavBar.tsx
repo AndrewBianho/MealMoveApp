@@ -30,6 +30,7 @@ const MAP: Item = { href: "/map", label: "Map", icon: "map" };
 const POST_SURPLUS: Item = { href: "/restaurant", label: "Post surplus", short: "Post", icon: "restaurant" };
 const MY_LISTINGS: Item = { href: "/restaurant/listings", label: "Your listings", short: "Listings", icon: "listings" };
 const IMPACT: Item = { href: "/impact", label: "Impact", icon: "impact" };
+const UPDATES: Item = { href: "/updates", label: "Updates", icon: "megaphone" };
 // The drop-off account's console, split into four top-level tabs.
 const DROPOFF_ABOUT: Item = { href: "/dropoff", label: "About us", short: "About", icon: "dropoff" };
 const DROPOFF_CHATS: Item = { href: "/dropoff/conversations", label: "Conversations", short: "Chats", icon: "chat" };
@@ -42,7 +43,7 @@ const PARTNERS: Item = { href: "/admin/partners", label: "Partner notes", short:
 const ANALYTICS: Item = { href: "/admin/analytics", label: "Analytics", short: "Analytics", icon: "health" };
 
 const NAV_BY_ROLE: Record<Role, Item[]> = {
-  volunteer: [FEED, MAP, IMPACT],
+  volunteer: [FEED, MAP, IMPACT, UPDATES],
   restaurant: [POST_SURPLUS, MY_LISTINGS, IMPACT],
   drop_off: [DROPOFF_ABOUT, DROPOFF_CHATS, DROPOFF_INCOMING, DROPOFF_IMPACT],
   // Org admins oversee the chapter — people, partner restaurants, and the
@@ -178,10 +179,12 @@ export function NavBar({
   role,
   name,
   image = null,
+  unseen = 0,
 }: {
   role: Role;
   name: string;
   image?: string | null;
+  unseen?: number;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -245,6 +248,11 @@ export function NavBar({
             )}
           >
             {item.label}
+            {item.href === "/updates" && unseen > 0 && (
+              <span className="ml-1.5 inline-flex min-w-[18px] items-center justify-center rounded-full bg-clay-600 px-1 font-mono text-[10px] text-neutral-50">
+                {unseen}
+              </span>
+            )}
           </Link>
         ))}
       </nav>
@@ -308,11 +316,16 @@ export function NavBar({
             >
               <span
                 className={cn(
-                  "grid h-9 w-9 place-items-center rounded-full transition-colors",
+                  "relative grid h-9 w-9 place-items-center rounded-full transition-colors",
                   active ? "bg-neutral-900 text-neutral-50" : "text-neutral-700"
                 )}
               >
                 <TabIcon icon={item.icon} />
+                {item.href === "/updates" && unseen > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-clay-600 px-0.5 font-mono text-[9px] text-neutral-50">
+                    {unseen}
+                  </span>
+                )}
               </span>
               <span
                 className={cn(

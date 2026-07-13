@@ -2,13 +2,17 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getDataMode } from "@/lib/mode";
+import { unseenCount } from "@/lib/announcements";
 import { NavBar } from "./NavBar";
 import { WelcomeIntro } from "./WelcomeIntro";
 
 export async function Header() {
   const session = await auth();
   const user = session?.user;
-  const demo = user ? (await getDataMode()) === "demo" : false;
+  const dataMode = user ? await getDataMode() : "real";
+  const demo = dataMode === "demo";
+  const updatesUnseen =
+    user?.role === "volunteer" ? await unseenCount(user.id, dataMode) : 0;
 
   // The first-run welcome is gated on account age, so fetch when the account was
   // created (indexed PK lookup). 0 = unknown → the intro simply won't auto-open.
@@ -69,7 +73,7 @@ export async function Header() {
           )}
 
           {user && (
-            <NavBar role={user.role} name={user.name ?? "?"} image={image} />
+            <NavBar role={user.role} name={user.name ?? "?"} image={image} unseen={updatesUnseen} />
           )}
         </div>
       </header>
