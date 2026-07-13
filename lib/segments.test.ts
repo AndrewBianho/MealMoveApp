@@ -64,6 +64,21 @@ test("reliability bands split at 50 and 80 and exclude no-history volunteers", a
   assert.deepEqual(star.ids, []);
 });
 
+test("reliability bands split exactly at the 80% boundary", async () => {
+  const events = [
+    // v1: 4 delivered / 1 flaked = 80% -> star, not finding_footing
+    { actorId: "v1", type: "delivered", _count: { _all: 4 } },
+    { actorId: "v1", type: "released", _count: { _all: 1 } },
+  ];
+  const d = db({ listingEvent: { groupBy: async () => events, findMany: async () => [] } });
+
+  const star = await resolveAudience({ kind: "reliability", band: "star" }, "real", { db: d });
+  assert.deepEqual(star.ids, ["v1"]);
+
+  const mid = await resolveAudience({ kind: "reliability", band: "finding_footing" }, "real", { db: d });
+  assert.deepEqual(mid.ids, []);
+});
+
 test("reliability scopes the event query to the world", async () => {
   let where: any = null;
   const d = db({
@@ -118,13 +133,39 @@ test("near filters by radius and drops volunteers with no position", async () =>
   assert.match(r.label, /Maple St Cafe/);
 });
 
-test("near with a missing or out-of-world anchor matches nobody", async () => {
+test("near with a missing anchor matches nobody", async () => {
   const r = await resolveAudience(
     { kind: "near", anchor: { kind: "dropoff", id: "nope" }, radiusMi: 5 },
     "real",
     { db: db() }
   );
   assert.deepEqual(r.ids, []);
+});
+
+test("near scopes the anchor lookup to the world's demo flag", async () => {
+  let where: any = null;
+  const d = db({
+    dropOff: {
+      findFirst: async (a: any) => {
+        where = a.where;
+        return null;
+      },
+    },
+  });
+
+  await resolveAudience(
+    { kind: "near", anchor: { kind: "dropoff", id: "d1" }, radiusMi: 5 },
+    "demo",
+    { db: d }
+  );
+  assert.deepEqual(where, { id: "d1", demo: true });
+
+  await resolveAudience(
+    { kind: "near", anchor: { kind: "dropoff", id: "d1" }, radiusMi: 5 },
+    "real",
+    { db: d }
+  );
+  assert.deepEqual(where, { id: "d1", demo: false });
 });
 
 test("countAudience returns the resolved size", async () => {
