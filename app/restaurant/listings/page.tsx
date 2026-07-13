@@ -19,8 +19,8 @@ export const dynamic = "force-dynamic";
 export default async function RestaurantListingsPage() {
   const session = await auth();
   // Org admins oversee the chapter, not any one restaurant's listings — send
-  // them back to the feed rather than showing this tracking surface.
-  if (session?.user?.role === "org_admin") redirect("/");
+  // them to their analytics home rather than showing this tracking surface.
+  if (session?.user?.role === "org_admin") redirect("/admin/analytics");
   const me = session?.user?.id
     ? await prisma.user.findUnique({
         where: { id: session.user.id },

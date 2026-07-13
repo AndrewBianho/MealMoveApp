@@ -44,8 +44,9 @@ export default async function DropoffPage() {
     invites,
   } = await loadDropOffConsole();
 
-  // Org admins oversee the chapter, not any single location's console.
-  if (isOrgAdmin) redirect("/");
+  // Org admins oversee the chapter, not any single location's console — send
+  // them to their analytics home.
+  if (isOrgAdmin) redirect("/admin/analytics");
   if (!own) return <DropOffNotLinked />;
 
   return (

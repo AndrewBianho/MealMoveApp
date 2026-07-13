@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 // have the chapter-wide /admin/analytics and /impact surfaces instead.
 export default async function DropOffImpactPage() {
   const { isOrgAdmin, own } = await loadDropOffConsole();
-  if (isOrgAdmin) redirect("/");
+  if (isOrgAdmin) redirect("/admin/analytics");
   if (!own) return <DropOffNotLinked />;
 
   // Sequential to stay off the connection-pool ceiling (see lib/stats).

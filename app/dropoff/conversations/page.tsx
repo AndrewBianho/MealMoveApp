@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // belongs to `drop_off` accounts; org admins oversee the chapter elsewhere.
 export default async function DropOffConversationsPage() {
   const { isOrgAdmin, own, viewerId, incoming } = await loadDropOffConsole();
-  if (isOrgAdmin) redirect("/");
+  if (isOrgAdmin) redirect("/admin/analytics");
   if (!own) return <DropOffNotLinked />;
 
   return (

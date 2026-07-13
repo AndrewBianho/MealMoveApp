@@ -13,8 +13,9 @@ export const dynamic = "force-dynamic";
 export default async function PostSurplusPage() {
   const session = await auth();
   const role = session?.user?.role;
-  // Only restaurants reach the wizard; anyone else — including org admins, who
-  // oversee the chapter rather than post for any one account — goes to the feed.
+  // Only restaurants reach the wizard. Org admins oversee rather than post, so
+  // they go to their analytics home; any other non-restaurant lands on the feed.
+  if (role === "org_admin") redirect("/admin/analytics");
   if (role !== "restaurant") redirect("/");
 
   const me = session?.user?.id

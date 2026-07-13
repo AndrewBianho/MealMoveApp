@@ -18,8 +18,8 @@ export const dynamic = "force-dynamic";
 export default async function RestaurantPage() {
   const session = await auth();
   // Org admins oversee the chapter; they don't run a restaurant account, so the
-  // posting surface is off-limits — back to the feed.
-  if (session?.user?.role === "org_admin") redirect("/");
+  // posting surface is off-limits — send them to their analytics home.
+  if (session?.user?.role === "org_admin") redirect("/admin/analytics");
   const me = session?.user?.id
     ? await prisma.user.findUnique({
         where: { id: session.user.id },
