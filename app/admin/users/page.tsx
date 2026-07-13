@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { RoleSelect } from "@/components/RoleSelect";
 import { ApprovalActions } from "@/components/ApprovalActions";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
@@ -125,9 +126,17 @@ export default async function AdminUsersPage() {
             {users.map((u) => {
               const isSelf = u.id === session?.user?.id;
               return (
-                <tr key={u.id} className="border-b border-neutral-200/40 transition-colors last:border-0 hover:bg-rescued-50/40">
+                <tr key={u.id} className="group relative border-b border-neutral-200/40 transition-colors last:border-0 hover:bg-rescued-50/40">
                   <td className="px-4 py-3">
-                    {u.name}
+                    {/* Stretched link: the ::after covers the whole row so the
+                        entire box is clickable. Interactive controls below sit
+                        above it via relative z-10 and keep working. */}
+                    <Link
+                      href={`/admin/users/${u.id}`}
+                      className="font-semibold text-neutral-900 underline-offset-2 after:absolute after:inset-0 group-hover:text-clay-800 group-hover:underline"
+                    >
+                      {u.name}
+                    </Link>
                     {isSelf && (
                       <span className="ml-1.5 font-mono text-[10px] text-neutral-700">
                         You
@@ -139,12 +148,14 @@ export default async function AdminUsersPage() {
                   </td>
                   <td className="px-4 py-3">
                     {u.role === "org_admin" ? (
-                      <RoleSelect
-                        userId={u.id}
-                        current="org_admin"
-                        isSelf={isSelf}
-                        demo={demo}
-                      />
+                      <span className="relative z-10 inline-block">
+                        <RoleSelect
+                          userId={u.id}
+                          current="org_admin"
+                          isSelf={isSelf}
+                          demo={demo}
+                        />
+                      </span>
                     ) : u.role === "volunteer" ? (
                       // Volunteers keep a fixed role — no dropdown to change it.
                       <span className="font-mono text-xs text-neutral-700">
@@ -162,7 +173,9 @@ export default async function AdminUsersPage() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     {!isSelf && (
-                      <DeleteAccountButton userId={u.id} demo={demo} />
+                      <div className="relative z-10">
+                        <DeleteAccountButton userId={u.id} demo={demo} />
+                      </div>
                     )}
                   </td>
                 </tr>
