@@ -1684,3 +1684,54 @@ export async function declineAccount(userId: string): Promise<SignUpResult> {
   revalidatePath("/admin/users");
   return { ok: true };
 }
+
+/**
+ * Soft-delete an active account (any role). Marks it `deleted` so it can no
+ * longer sign in (auth gates on status === "active") and drops off the roster,
+ * while its pickups, messages, and the audit trail stay intact — rescue history
+ * and impact stats survive. The venue (Restaurant/DropOff) is left untouched;
+ * only the login account is removed. Org-admin only. You can't delete your own
+ * account or the last org admin, so the org can never lock itself out. Pending
+ * accounts go through Decline instead. Idempotent on already-deleted accounts.
+ */
+export async function deleteAccount(userId: string): Promise<SignUpResult> {
+  const session = await auth();
+  if (session?.user?.role !== "org_admin") {
+    return { ok: false, error: "Only org admins can delete accounts." };
+  }
+  const demoDelete = await blockIfDemo();
+  if (demoDelete) return demoDelete;
+  if (userId === session.user.id) {
+    return { ok: false, error: "You can't delete your own account." };
+  }
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target) return { ok: false, error: "Account not found." };
+  if (target.status === "deleted") return { ok: true };
+  if (target.status === "pending") {
+    return { ok: false, error: "Pending accounts are handled with Decline." };
+  }
+
+  // Last-admin guard — don't let the org lock itself out.
+  if (target.role === "org_admin") {
+    const admins = await prisma.user.count({
+      where: { role: "org_admin", status: "active" },
+    });
+    if (admins <= 1) {
+      return { ok: false, error: "Can't remove the last org admin." };
+    }
+  }
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: userId }, data: { status: "deleted" } }),
+    prisma.adminEvent.create({
+      data: {
+        type: "account_deleted",
+        actorId: session.user.id,
+        targetId: userId,
+        meta: { role: target.role, name: target.name },
+      },
+    }),
+  ]);
+  revalidatePath("/admin/users");
+  return { ok: true };
+}

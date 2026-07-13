@@ -1,5 +1,6 @@
 import { RoleSelect } from "@/components/RoleSelect";
 import { ApprovalActions } from "@/components/ApprovalActions";
+import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { isDemo } from "@/lib/mode";
@@ -117,6 +118,7 @@ export default async function AdminUsersPage() {
               <th className="px-4 py-3 font-mono text-[10px] text-neutral-700">
                 Role
               </th>
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody>
@@ -156,6 +158,11 @@ export default async function AdminUsersPage() {
                       <span className="font-mono text-xs text-neutral-700">
                         restaurant · {u.restaurant?.name ?? "—"}
                       </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {!isSelf && (
+                      <DeleteAccountButton userId={u.id} demo={demo} />
                     )}
                   </td>
                 </tr>

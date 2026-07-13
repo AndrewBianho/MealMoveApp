@@ -99,6 +99,10 @@ enum DataMode {
 enum AccountStatus {
   pending
   active
+  // Soft-deleted by an org admin: the account can no longer sign in (auth gates
+  // on status === "active") and drops off the roster, while its pickups,
+  // messages, and audit trail stay intact so history and impact stats survive.
+  deleted
 }
 
 model User {
@@ -379,7 +383,7 @@ model BuddyInvite {
 // whom, and when. The institutional record that survives founder turnover.
 model AdminEvent {
   id       String   @id @default(cuid())
-  type     String // role_changed | account_approved | notes_edited
+  type     String // role_changed | account_approved | account_deleted | notes_edited
   actor    User     @relation("AdminActor", fields: [actorId], references: [id])
   actorId  String
   // The user this action was about, when there is one. Null for actions that
