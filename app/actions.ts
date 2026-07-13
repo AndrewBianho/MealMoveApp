@@ -32,6 +32,7 @@ import { validateRetrievalHours } from "@/lib/hours";
 import { getVolunteerImpact } from "@/lib/stats";
 import { isDemo, getDataMode } from "@/lib/mode";
 import { sendAnnouncement, markSeen } from "@/lib/announcements";
+import { cleanAudience, countAudience } from "@/lib/segments";
 import { resetDemoWorld } from "@/prisma/seedDemo";
 import { materializeSchedules } from "@/lib/sweep";
 import { normalizeDaysOfWeek } from "@/lib/recurring";
@@ -1745,7 +1746,8 @@ const ANN_BODY_MAX = 2000;
 // server actions aren't route-scoped, so the role is checked here too.
 export async function sendAnnouncementAction(
   title: string,
-  body: string
+  body: string,
+  audienceInput: unknown
 ): Promise<{ ok: true; recipientCount: number } | { ok: false; error: string }> {
   const session = await auth();
   if (session?.user?.role !== "org_admin" || !session.user.id) {
@@ -1759,15 +1761,43 @@ export async function sendAnnouncementAction(
   if (b.length > ANN_BODY_MAX)
     return { ok: false, error: `Message is too long (max ${ANN_BODY_MAX}).` };
 
+  // The audience arrives from the client — validate it, never trust it.
+  const audience = cleanAudience(audienceInput);
+  if (!audience) return { ok: false, error: "Pick a valid group to send to." };
+
   const world = await getDataMode();
+
+  // Never send into the void: a group with nobody in it would create an
+  // announcement no one hears.
+  if ((await countAudience(audience, world)) === 0) {
+    return { ok: false, error: "No volunteers match this group right now." };
+  }
+
   const { recipientCount } = await sendAnnouncement({
     authorId: session.user.id,
     title: t,
     body: b,
     world,
+    audience,
   });
   revalidatePath("/admin/updates");
   return { ok: true, recipientCount };
+}
+
+// Powers the composer's live "this will reach N volunteers" line. Returns a
+// COUNT only — never names, never individual percentages (reliability is a
+// support signal here, never a grade).
+export async function countAudienceAction(
+  audienceInput: unknown
+): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
+  const session = await auth();
+  if (session?.user?.role !== "org_admin") {
+    return { ok: false, error: "Only org admins can preview a group." };
+  }
+  const audience = cleanAudience(audienceInput);
+  if (!audience) return { ok: false, error: "Pick a valid group." };
+  const world = await getDataMode();
+  return { ok: true, count: await countAudience(audience, world) };
 }
 
 // Clears a volunteer's "new updates" badge once they open the inbox.

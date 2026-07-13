@@ -22,7 +22,10 @@ export function AnnouncementComposer() {
 
   function send() {
     startTransition(async () => {
-      const res = await sendAnnouncementAction(title, body);
+      // TODO(Task 5 — composer audience picker): this composer predates the
+      // audience feature and always targets everyone. Real Task 5 replaces
+      // this with a picker and passes the chosen Audience through.
+      const res = await sendAnnouncementAction(title, body, { kind: "everyone" });
       setConfirming(false);
       if (res.ok) {
         show(
