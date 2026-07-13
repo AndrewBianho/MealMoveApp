@@ -47,10 +47,10 @@ const NAV_BY_ROLE: Record<Role, Item[]> = {
   // Org admins oversee the chapter — people, partner restaurants, and the
   // numbers — they don't run any one account. So no posting or drop-off console
   // (those belong to the individual restaurant / drop-off accounts), no
-  // per-listing management, and no volunteer "Available" feed (they don't
-  // claim). They keep the map (visibility), impact and analytics (the stats),
-  // reliability + partner notes (restaurants), and members (people).
-  org_admin: [MAP, IMPACT, ANALYTICS, RELIABILITY, PARTNERS, MEMBERS],
+  // per-listing management, and no volunteer "Available" feed or map (they
+  // don't claim). They lead with members (people), then impact and analytics
+  // (the stats) and reliability + partner notes (restaurants).
+  org_admin: [MEMBERS, IMPACT, ANALYTICS, RELIABILITY, PARTNERS],
 };
 
 // Line icons for the mobile bottom bar / more-sheet, keyed by Item.icon.
