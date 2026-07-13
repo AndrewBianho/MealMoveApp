@@ -182,6 +182,9 @@ export function NavBar({
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const items = NAV_BY_ROLE[role] ?? [];
+  // Org admins speak for the chapter, not a personal profile — so their avatar
+  // is a plain identity marker (no link) and the more-sheet drops "Profile".
+  const isOrgAdmin = role === "org_admin";
 
   // Flips the button to "Signing out…" on the same click that starts the
   // sign-out, so the tap always lands visibly even while the network works.
@@ -255,14 +258,18 @@ export function NavBar({
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
         </Link>
-        <Link
-          href="/profile"
-          aria-label="Your profile"
-          aria-current={isActive("/profile") ? "page" : undefined}
-          className="rounded-full transition duration-150 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
-        >
+        {isOrgAdmin ? (
           <Avatar name={name} src={image} className="shadow-card" />
-        </Link>
+        ) : (
+          <Link
+            href="/profile"
+            aria-label="Your profile"
+            aria-current={isActive("/profile") ? "page" : undefined}
+            className="rounded-full transition duration-150 hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
+          >
+            <Avatar name={name} src={image} className="shadow-card" />
+          </Link>
+        )}
         <button
           onClick={onSignOut}
           disabled={signingOut}
@@ -363,7 +370,7 @@ export function NavBar({
             </div>
 
             <div className="space-y-0.5">
-              {[...overflow, { href: "/profile", label: "Profile", icon: "profile" }, { href: "/settings", label: "Settings", icon: "settings" }].map(
+              {[...overflow, ...(isOrgAdmin ? [] : [{ href: "/profile", label: "Profile", icon: "profile" }]), { href: "/settings", label: "Settings", icon: "settings" }].map(
                 (item) => {
                   const active = isActive(item.href);
                   return (
