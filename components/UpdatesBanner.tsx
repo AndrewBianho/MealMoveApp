@@ -15,7 +15,7 @@ export function UpdatesBanner({ unseen }: { unseen: number }) {
         {unseen} new update{unseen === 1 ? "" : "s"}
       </span>
       <span aria-hidden className="ml-auto font-mono text-[13px] text-clay-800">
-        view →
+        View →
       </span>
     </Link>
   );

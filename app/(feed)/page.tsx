@@ -24,7 +24,12 @@ export default async function FeedPage() {
   const viewerId = session?.user?.id;
   const listings = await getListings(viewerId);
   const world = await getDataMode();
-  const updatesUnseen = viewerId ? await unseenCount(viewerId, world) : 0;
+  // Match the Header: only volunteers get the updates banner/badge (restaurants
+  // and drop-offs aren't the audience, and org admins are redirected above).
+  const updatesUnseen =
+    viewerId && session?.user?.role === "volunteer"
+      ? await unseenCount(viewerId, world)
+      : 0;
   // Org admins (the only non-claiming role) were redirected out above, so every
   // viewer who reaches the feed can claim.
   const canClaim = true;
