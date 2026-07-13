@@ -150,6 +150,8 @@ model User {
   quietHoursStart      Int?
   quietHoursEnd        Int?
   notifyPrimedAt       DateTime?
+  announcementsSeenAt  DateTime? // when the volunteer last opened /updates
+  announcements        Announcement[] @relation("AnnouncementAuthor")
   deviceTokens         DeviceToken[]
   // Volunteer's rough position, used to target escalating broadcasts and to
   // show restaurants how many volunteers are active nearby. Optional — a
@@ -473,4 +475,20 @@ model ListingBroadcast {
 
   @@unique([listingId, volunteerId, band])
   @@index([listingId])
+}
+
+// A chapter-wide update an org admin sends to volunteers. Persisted so an
+// announcement survives the push/email moment and lives in the /updates inbox
+// (institutional-memory goal). World-tagged so demo/real inboxes stay separate.
+model Announcement {
+  id             String   @id @default(cuid())
+  author         User     @relation("AnnouncementAuthor", fields: [authorId], references: [id])
+  authorId       String
+  title          String
+  body           String   @db.Text
+  demo           Boolean // sent to volunteers whose dataMode matches this world
+  recipientCount Int      @default(0) // reach, stamped once at send time
+  createdAt      DateTime @default(now())
+
+  @@index([demo, createdAt])
 }
