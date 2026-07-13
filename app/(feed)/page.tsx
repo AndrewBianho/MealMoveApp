@@ -2,6 +2,7 @@ import { ListingFeed } from "@/components/ListingFeed";
 import { ListingCard } from "@/components/ListingCard";
 import { PickupTimelineCard } from "@/components/PickupTimelineCard";
 import { FirstRescueTracker } from "@/components/FirstRescueTracker";
+import { redirect } from "next/navigation";
 import { getListings } from "@/lib/listings";
 import { getVolunteerOnboarding } from "@/lib/onboarding";
 import { prisma } from "@/lib/prisma";
@@ -14,9 +15,14 @@ const LIVE = ["claimed", "in transit", "taken home"];
 
 export default async function FeedPage() {
   const session = await auth();
+  // Org admins oversee rather than claim — the available-pickups feed isn't
+  // their surface, so the root path sends them to their analytics home.
+  if (session?.user?.role === "org_admin") redirect("/admin/analytics");
   const viewerId = session?.user?.id;
   const listings = await getListings(viewerId);
-  const canClaim = session?.user?.role !== "org_admin";
+  // Org admins (the only non-claiming role) were redirected out above, so every
+  // viewer who reaches the feed can claim.
+  const canClaim = true;
 
   // The viewer's rescue in flight, if any. One rescue at a time: while this is
   // live they can't claim another, so it leads the page — the next step lives
