@@ -114,3 +114,48 @@ test("emails directly when the user has no tokens", async () => {
   assert.equal(res.channel, "email");
   assert.equal(emails[0][0], "a@b.c");
 });
+
+test("force overrides notifications-off (falls back to email)", async () => {
+  const { db } = fakeDb({ email: "a@b.c", notificationsEnabled: false }, []);
+  const emails: any[] = [];
+  const res = await dispatchToUser("u1", payload, {
+    db,
+    push: async () => ({ delivered: 0, invalidTokens: [] }),
+    email: async (...a) => void emails.push(a),
+    force: true,
+  });
+  assert.equal(res.channel, "email");
+  assert.equal(emails.length, 1);
+});
+
+test("force overrides quiet hours", async () => {
+  const now = new Date("2026-07-13T23:00:00");
+  const { db } = fakeDb(
+    { email: "a@b.c", notificationsEnabled: true, quietHoursStart: 22, quietHoursEnd: 7 },
+    []
+  );
+  const emails: any[] = [];
+  const res = await dispatchToUser("u1", payload, {
+    db,
+    push: async () => ({ delivered: 0, invalidTokens: [] }),
+    email: async (...a) => void emails.push(a),
+    now,
+    force: true,
+  });
+  assert.equal(res.channel, "email");
+  assert.equal(emails.length, 1);
+});
+
+test("without force, quiet hours suppresses", async () => {
+  const now = new Date("2026-07-13T23:00:00");
+  const { db } = fakeDb(
+    { email: "a@b.c", notificationsEnabled: true, quietHoursStart: 22, quietHoursEnd: 7 },
+    ["tok"]
+  );
+  const res = await dispatchToUser("u1", payload, {
+    db,
+    push: async () => ({ delivered: 1, invalidTokens: [] }),
+    now,
+  });
+  assert.equal(res.channel, "quiet");
+});
