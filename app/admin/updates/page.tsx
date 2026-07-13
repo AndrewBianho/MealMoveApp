@@ -2,6 +2,8 @@ import { auth } from "@/auth";
 import { getDataMode } from "@/lib/mode";
 import { listAnnouncements } from "@/lib/announcements";
 import { AnnouncementComposer } from "@/components/AnnouncementComposer";
+import { prisma } from "@/lib/prisma";
+import type { AnchorOption } from "@/components/AnnouncementComposer";
 
 // /admin is org-admin-gated at the route level (auth.config), so this page is
 // org-admin only. Compact console scale.
@@ -12,6 +14,26 @@ export default async function AdminUpdatesPage() {
   const world = await getDataMode();
   const sent = await listAnnouncements(world);
 
+  // Anchor options for the "near a location" audience — this world's
+  // restaurants and drop-offs, which already carry coordinates.
+  const demo = world === "demo";
+  const [restaurants, dropOffs] = await Promise.all([
+    prisma.restaurant.findMany({
+      where: { demo },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.dropOff.findMany({
+      where: { demo },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
+  const anchors: AnchorOption[] = [
+    ...restaurants.map((r) => ({ kind: "restaurant" as const, id: r.id, name: r.name })),
+    ...dropOffs.map((d) => ({ kind: "dropoff" as const, id: d.id, name: d.name })),
+  ];
+
   return (
     <main className="mx-auto max-w-2xl px-6 py-8">
       <header className="mb-6">
@@ -19,11 +41,11 @@ export default async function AdminUpdatesPage() {
           Updates
         </h1>
         <p className="mt-1 text-sm text-neutral-700">
-          Send a note to every volunteer — a heads-up, a thank-you, a change of plan.
+          Send a note to your volunteers — everyone, or a specific group.
         </p>
       </header>
 
-      <AnnouncementComposer />
+      <AnnouncementComposer anchors={anchors} />
 
       <section className="mt-8">
         <h2 className="mb-3 text-lg font-medium">Sent</h2>
@@ -46,7 +68,7 @@ export default async function AdminUpdatesPage() {
                 </div>
                 <p className="mt-1 whitespace-pre-line text-sm text-neutral-700">{a.body}</p>
                 <p className="mt-2 font-mono text-[11px] text-neutral-700">
-                  Reached {a.recipientCount}
+                  {a.audienceLabel} · reached {a.recipientCount}
                 </p>
               </li>
             ))}
