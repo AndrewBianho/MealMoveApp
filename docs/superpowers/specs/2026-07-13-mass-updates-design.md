@@ -117,14 +117,14 @@ existing notify modules.
 - `sendAnnouncementAction(formData)` — **org_admin only** (mirror the existing
   `role === "org_admin"` auth checks in `app/actions.ts`). Validates title/body
   (non-empty; title ≤ 120 chars; body ≤ 2000), resolves the admin's world via
-  `getDataMode()`, calls `sendAnnouncement`, then `revalidatePath` the admin log.
+  `getDataMode()`, calls `sendAnnouncement`, then `revalidatePath("/admin/updates")`.
   Returns a result the compose form surfaces ("sent to N volunteers").
 - `markUpdatesSeenAction()` — **volunteer**; calls `markSeen` for the current
   user. Invoked when the `/updates` inbox renders.
 
 ## UI
 
-### Admin — `/admin/announcements`
+### Admin — `/admin/updates`
 
 Compact console scale (staff console).
 
@@ -134,7 +134,8 @@ Compact console scale (staff console).
   On success, a calm inline "sent to N volunteers" confirmation.
 - **Sent log** below: each row = serif title · mono `createdAt` · mono reach
   count. Empty state teaches the surface ("No updates sent yet…").
-- Add an **Announcements** (or "Updates") item to the org-admin nav in `NavBar`.
+- Add an **Updates** item to the org-admin nav in `NavBar` (same label as the
+  volunteer nav pill, for one consistent noun across roles).
 
 ### Volunteer — feed banner + `/updates` inbox
 
