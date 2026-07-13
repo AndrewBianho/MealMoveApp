@@ -36,6 +36,7 @@ const DROPOFF_CHATS: Item = { href: "/dropoff/conversations", label: "Conversati
 const DROPOFF_INCOMING: Item = { href: "/dropoff/incoming", label: "Incoming", icon: "truck" };
 const DROPOFF_IMPACT: Item = { href: "/dropoff/impact", label: "Impact", icon: "impact" };
 const MEMBERS: Item = { href: "/admin/users", label: "Members", icon: "members" };
+const ADMIN_UPDATES: Item = { href: "/admin/updates", label: "Updates", icon: "megaphone" };
 const RELIABILITY: Item = { href: "/admin/reliability", label: "Reliability", short: "Reliability", icon: "reliability" };
 const PARTNERS: Item = { href: "/admin/partners", label: "Partner notes", short: "Partners", icon: "partners" };
 const ANALYTICS: Item = { href: "/admin/analytics", label: "Analytics", short: "Analytics", icon: "health" };
@@ -50,7 +51,7 @@ const NAV_BY_ROLE: Record<Role, Item[]> = {
   // per-listing management, and no volunteer "Available" feed or map (they
   // don't claim). They lead with members (people), then impact and analytics
   // (the stats) and reliability + partner notes (restaurants).
-  org_admin: [MEMBERS, IMPACT, ANALYTICS, RELIABILITY, PARTNERS],
+  org_admin: [MEMBERS, ADMIN_UPDATES, IMPACT, ANALYTICS, RELIABILITY, PARTNERS],
 };
 
 // Line icons for the mobile bottom bar / more-sheet, keyed by Item.icon.
@@ -127,6 +128,12 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M3.6 19.5a5.4 5.4 0 0 1 10.8 0" />
       <path d="M16.5 5.3a3.2 3.2 0 0 1 0 5.4" />
       <path d="M19.8 19.5a5.4 5.4 0 0 0-3-4.9" />
+    </>
+  ),
+  megaphone: (
+    <>
+      <path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1Z" />
+      <path d="M15 8a4 4 0 0 1 0 8" />
     </>
   ),
   profile: (
