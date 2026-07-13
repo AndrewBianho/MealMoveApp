@@ -30,7 +30,8 @@ import {
 } from "@/lib/buddies";
 import { validateRetrievalHours } from "@/lib/hours";
 import { getVolunteerImpact } from "@/lib/stats";
-import { isDemo } from "@/lib/mode";
+import { isDemo, getDataMode } from "@/lib/mode";
+import { sendAnnouncement, markSeen } from "@/lib/announcements";
 import { resetDemoWorld } from "@/prisma/seedDemo";
 import { materializeSchedules } from "@/lib/sweep";
 import { normalizeDaysOfWeek } from "@/lib/recurring";
@@ -1734,4 +1735,44 @@ export async function deleteAccount(userId: string): Promise<SignUpResult> {
   ]);
   revalidatePath("/admin/users");
   return { ok: true };
+}
+
+const ANN_TITLE_MAX = 120;
+const ANN_BODY_MAX = 2000;
+
+// Org-admin only: fan a chapter-wide update out to every active volunteer in
+// the admin's current world. /admin is org-admin-gated at the route level, but
+// server actions aren't route-scoped, so the role is checked here too.
+export async function sendAnnouncementAction(
+  title: string,
+  body: string
+): Promise<{ ok: true; recipientCount: number } | { ok: false; error: string }> {
+  const session = await auth();
+  if (session?.user?.role !== "org_admin" || !session.user.id) {
+    return { ok: false, error: "Only org admins can send updates." };
+  }
+  const t = title.trim();
+  const b = body.trim();
+  if (!t || !b) return { ok: false, error: "Add a title and a message." };
+  if (t.length > ANN_TITLE_MAX)
+    return { ok: false, error: `Title is too long (max ${ANN_TITLE_MAX}).` };
+  if (b.length > ANN_BODY_MAX)
+    return { ok: false, error: `Message is too long (max ${ANN_BODY_MAX}).` };
+
+  const world = await getDataMode();
+  const { recipientCount } = await sendAnnouncement({
+    authorId: session.user.id,
+    title: t,
+    body: b,
+    world,
+  });
+  revalidatePath("/admin/updates");
+  return { ok: true, recipientCount };
+}
+
+// Clears a volunteer's "new updates" badge once they open the inbox.
+export async function markUpdatesSeen(): Promise<void> {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  await markSeen(session.user.id);
 }
