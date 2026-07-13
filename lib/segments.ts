@@ -1,0 +1,232 @@
+import type { PrismaClient } from "@prisma/client";
+import { prisma } from "./prisma";
+import { milesBetween } from "./geo";
+import type { World } from "./announcements";
+
+// Who an org-admin update goes to. Every audience is a filter over the same
+// base — active volunteers in the admin's world — so demo/real never mix.
+//
+// NON-PUNITIVE BY CONSTRUCTION (PRODUCT.md: "reliability is felt, not
+// punished"): the reliability bands exist to aim *support*, never to grade or
+// rank a person. Labels are intent-named, callers only ever surface a count,
+// and no name or individual percentage leaves this module.
+
+export type ReliabilityBand = "needs_support" | "finding_footing" | "star";
+export type LapsedDays = 14 | 30 | 60;
+export type RadiusMi = 2 | 5 | 10;
+export type AnchorKind = "restaurant" | "dropoff";
+
+export type Audience =
+  | { kind: "everyone" }
+  | { kind: "reliability"; band: ReliabilityBand }
+  | { kind: "new" }
+  | { kind: "lapsed"; days: LapsedDays }
+  | { kind: "near"; anchor: { kind: AnchorKind; id: string }; radiusMi: RadiusMi };
+
+export const RELIABILITY_BANDS: readonly ReliabilityBand[] = [
+  "needs_support",
+  "finding_footing",
+  "star",
+];
+export const LAPSED_DAYS: readonly LapsedDays[] = [14, 30, 60];
+export const RADII: readonly RadiusMi[] = [2, 5, 10];
+
+const BAND_LABEL: Record<ReliabilityBand, string> = {
+  needs_support: "Volunteers who could use encouragement",
+  finding_footing: "Volunteers finding their footing",
+  star: "Volunteers who've been rock solid",
+};
+
+// The reliability meter's existing thresholds — sage ≥80 / honey 50–79 /
+// tomato <50. Reused, not reinvented.
+function bandOf(pct: number): ReliabilityBand {
+  if (pct >= 80) return "star";
+  if (pct >= 50) return "finding_footing";
+  return "needs_support";
+}
+
+export interface ResolvedAudience {
+  ids: string[];
+  label: string;
+}
+
+type SegDb = Pick<
+  PrismaClient,
+  "user" | "listingEvent" | "pickup" | "restaurant" | "dropOff"
+>;
+
+const MS_PER_DAY = 86_400_000;
+
+async function findAnchor(
+  db: SegDb,
+  anchor: { kind: AnchorKind; id: string },
+  demo: boolean
+): Promise<{ name: string; lat: number; lng: number } | null> {
+  // Scoped by `demo`, so an anchor from the other world simply isn't found and
+  // the audience resolves to nobody.
+  const row =
+    anchor.kind === "restaurant"
+      ? await db.restaurant.findFirst({
+          where: { id: anchor.id, demo },
+          select: { name: true, lat: true, lng: true },
+        })
+      : await db.dropOff.findFirst({
+          where: { id: anchor.id, demo },
+          select: { name: true, lat: true, lng: true },
+        });
+  return row ?? null;
+}
+
+export async function resolveAudience(
+  audience: Audience,
+  world: World,
+  deps: { db?: SegDb; now?: Date } = {}
+): Promise<ResolvedAudience> {
+  const db = deps.db ?? prisma;
+  const now = deps.now ?? new Date();
+  const demo = world === "demo";
+
+  // One base set, filtered five ways.
+  const base = await db.user.findMany({
+    where: { role: "volunteer", status: "active", dataMode: world },
+    select: { id: true, lat: true, lng: true },
+  });
+
+  switch (audience.kind) {
+    case "everyone":
+      return { ids: base.map((v) => v.id), label: "Everyone" };
+
+    case "reliability": {
+      // Same signal as the reliability meter: a delivered event counts for a
+      // volunteer; a released (hold expired) or failed one counts against.
+      const rows = await db.listingEvent.groupBy({
+        by: ["actorId", "type"],
+        where: {
+          actorId: { not: null },
+          type: { in: ["delivered", "released", "failed"] },
+          listing: { demo },
+        },
+        _count: { _all: true },
+      });
+
+      const tally = new Map<string, { delivered: number; flaked: number }>();
+      for (const r of rows) {
+        if (!r.actorId) continue;
+        const t = tally.get(r.actorId) ?? { delivered: 0, flaked: 0 };
+        if (r.type === "delivered") t.delivered += r._count._all;
+        else t.flaked += r._count._all;
+        tally.set(r.actorId, t);
+      }
+
+      const ids = base
+        .filter((v) => {
+          const t = tally.get(v.id);
+          // No history at all → they're `new`, never sorted into a band.
+          if (!t) return false;
+          const total = t.delivered + t.flaked;
+          if (total === 0) return false;
+          return bandOf(Math.round((t.delivered / total) * 100)) === audience.band;
+        })
+        .map((v) => v.id);
+
+      return { ids, label: BAND_LABEL[audience.band] };
+    }
+
+    case "new": {
+      const done = await db.listingEvent.findMany({
+        where: { actorId: { not: null }, type: "delivered", listing: { demo } },
+        select: { actorId: true },
+        distinct: ["actorId"],
+      });
+      const completed = new Set(done.map((e) => e.actorId));
+      return {
+        ids: base.filter((v) => !completed.has(v.id)).map((v) => v.id),
+        label: "New volunteers",
+      };
+    }
+
+    case "lapsed": {
+      const cutoff = new Date(now.getTime() - audience.days * MS_PER_DAY);
+      const rows = await db.pickup.groupBy({
+        by: ["volunteerId"],
+        where: { listing: { demo } },
+        _max: { claimedAt: true },
+      });
+      const lastClaim = new Map(rows.map((r) => [r.volunteerId, r._max.claimedAt]));
+
+      const ids = base
+        .filter((v) => {
+          const at = lastClaim.get(v.id);
+          // Never claimed → they're `new`, not lapsed.
+          if (!at) return false;
+          return at < cutoff;
+        })
+        .map((v) => v.id);
+
+      return { ids, label: `Haven't been around lately · ${audience.days}+ days` };
+    }
+
+    case "near": {
+      const anchor = await findAnchor(db, audience.anchor, demo);
+      if (!anchor) return { ids: [], label: "Volunteers near a location" };
+      const ids = base
+        .filter(
+          (v) =>
+            v.lat !== null &&
+            v.lng !== null &&
+            milesBetween(v.lat, v.lng, anchor.lat, anchor.lng) <= audience.radiusMi
+        )
+        .map((v) => v.id);
+      return {
+        ids,
+        label: `Volunteers near ${anchor.name} · ${audience.radiusMi} mi`,
+      };
+    }
+  }
+}
+
+export async function countAudience(
+  audience: Audience,
+  world: World,
+  deps: { db?: SegDb; now?: Date } = {}
+): Promise<number> {
+  return (await resolveAudience(audience, world, deps)).ids.length;
+}
+
+// Server-side validation: an audience arrives from the client, so never trust
+// its shape. Returns null for anything not in the allowed sets.
+export function cleanAudience(input: unknown): Audience | null {
+  if (!input || typeof input !== "object") return null;
+  const a = input as Record<string, unknown>;
+
+  switch (a.kind) {
+    case "everyone":
+      return { kind: "everyone" };
+    case "new":
+      return { kind: "new" };
+    case "reliability":
+      return RELIABILITY_BANDS.includes(a.band as ReliabilityBand)
+        ? { kind: "reliability", band: a.band as ReliabilityBand }
+        : null;
+    case "lapsed":
+      return LAPSED_DAYS.includes(a.days as LapsedDays)
+        ? { kind: "lapsed", days: a.days as LapsedDays }
+        : null;
+    case "near": {
+      const anchor = a.anchor as Record<string, unknown> | undefined;
+      const anchorOk =
+        !!anchor &&
+        (anchor.kind === "restaurant" || anchor.kind === "dropoff") &&
+        typeof anchor.id === "string" &&
+        anchor.id.length > 0;
+      if (!anchorOk || !RADII.includes(a.radiusMi as RadiusMi)) return null;
+      return {
+        kind: "near",
+        anchor: { kind: anchor.kind as AnchorKind, id: anchor.id as string },
+        radiusMi: a.radiusMi as RadiusMi,
+      };
+    }
+    default:
+      return null;
+  }
+}
