@@ -5,12 +5,15 @@ import { Button } from "./Button";
 import { Toast, useToast } from "./Toast";
 import { cn } from "./cn";
 import { sendAnnouncementAction, countAudienceAction } from "@/app/actions";
-import type {
-  Audience,
-  AnchorKind,
-  LapsedDays,
-  RadiusMi,
-  ReliabilityBand,
+import {
+  RELIABILITY_BANDS,
+  LAPSED_DAYS,
+  RADII as RADII_OPTIONS,
+  type Audience,
+  type AnchorKind,
+  type LapsedDays,
+  type RadiusMi,
+  type ReliabilityBand,
 } from "@/lib/segments";
 
 const TITLE_MAX = 120;
@@ -32,14 +35,17 @@ const KIND_LABEL: Record<Kind, string> = {
   near: "Near a location",
 };
 
-const BANDS: ReliabilityBand[] = ["needs_support", "finding_footing", "star"];
+// The server-side allowlists (lib/segments.ts) are the source of truth — re-
+// declaring them here would silently drift if a value were added to one but
+// not the other, since `cleanAudience` would reject it.
+const BANDS = RELIABILITY_BANDS;
 const BAND_LABEL: Record<ReliabilityBand, string> = {
   needs_support: "Could use encouragement",
   finding_footing: "Finding their footing",
   star: "Rock solid",
 };
-const DAYS: LapsedDays[] = [14, 30, 60];
-const RADII: RadiusMi[] = [2, 5, 10];
+const DAYS = LAPSED_DAYS;
+const RADII = RADII_OPTIONS;
 
 // Follows the app's nav-pill spec: fully round, ink fill when active.
 function Pill({
@@ -79,7 +85,11 @@ export function AnnouncementComposer({ anchors }: { anchors: AnchorOption[] }) {
   const [days, setDays] = useState<LapsedDays>(30);
   const [radiusMi, setRadiusMi] = useState<RadiusMi>(5);
   const [anchorIdx, setAnchorIdx] = useState(0);
-  const [reach, setReach] = useState<number | null>(null);
+  // `null` = still counting, `"error"` = the count request failed (never
+  // collapse a failure into 0 — that reads as a genuine empty group and would
+  // silently arm/disarm the send button on the wrong signal).
+  const [reach, setReach] = useState<number | null | "error">(null);
+  const [reachLabel, setReachLabel] = useState<string>("");
   const [confirming, setConfirming] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { message, show } = useToast();
@@ -108,13 +118,24 @@ export function AnnouncementComposer({ anchors }: { anchors: AnchorOption[] }) {
   useEffect(() => {
     if (!audience) {
       setReach(0);
+      setReachLabel("");
       return;
     }
     let cancelled = false;
     setReach(null);
     const timer = setTimeout(async () => {
-      const res = await countAudienceAction(audience);
-      if (!cancelled) setReach(res.ok ? res.count : 0);
+      try {
+        const res = await countAudienceAction(audience);
+        if (cancelled) return;
+        if (res.ok) {
+          setReach(res.count);
+          setReachLabel(res.label);
+        } else {
+          setReach("error");
+        }
+      } catch {
+        if (!cancelled) setReach("error");
+      }
     }, 250);
     return () => {
       cancelled = true;
@@ -126,7 +147,8 @@ export function AnnouncementComposer({ anchors }: { anchors: AnchorOption[] }) {
     title.trim().length > 0 &&
     body.trim().length > 0 &&
     !!audience &&
-    (reach ?? 0) > 0;
+    typeof reach === "number" &&
+    reach > 0;
 
   function send() {
     if (!audience) return;
@@ -148,8 +170,14 @@ export function AnnouncementComposer({ anchors }: { anchors: AnchorOption[] }) {
   return (
     <section className="rounded-2xl border border-neutral-900/5 bg-card p-5 shadow-card">
       <div className="mb-4 border-b border-neutral-200 pb-4">
-        <span className="mb-2 block font-mono text-[11px] text-neutral-700">Send to</span>
-        <div className="flex flex-wrap gap-1.5">
+        <span id="send-to-label" className="mb-2 block font-mono text-[11px] text-neutral-700">
+          Send to
+        </span>
+        <div
+          role="group"
+          aria-labelledby="send-to-label"
+          className="flex flex-wrap gap-1.5"
+        >
           {KINDS.map((k) => (
             <Pill key={k} active={kind === k} onClick={() => setKind(k)}>
               {KIND_LABEL[k]}
@@ -212,9 +240,11 @@ export function AnnouncementComposer({ anchors }: { anchors: AnchorOption[] }) {
         <p className="mt-3 font-mono text-[11px] text-neutral-700">
           {reach === null
             ? "Counting…"
-            : reach === 0
-              ? "No volunteers match this group right now."
-              : `This will reach ${reach} volunteer${reach === 1 ? "" : "s"}.`}
+            : reach === "error"
+              ? "Couldn't check this group — try again."
+              : reach === 0
+                ? "No volunteers match this group right now."
+                : `This will reach ${reach} volunteer${reach === 1 ? "" : "s"} — ${reachLabel}.`}
         </p>
       </div>
 
@@ -249,8 +279,10 @@ export function AnnouncementComposer({ anchors }: { anchors: AnchorOption[] }) {
       {confirming ? (
         <div className="mt-3 rounded-xl bg-neutral-100 p-3">
           <p className="text-sm text-neutral-800">
-            Send to {KIND_LABEL[kind]} — {reach ?? 0} volunteer
-            {(reach ?? 0) === 1 ? "" : "s"}? Push and email go out right away.
+            Send to {reachLabel || KIND_LABEL[kind]} —{" "}
+            {typeof reach === "number" ? reach : 0} volunteer
+            {(typeof reach === "number" ? reach : 0) === 1 ? "" : "s"}? Push and email go
+            out right away.
           </p>
           <div className="mt-3 flex gap-2">
             <Button variant="primary" onClick={send} disabled={isPending}>

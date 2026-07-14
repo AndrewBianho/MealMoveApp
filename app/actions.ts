@@ -32,7 +32,7 @@ import { validateRetrievalHours } from "@/lib/hours";
 import { getVolunteerImpact } from "@/lib/stats";
 import { isDemo, getDataMode } from "@/lib/mode";
 import { sendAnnouncement, markSeen } from "@/lib/announcements";
-import { cleanAudience, countAudience } from "@/lib/segments";
+import { cleanAudience, countAudience, resolveAudience } from "@/lib/segments";
 import { resetDemoWorld } from "@/prisma/seedDemo";
 import { materializeSchedules } from "@/lib/sweep";
 import { normalizeDaysOfWeek } from "@/lib/recurring";
@@ -1784,12 +1784,16 @@ export async function sendAnnouncementAction(
   return { ok: true, recipientCount };
 }
 
-// Powers the composer's live "this will reach N volunteers" line. Returns a
+// Powers the composer's live "this will reach N volunteers" line AND the
+// confirm-step sentence, so both show the group's actual label (e.g.
+// "Volunteers who could use encouragement"), not the raw pill kind. Returns a
 // COUNT only — never names, never individual percentages (reliability is a
 // support signal here, never a grade).
 export async function countAudienceAction(
   audienceInput: unknown
-): Promise<{ ok: true; count: number } | { ok: false; error: string }> {
+): Promise<
+  { ok: true; count: number; label: string } | { ok: false; error: string }
+> {
   const session = await auth();
   if (session?.user?.role !== "org_admin") {
     return { ok: false, error: "Only org admins can preview a group." };
@@ -1797,7 +1801,8 @@ export async function countAudienceAction(
   const audience = cleanAudience(audienceInput);
   if (!audience) return { ok: false, error: "Pick a valid group." };
   const world = await getDataMode();
-  return { ok: true, count: await countAudience(audience, world) };
+  const { ids, label } = await resolveAudience(audience, world);
+  return { ok: true, count: ids.length, label };
 }
 
 // Clears a volunteer's "new updates" badge once they open the inbox.
