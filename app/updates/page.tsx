@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { getDataMode } from "@/lib/mode";
-import { listAnnouncements } from "@/lib/announcements";
+import { listAnnouncementsFor } from "@/lib/announcements";
 import { MarkSeenOnView } from "@/components/MarkSeenOnView";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ export default async function UpdatesPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   const world = await getDataMode();
-  const updates = await listAnnouncements(world);
+  const updates = await listAnnouncementsFor(session.user.id, world);
 
   return (
     <main className="mx-auto max-w-[720px] px-6 py-8">

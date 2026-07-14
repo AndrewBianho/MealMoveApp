@@ -64,6 +64,13 @@ export async function sendAnnouncement(
     now: deps.now,
   });
 
+  // Closes a TOCTOU: the action's own zero-check can pass and the audience
+  // still resolve to nobody by the time we get here (e.g. it shrank in
+  // between). Never create an announcement row with nobody to hear it.
+  if (ids.length === 0) {
+    throw new Error("This group has no volunteers right now.");
+  }
+
   const announcement = await db.announcement.create({
     data: {
       authorId: input.authorId,
@@ -71,6 +78,7 @@ export async function sendAnnouncement(
       body: input.body,
       demo,
       audienceLabel: label,
+      recipientIds: ids,
     },
     select: { id: true },
   });
@@ -86,6 +94,9 @@ export async function sendAnnouncement(
   return { announcementId: announcement.id, recipientCount: ids.length };
 }
 
+// The admin sent log: every in-world announcement, regardless of who it was
+// targeted at. Do not scope this by recipient — the org admin needs to see
+// the full send history, targeted or not.
 export async function listAnnouncements(
   world: World,
   deps: { db?: Pick<PrismaClient, "announcement"> } = {}
@@ -93,6 +104,28 @@ export async function listAnnouncements(
   const db = deps.db ?? prisma;
   return db.announcement.findMany({
     where: { demo: world === "demo" },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      title: true,
+      body: true,
+      createdAt: true,
+      recipientCount: true,
+      audienceLabel: true,
+    },
+  });
+}
+
+// The volunteer's durable inbox (/updates): only announcements actually
+// targeted at this volunteer, not every in-world send.
+export async function listAnnouncementsFor(
+  userId: string,
+  world: World,
+  deps: { db?: Pick<PrismaClient, "announcement"> } = {}
+) {
+  const db = deps.db ?? prisma;
+  return db.announcement.findMany({
+    where: { demo: world === "demo", recipientIds: { has: userId } },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
@@ -119,6 +152,7 @@ export async function unseenCount(
   return db.announcement.count({
     where: {
       demo: world === "demo",
+      recipientIds: { has: userId },
       ...(seenAt ? { createdAt: { gt: seenAt } } : {}),
     },
   });

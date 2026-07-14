@@ -492,6 +492,9 @@ model Announcement {
   demo           Boolean // sent to volunteers whose dataMode matches this world
   recipientCount Int      @default(0) // reach, stamped once at send time
   createdAt      DateTime @default(now())
+  // Exactly who this went to. Targeting must scope the durable inbox + badge,
+  // not just the push/email fan-out.
+  recipientIds   String[]
 
   @@index([demo, createdAt])
 }

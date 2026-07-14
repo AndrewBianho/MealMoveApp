@@ -156,12 +156,24 @@ export async function resolveAudience(
 
     case "lapsed": {
       const cutoff = new Date(now.getTime() - audience.days * MS_PER_DAY);
-      const rows = await db.pickup.groupBy({
-        by: ["volunteerId"],
+      // A pickup's second seat (buddyId) is a claim too — a volunteer who
+      // only ever rode as a buddy must still count as having claimed, or
+      // they can never leave `new`/never-claimed limbo. Build the "most
+      // recent claim" map across both seats in memory.
+      const rows = await db.pickup.findMany({
         where: { listing: { demo } },
-        _max: { claimedAt: true },
+        select: { volunteerId: true, buddyId: true, claimedAt: true },
       });
-      const lastClaim = new Map(rows.map((r) => [r.volunteerId, r._max.claimedAt]));
+      const lastClaim = new Map<string, Date>();
+      const bump = (id: string | null, at: Date | null) => {
+        if (!id || !at) return;
+        const prev = lastClaim.get(id);
+        if (!prev || at > prev) lastClaim.set(id, at);
+      };
+      for (const r of rows) {
+        bump(r.volunteerId, r.claimedAt);
+        bump(r.buddyId, r.claimedAt);
+      }
 
       const ids = base
         .filter((v) => {

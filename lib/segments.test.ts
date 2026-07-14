@@ -15,7 +15,7 @@ function db(over: any = {}): any {
   return {
     user: { findMany: async () => VOLS },
     listingEvent: { groupBy: async () => [], findMany: async () => [] },
-    pickup: { groupBy: async () => [] },
+    pickup: { findMany: async () => [] },
     restaurant: { findFirst: async () => null },
     dropOff: { findFirst: async () => null },
     ...over,
@@ -130,9 +130,9 @@ test("lapsed excludes never-claimed volunteers and respects the cutoff", async (
   const now = new Date("2026-07-13T00:00:00Z");
   const d = db({
     pickup: {
-      groupBy: async () => [
-        { volunteerId: "v1", _max: { claimedAt: new Date("2026-05-01T00:00:00Z") } }, // > 30d
-        { volunteerId: "v2", _max: { claimedAt: new Date("2026-07-10T00:00:00Z") } }, // < 30d
+      findMany: async () => [
+        { volunteerId: "v1", buddyId: null, claimedAt: new Date("2026-05-01T00:00:00Z") }, // > 30d
+        { volunteerId: "v2", buddyId: null, claimedAt: new Date("2026-07-10T00:00:00Z") }, // < 30d
         // v3 never claimed -> `new`, not lapsed
       ],
     },
@@ -140,6 +140,22 @@ test("lapsed excludes never-claimed volunteers and respects the cutoff", async (
   const r = await resolveAudience({ kind: "lapsed", days: 30 }, "real", { db: d, now });
   assert.deepEqual(r.ids, ["v1"]);
   assert.match(r.label, /30\+ days/);
+});
+
+test("lapsed counts a buddy-only claim (second seat), not just the primary volunteer", async () => {
+  const now = new Date("2026-07-13T00:00:00Z");
+  const d = db({
+    pickup: {
+      findMany: async () => [
+        // v3 never appears as volunteerId, only as buddyId -> must still count
+        // as having claimed, and be eligible for lapsed past the cutoff.
+        { volunteerId: "v1", buddyId: "v3", claimedAt: new Date("2026-05-01T00:00:00Z") },
+        { volunteerId: "v2", buddyId: null, claimedAt: new Date("2026-07-10T00:00:00Z") },
+      ],
+    },
+  });
+  const r = await resolveAudience({ kind: "lapsed", days: 30 }, "real", { db: d, now });
+  assert.deepEqual(r.ids.sort(), ["v1", "v3"]);
 });
 
 test("near filters by radius and drops volunteers with no position", async () => {

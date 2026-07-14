@@ -6,6 +6,7 @@ import {
   buildAnnouncementPayload,
   sendAnnouncement,
   unseenCount,
+  listAnnouncementsFor,
 } from "./announcements";
 
 test("buildAnnouncementPayload routes to /updates with title as subject", () => {
@@ -43,7 +44,7 @@ test("sendAnnouncement dispatches to the resolved audience and stamps the label"
       },
     },
     listingEvent: { groupBy: async () => [], findMany: async () => [] },
-    pickup: { groupBy: async () => [] },
+    pickup: { findMany: async () => [] },
     restaurant: { findFirst: async () => null },
     dropOff: { findFirst: async () => null },
   };
@@ -64,6 +65,7 @@ test("sendAnnouncement dispatches to the resolved audience and stamps the label"
     body: "B",
     demo: false,
     audienceLabel: "Everyone",
+    recipientIds: ["v1", "v2"],
   });
   assert.deepEqual(findWhere[0], { role: "volunteer", status: "active", dataMode: "real" });
   assert.equal(dispatched.length, 2);
@@ -83,7 +85,7 @@ test("sendAnnouncement only reaches the audience's members", async () => {
     },
     // v1 has completed a rescue, so only v2 is `new`.
     listingEvent: { groupBy: async () => [], findMany: async () => [{ actorId: "v1" }] },
-    pickup: { groupBy: async () => [] },
+    pickup: { findMany: async () => [] },
     restaurant: { findFirst: async () => null },
     dropOff: { findFirst: async () => null },
   };
@@ -101,6 +103,32 @@ test("sendAnnouncement only reaches the audience's members", async () => {
   assert.deepEqual(dispatched, ["v2"]);
 });
 
+test("sendAnnouncement throws when the resolved audience is empty (TOCTOU guard)", async () => {
+  const db: any = {
+    announcement: {
+      create: async () => {
+        throw new Error("should never be called — audience is empty");
+      },
+      update: async () => {},
+    },
+    user: { findMany: async () => [] },
+    listingEvent: { groupBy: async () => [], findMany: async () => [] },
+    pickup: { findMany: async () => [] },
+    restaurant: { findFirst: async () => null },
+    dropOff: { findFirst: async () => null },
+  };
+  const dispatch = (async () => ({ channel: "push" as const })) as any;
+
+  await assert.rejects(
+    () =>
+      sendAnnouncement(
+        { authorId: "a1", title: "T", body: "B", world: "real", audience: { kind: "everyone" } },
+        { db, dispatch }
+      ),
+    /no volunteers/i
+  );
+});
+
 test("unseenCount counts announcements newer than the seen timestamp", async () => {
   const seenAt = new Date("2026-07-10T00:00:00Z");
   let where: any = null;
@@ -116,6 +144,7 @@ test("unseenCount counts announcements newer than the seen timestamp", async () 
   const n = await unseenCount("v1", "real", { db });
   assert.equal(n, 3);
   assert.equal(where.demo, false);
+  assert.deepEqual(where.recipientIds, { has: "v1" });
   assert.deepEqual(where.createdAt, { gt: seenAt });
 });
 
@@ -133,5 +162,44 @@ test("unseenCount with no seen timestamp counts all in-world", async () => {
   const n = await unseenCount("v1", "demo", { db });
   assert.equal(n, 5);
   assert.equal(where.demo, true);
+  assert.deepEqual(where.recipientIds, { has: "v1" });
   assert.equal("createdAt" in where, false);
+});
+
+test("unseenCount only counts announcements whose recipientIds contains the user", async () => {
+  // A real (non-mocked) where-filter check: simulate two announcements, one
+  // targeted at v1, one not, and confirm the query is scoped by recipient.
+  let capturedWhere: any = null;
+  const announcements = [
+    { id: "a1", recipientIds: ["v1", "v2"] },
+    { id: "a2", recipientIds: ["v2"] },
+  ];
+  const db: any = {
+    user: { findUnique: async () => ({ announcementsSeenAt: null }) },
+    announcement: {
+      count: async (a: any) => {
+        capturedWhere = a.where;
+        return announcements.filter((x) => x.recipientIds.includes(a.where.recipientIds.has))
+          .length;
+      },
+    },
+  };
+  const n = await unseenCount("v1", "real", { db });
+  assert.equal(n, 1);
+  assert.deepEqual(capturedWhere.recipientIds, { has: "v1" });
+});
+
+test("listAnnouncementsFor filters by recipient, unlike the admin's listAnnouncements", async () => {
+  let where: any = null;
+  const db: any = {
+    announcement: {
+      findMany: async (a: any) => {
+        where = a.where;
+        return [];
+      },
+    },
+  };
+  await listAnnouncementsFor("v1", "real", { db });
+  assert.equal(where.demo, false);
+  assert.deepEqual(where.recipientIds, { has: "v1" });
 });
