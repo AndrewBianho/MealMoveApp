@@ -95,13 +95,35 @@ test("reliability scopes the event query to the world", async () => {
   assert.deepEqual(where.type, { in: ["delivered", "released", "failed"] });
 });
 
-test("new = active volunteers with no delivered event", async () => {
+test("new = active volunteers with no terminal event history", async () => {
   const d = db({
     listingEvent: { groupBy: async () => [], findMany: async () => [{ actorId: "v1" }] },
   });
   const r = await resolveAudience({ kind: "new" }, "real", { db: d });
   assert.deepEqual(r.ids, ["v2", "v3"]);
   assert.equal(r.label, "New volunteers");
+});
+
+test("a volunteer who only flaked is excluded from `new` and lands in needs_support (regression: new/reliability overlap)", async () => {
+  // v1's only event is a flake (released, no delivered) -> has history, so
+  // must NOT be `new`, and must fall into the needs_support band (0%).
+  const events = [{ actorId: "v1", type: "released", _count: { _all: 1 } }];
+  const d = db({
+    listingEvent: {
+      groupBy: async () => events,
+      findMany: async () => [{ actorId: "v1" }],
+    },
+  });
+
+  const newAudience = await resolveAudience({ kind: "new" }, "real", { db: d });
+  assert.ok(!newAudience.ids.includes("v1"), "flaker must not appear in `new`");
+
+  const needsSupport = await resolveAudience(
+    { kind: "reliability", band: "needs_support" },
+    "real",
+    { db: d }
+  );
+  assert.ok(needsSupport.ids.includes("v1"), "flaker must appear in needs_support");
 });
 
 test("lapsed excludes never-claimed volunteers and respects the cutoff", async () => {

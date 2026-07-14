@@ -133,14 +133,23 @@ export async function resolveAudience(
     }
 
     case "new": {
+      // `new` means a true first-timer: NO terminal event history at all. A
+      // volunteer who claimed and flaked (only `released`/`failed`, no
+      // `delivered`) still has history, so they belong to a reliability band
+      // (and its encouragement message), not a welcome — this keeps `new`
+      // and the bands disjoint (PRODUCT.md: never send a welcome to a flaker).
       const done = await db.listingEvent.findMany({
-        where: { actorId: { not: null }, type: "delivered", listing: { demo } },
+        where: {
+          actorId: { not: null },
+          type: { in: ["delivered", "released", "failed"] },
+          listing: { demo },
+        },
         select: { actorId: true },
         distinct: ["actorId"],
       });
-      const completed = new Set(done.map((e) => e.actorId));
+      const hasHistory = new Set(done.map((e) => e.actorId));
       return {
-        ids: base.filter((v) => !completed.has(v.id)).map((v) => v.id),
+        ids: base.filter((v) => !hasHistory.has(v.id)).map((v) => v.id),
         label: "New volunteers",
       };
     }

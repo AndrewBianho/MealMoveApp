@@ -65,8 +65,8 @@ default and preserves today's behavior exactly.
 | Segment | Rule |
 |---|---|
 | `everyone` | All active volunteers in the world. |
-| `reliability` | From the event log, **world-scoped**: per volunteer, `delivered` counts for them; `released` / `failed` count against. `pct = delivered / (delivered + flaked) * 100`. Bands: `needs_support` < 50, `finding_footing` 50–79, `star` ≥ 80. Volunteers with **no** event history are in no band (they are `new`). |
-| `new` | Active volunteers with **zero** `delivered` events in the world — they haven't completed a first rescue. |
+| `reliability` | From the event log, **world-scoped**: per volunteer, `delivered` counts for them; `released` / `failed` count against. `pct = delivered / (delivered + flaked) * 100`. Bands: `needs_support` < 50, `finding_footing` 50–79, `star` ≥ 80. Volunteers with **no** terminal event history (no `delivered`/`released`/`failed`) are in no band (they are `new`). |
+| `new` | Active volunteers with **no terminal event history** (`delivered`/`released`/`failed`) in the world — true first-timers. A volunteer who claimed and flaked (only `released`/`failed`, no `delivered`) has history, so they belong to a reliability band, not `new`. This makes `new` and the reliability bands **disjoint**: `new` is exactly the complement of "has terminal history." |
 | `lapsed` | Active volunteers who **have** claimed before but whose most recent `Pickup.claimedAt` is older than `days`. Never-claimed volunteers are excluded (they're `new`). |
 | `near` | Active volunteers with a known `lat`/`lng` within `radiusMi` of the anchor location's coordinates (`milesBetween` from `lib/geo`). Volunteers without a position are excluded — same rule the escalating broadcast already uses. |
 
