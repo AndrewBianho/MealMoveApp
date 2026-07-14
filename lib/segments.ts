@@ -8,8 +8,10 @@ import type { World } from "./announcements";
 //
 // NON-PUNITIVE BY CONSTRUCTION (PRODUCT.md: "reliability is felt, not
 // punished"): the reliability bands exist to aim *support*, never to grade or
-// rank a person. Labels are intent-named, callers only ever surface a count,
-// and no name or individual percentage leaves this module.
+// rank a person. Bands are named by their literal percentage threshold — a
+// measurement, not a letter grade — and they stay admin-only: callers surface
+// a count, no name or individual percentage leaves this module, and the
+// volunteer's own inbox never renders the audience label.
 
 export type ReliabilityBand = "needs_support" | "finding_footing" | "star";
 export type LapsedDays = 14 | 30 | 60;
@@ -32,9 +34,9 @@ export const LAPSED_DAYS: readonly LapsedDays[] = [14, 30, 60];
 export const RADII: readonly RadiusMi[] = [2, 5, 10];
 
 const BAND_LABEL: Record<ReliabilityBand, string> = {
-  needs_support: "Volunteers who could use encouragement",
-  finding_footing: "Volunteers finding their footing",
-  star: "Volunteers who've been rock solid",
+  needs_support: "Low reliability · under 50%",
+  finding_footing: "Medium reliability · 50–79%",
+  star: "High reliability · 80%+",
 };
 
 // The reliability meter's existing thresholds — sage ≥80 / honey 50–79 /
@@ -184,7 +186,7 @@ export async function resolveAudience(
         })
         .map((v) => v.id);
 
-      return { ids, label: `Haven't been around lately · ${audience.days}+ days` };
+      return { ids, label: `Quiet lately · ${audience.days}+ days` };
     }
 
     case "near": {

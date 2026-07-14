@@ -23,15 +23,16 @@ export type AnchorOption = { kind: AnchorKind; id: string; name: string };
 
 type Kind = Audience["kind"];
 
-// Intent-named, never deficit-named. The reliability bands aim *support*; they
-// are not a grade, and this surface shows a COUNT only — never names, never
-// individual percentages (PRODUCT.md: reliability is felt, not punished).
+// Bands are named by their literal percentage threshold (the reliability
+// meter's own sage ≥80 / honey 50–79 / tomato <50), so an admin aims a message
+// by a measurement, not a grade. This surface shows a COUNT only — never names,
+// never one person's percentage (PRODUCT.md: reliability is felt, not punished).
 const KINDS: Kind[] = ["everyone", "reliability", "new", "lapsed", "near"];
 const KIND_LABEL: Record<Kind, string> = {
   everyone: "Everyone",
-  reliability: "By how it's been going",
+  reliability: "By reliability",
   new: "New volunteers",
-  lapsed: "Haven't been around lately",
+  lapsed: "Quiet lately",
   near: "Near a location",
 };
 
@@ -40,9 +41,9 @@ const KIND_LABEL: Record<Kind, string> = {
 // not the other, since `cleanAudience` would reject it.
 const BANDS = RELIABILITY_BANDS;
 const BAND_LABEL: Record<ReliabilityBand, string> = {
-  needs_support: "Could use encouragement",
-  finding_footing: "Finding their footing",
-  star: "Rock solid",
+  needs_support: "Low reliability · under 50%",
+  finding_footing: "Medium reliability · 50–79%",
+  star: "High reliability · 80%+",
 };
 const DAYS = LAPSED_DAYS;
 const RADII = RADII_OPTIONS;
