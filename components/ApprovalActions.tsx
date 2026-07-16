@@ -34,14 +34,14 @@ export function ApprovalActions({
   if (demo) {
     return (
       <span className="block text-right font-mono text-[11px] text-neutral-700">
-        demo — approvals disabled
+        Demo — approvals disabled
       </span>
     );
   }
 
   return (
     <div className="flex items-center justify-end gap-2">
-      {error && <span className="text-xs text-failed-600">{error}</span>}
+      {error && <span className="text-xs text-failed-800">{error}</span>}
       <Button
         variant="secondary"
         onClick={() => run(() => declineAccount(userId))}

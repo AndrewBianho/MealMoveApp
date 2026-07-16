@@ -38,7 +38,7 @@ export function DeleteAccountButton({
   if (demo) {
     return (
       <span className="block text-right font-mono text-[11px] text-neutral-700">
-        demo — disabled
+        Demo — disabled
       </span>
     );
   }

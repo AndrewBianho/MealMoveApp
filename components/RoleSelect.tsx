@@ -11,15 +11,15 @@ const OPTIONS: { value: ManagedRole; label: string }[] = [
   { value: "org_admin", label: "Org admin" },
 ];
 
+// The roster marks the viewer's own row with a "You" chip beside their name, so
+// the options stay plain role names — no "(you)" suffix duplicating it.
 export function RoleSelect({
   userId,
   current,
-  isSelf,
   demo = false,
 }: {
   userId: string;
   current: ManagedRole;
-  isSelf: boolean;
   demo?: boolean;
 }) {
   const [value, setValue] = useState<ManagedRole>(current);
@@ -48,12 +48,11 @@ export function RoleSelect({
         onChange={onChange}
         disabled={isPending || demo}
         title={demo ? "Demo accounts can't change roles" : undefined}
-        className="rounded-md border border-neutral-200/60 bg-card px-2.5 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-transit-400 disabled:cursor-not-allowed disabled:opacity-60"
+        className="rounded-lg border border-neutral-200 bg-card px-2.5 py-1.5 text-sm text-neutral-800 transition-colors hover:border-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
-            {isSelf && o.value === current ? " (you)" : ""}
           </option>
         ))}
       </select>
