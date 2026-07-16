@@ -13,6 +13,7 @@ import { passwordValid } from "@/lib/password";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { geocodeAddress } from "@/lib/geocode";
 import { cleanOrgNotes, type OrgNotesInput } from "@/lib/orgNotes";
+import { orgForEmail } from "@/lib/org";
 import { releaseClaimFor } from "@/lib/checkins";
 import { claimsNeeded } from "@/lib/claims";
 import { findActiveClaimFor } from "@/lib/activeClaim";
@@ -214,9 +215,11 @@ export async function registerUser(input: {
     }
 
     // Volunteers are active immediately — low-stakes, and the whole point is a
-    // first-timer claiming a pickup without friction.
+    // first-timer claiming a pickup without friction. Auto-join their org by
+    // email domain (Malvern for @malvernprep.org, else the default org).
+    const org = await orgForEmail(email);
     const newUser = await prisma.user.create({
-      data: { name, email, phone, passwordHash, role: "volunteer" },
+      data: { name, email, phone, passwordHash, role: "volunteer", organizationId: org.id },
     });
     await resetLimit(`register:${ip}`);
     trackServer({ name: "signup_submitted", props: { role: "volunteer", hadInvite: false } }, newUser.id);
