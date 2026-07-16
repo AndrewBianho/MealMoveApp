@@ -133,6 +133,10 @@ model User {
   // (see approveAccount), mirroring restaurantId. Null for every other role.
   dropOff      DropOff?      @relation(fields: [dropOffId], references: [id])
   dropOffId    String?
+  // The volunteer/org-admin's organization. Null for restaurant/drop_off
+  // accounts (partners are global) and for legacy rows until backfilled.
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String?
   pickups      Pickup[]
   buddyPickups Pickup[]    @relation("PickupBuddy") // pickups where this user is the second seat
   events       ListingEvent[]
@@ -162,6 +166,26 @@ model User {
   createdAt            DateTime      @default(now())
 
   @@index([status]) // the org-admin pending-approval queue
+  @@index([organizationId])
+}
+
+// A volunteer community. Organizations group and scope volunteer-facing
+// surfaces only (roster, impact, announcements); restaurants, drop-offs, and
+// listings are global and never carry an organizationId. New volunteers auto-
+// join by email domain (see lib/orgForEmail); everyone unmatched joins the
+// single isDefault org. There is always exactly one isDefault: true row.
+model Organization {
+  id            String         @id @default(cuid())
+  name          String
+  // Bare email domain that auto-joins volunteers (e.g. "malvernprep.org").
+  // Null for the fallback/default org. Unique so a domain maps to one org.
+  emailDomain   String?        @unique
+  // The fallback org for volunteers whose email domain matches no org. Exactly
+  // one row is true (invariant enforced by seed/migration, not the schema).
+  isDefault     Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  users         User[]
+  announcements Announcement[]
 }
 
 // Single-use, time-boxed tokens for the email password-reset flow. Only the
@@ -495,6 +519,11 @@ model Announcement {
   // Exactly who this went to. Targeting must scope the durable inbox + badge,
   // not just the push/email fan-out.
   recipientIds   String[]
+  // The org whose volunteers this went to. Null only for legacy pre-migration
+  // rows (backfilled to the default org by the migration).
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String?
 
   @@index([demo, createdAt])
+  @@index([organizationId, createdAt])
 }
