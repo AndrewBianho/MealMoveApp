@@ -44,6 +44,9 @@ export async function sendAnnouncement(
     body: string;
     world: World;
     audience: Audience;
+    // The sending admin's organization; the audience is scoped to it and the
+    // row records which org's volunteers this reached.
+    organizationId: string;
   },
   deps: {
     db?: SendDb;
@@ -62,6 +65,7 @@ export async function sendAnnouncement(
   const { ids, label } = await resolve(input.audience, input.world, {
     db,
     now: deps.now,
+    organizationId: input.organizationId,
   });
 
   // Closes a TOCTOU: the action's own zero-check can pass and the audience
@@ -79,6 +83,7 @@ export async function sendAnnouncement(
       demo,
       audienceLabel: label,
       recipientIds: ids,
+      organizationId: input.organizationId,
     },
     select: { id: true },
   });

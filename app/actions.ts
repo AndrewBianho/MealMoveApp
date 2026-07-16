@@ -1764,6 +1764,15 @@ export async function sendAnnouncementAction(
   if (b.length > ANN_BODY_MAX)
     return { ok: false, error: `Message is too long (max ${ANN_BODY_MAX}).` };
 
+  // An org admin only ever reaches their own organization's volunteers.
+  const actor = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { organizationId: true },
+  });
+  if (!actor?.organizationId) {
+    return { ok: false, error: "Your account isn't linked to an organization." };
+  }
+
   // The audience arrives from the client — validate it, never trust it.
   const audience = cleanAudience(audienceInput);
   if (!audience) return { ok: false, error: "Pick a valid group to send to." };
@@ -1772,7 +1781,7 @@ export async function sendAnnouncementAction(
 
   // Never send into the void: a group with nobody in it would create an
   // announcement no one hears.
-  if ((await countAudience(audience, world)) === 0) {
+  if ((await countAudience(audience, world, { organizationId: actor.organizationId })) === 0) {
     return { ok: false, error: "No volunteers match this group right now." };
   }
 
@@ -1782,6 +1791,7 @@ export async function sendAnnouncementAction(
     body: b,
     world,
     audience,
+    organizationId: actor.organizationId,
   });
   revalidatePath("/admin/updates");
   return { ok: true, recipientCount };
@@ -1798,13 +1808,23 @@ export async function countAudienceAction(
   { ok: true; count: number; label: string } | { ok: false; error: string }
 > {
   const session = await auth();
-  if (session?.user?.role !== "org_admin") {
+  if (session?.user?.role !== "org_admin" || !session.user.id) {
     return { ok: false, error: "Only org admins can preview a group." };
   }
   const audience = cleanAudience(audienceInput);
   if (!audience) return { ok: false, error: "Pick a valid group." };
+  // Scope the preview to the admin's org so the reach line matches the send.
+  const actor = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { organizationId: true },
+  });
+  if (!actor?.organizationId) {
+    return { ok: false, error: "Your account isn't linked to an organization." };
+  }
   const world = await getDataMode();
-  const { ids, label } = await resolveAudience(audience, world);
+  const { ids, label } = await resolveAudience(audience, world, {
+    organizationId: actor.organizationId,
+  });
   return { ok: true, count: ids.length, label };
 }
 
