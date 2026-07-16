@@ -5,6 +5,7 @@ import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { isDemo } from "@/lib/mode";
+import { rosterWhere } from "@/lib/orgRoster";
 
 export const dynamic = "force-dynamic";
 
@@ -23,12 +24,23 @@ export default async function AdminUsersPage() {
   // Scope the roster to the viewer's world — demo and real never mix. A demo
   // org-admin (or any account browsing demo) sees only the curated demo
   // accounts, never real people; a real admin sees only real accounts.
+  // Organizations group volunteers only: this admin sees their own org's
+  // volunteers/admins, but the partner pool (restaurant/drop_off) stays global.
+  const actor = session?.user?.id
+    ? await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { organizationId: true },
+      })
+    : null;
+  const adminOrgId = actor?.organizationId ?? null;
+
   // Explicit select — phone is deliberately omitted so a volunteer's number is
   // never even fetched into admin-facing code (the sign-up promise, kept in code).
   const [users, pending] = await Promise.all([
     prisma.user.findMany({
       // Active accounts only — pending partners live in their own queue below.
-      where: { status: "active", demo },
+      // Managed roles scoped to this admin's org; partners global.
+      where: rosterWhere(adminOrgId, demo),
       orderBy: [{ role: "asc" }, { name: "asc" }],
       select: {
         id: true,

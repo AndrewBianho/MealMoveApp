@@ -14,6 +14,7 @@ import { sendPasswordResetEmail } from "@/lib/email";
 import { geocodeAddress } from "@/lib/geocode";
 import { cleanOrgNotes, type OrgNotesInput } from "@/lib/orgNotes";
 import { orgForEmail } from "@/lib/org";
+import { assertSameOrg } from "@/lib/orgRoster";
 import { releaseClaimFor } from "@/lib/checkins";
 import { claimsNeeded } from "@/lib/claims";
 import { findActiveClaimFor } from "@/lib/activeClaim";
@@ -1551,11 +1552,25 @@ export async function setRole(
   if (target.role === "restaurant" || target.role === "drop_off") {
     return { ok: false, error: "Partner accounts are managed at sign-up." };
   }
+
+  // Cross-org guard: an admin manages members only within their own org
+  // (defense in depth — server actions aren't route-scoped).
+  const actor = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { organizationId: true },
+  });
+  if (!assertSameOrg(actor?.organizationId ?? null, target.organizationId)) {
+    return { ok: false, error: "You can only manage members in your own organization." };
+  }
+
   if (target.role === role) return { ok: true };
 
-  // Last-admin guard — don't let the org lock itself out.
+  // Last-admin guard — don't let the org lock itself out. Scoped to the target's
+  // organization, since org admins now administer their own org.
   if (target.role === "org_admin" && role !== "org_admin") {
-    const admins = await prisma.user.count({ where: { role: "org_admin" } });
+    const admins = await prisma.user.count({
+      where: { role: "org_admin", organizationId: target.organizationId },
+    });
     if (admins <= 1) {
       return { ok: false, error: "Can't remove the last org admin." };
     }
@@ -1716,10 +1731,23 @@ export async function deleteAccount(userId: string): Promise<SignUpResult> {
     return { ok: false, error: "Pending accounts are handled with Decline." };
   }
 
-  // Last-admin guard — don't let the org lock itself out.
+  // Cross-org guard for managed members (volunteer/org_admin). Partners
+  // (restaurant/drop_off) are global, so any org admin may remove them.
+  if (target.role === "volunteer" || target.role === "org_admin") {
+    const actor = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { organizationId: true },
+    });
+    if (!assertSameOrg(actor?.organizationId ?? null, target.organizationId)) {
+      return { ok: false, error: "You can only manage members in your own organization." };
+    }
+  }
+
+  // Last-admin guard — don't let the org lock itself out. Scoped to the target's
+  // organization, since org admins now administer their own org.
   if (target.role === "org_admin") {
     const admins = await prisma.user.count({
-      where: { role: "org_admin", status: "active" },
+      where: { role: "org_admin", status: "active", organizationId: target.organizationId },
     });
     if (admins <= 1) {
       return { ok: false, error: "Can't remove the last org admin." };
