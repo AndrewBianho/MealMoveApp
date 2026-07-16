@@ -24,6 +24,7 @@ export default async function ProfilePage() {
       phone: true,
       imageUrl: true,
       role: true,
+      organization: { select: { name: true } },
     },
   });
   if (!user) redirect("/login");
@@ -53,6 +54,7 @@ export default async function ProfilePage() {
             phone: user.phone ?? "",
             imageUrl: user.imageUrl,
           }}
+          organizationName={user.organization?.name ?? null}
         />
       </section>
 

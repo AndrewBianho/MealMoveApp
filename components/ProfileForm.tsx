@@ -18,6 +18,7 @@ function prettyPhone(raw: string): string {
 
 export function ProfileForm({
   initial,
+  organizationName,
 }: {
   initial: {
     name: string;
@@ -25,6 +26,7 @@ export function ProfileForm({
     phone: string;
     imageUrl: string | null;
   };
+  organizationName?: string | null;
 }) {
   const router = useRouter();
   const [name, setName] = useState(initial.name);
@@ -126,7 +128,7 @@ export function ProfileForm({
       <div>
         <span className={labelCls}>Organization</span>
         <div className={`${inputCls} flex items-center bg-neutral-100 text-neutral-700`}>
-          {CHAPTER_NAME}
+          {organizationName ?? CHAPTER_NAME}
         </div>
       </div>
 
