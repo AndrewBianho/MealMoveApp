@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
 import { isDemo } from "@/lib/mode";
 import { getHealthMetrics, type Ratio } from "@/lib/health";
 import { getDashboardData } from "@/lib/analytics/dashboardData";
+import { getOrgVolunteerImpact } from "@/lib/orgStats";
 import { ACCENTS, type MetricAccent } from "@/components/MetricCard";
 import { cn } from "@/components/cn";
 
@@ -78,7 +80,7 @@ export default async function AnalyticsPage({
 }: {
   searchParams: Promise<{ days?: string }>;
 }) {
-  await auth();
+  const session = await auth();
   const demo = await isDemo();
   const { days } = await searchParams;
   const windowDays = WINDOWS.some((w) => String(w.days) === days)
@@ -90,6 +92,19 @@ export default async function AnalyticsPage({
     getDashboardData(windowDays, demo),
   ]);
   const funnelTotal = d.funnel.claimed;
+
+  // The acting admin's own organization — its volunteers' lifetime impact.
+  // Skipped gracefully if the admin isn't linked to an org.
+  const actor = session?.user?.id
+    ? await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { organization: { select: { name: true, id: true } } },
+      })
+    : null;
+  const org = actor?.organization ?? null;
+  const orgImpact = org
+    ? await getOrgVolunteerImpact(org.id, { world: demo ? "demo" : "real" })
+    : null;
 
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">
@@ -168,6 +183,37 @@ export default async function AnalyticsPage({
           accent="transit"
         />
       </div>
+
+      {org && orgImpact && (
+        <section className="mt-8">
+          <h2 className="mb-1 font-display text-lg font-semibold">
+            {org.name} volunteers
+          </h2>
+          <p className="mb-4 font-mono text-[11px] text-neutral-700">
+            your organization&apos;s lifetime rescue impact
+          </p>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Metric
+              value={orgImpact.meals.toLocaleString()}
+              label="Meals rescued"
+              caption={`by ${org.name} volunteers`}
+              accent="rescued"
+            />
+            <Metric
+              value={orgImpact.volunteers.toLocaleString()}
+              label="Active volunteers"
+              caption="delivered at least one pickup"
+              accent="rescued"
+            />
+            <Metric
+              value={orgImpact.pickups.toLocaleString()}
+              label="Pickups delivered"
+              caption="completed rescues"
+              accent="clay"
+            />
+          </div>
+        </section>
+      )}
 
       <section className="mt-8 rounded-3xl bg-card p-6 shadow-card">
         <h2 className="font-display text-lg font-semibold">Claim funnel</h2>
