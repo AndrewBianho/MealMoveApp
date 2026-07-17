@@ -1,10 +1,12 @@
 import { RescueMap } from "@/components/RescueMap";
 import { getMapData } from "@/lib/map";
 import { auth } from "@/auth";
+import { requireRole } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
 
 export default async function MapPage() {
+  await requireRole("volunteer", "org_admin");
   const [{ restaurants, dropOffs }, session] = await Promise.all([
     getMapData(),
     auth(),

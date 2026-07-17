@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { requireRole } from "@/lib/authz";
 import { getDropOffs } from "@/lib/map";
 import { getListings } from "@/lib/listings";
 import { getActiveNoticesByDropOff } from "@/lib/dropoffNotices";
@@ -14,9 +14,11 @@ import { prisma } from "@/lib/prisma";
 // is *not* here — only the Impact route needs those aggregates, so it fetches
 // them itself to keep the other tabs light.
 export async function loadDropOffConsole() {
-  const session = await auth();
-  const viewerId = session?.user?.id;
-  const isOrgAdmin = session?.user?.role === "org_admin";
+  // The console belongs to a `drop_off` account (its own location) or an
+  // `org_admin` (redirected on to analytics by each tab). Volunteers and
+  // restaurants are turned away here, not just by middleware.
+  const { id: viewerId, role } = await requireRole("drop_off", "org_admin");
+  const isOrgAdmin = role === "org_admin";
 
   let myDropOffId: string | null = null;
   if (!isOrgAdmin && viewerId) {

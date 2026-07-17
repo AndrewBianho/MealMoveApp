@@ -10,6 +10,7 @@ import { unseenCount } from "@/lib/announcements";
 import { getDataMode } from "@/lib/mode";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { requireRole } from "@/lib/authz";
 
 // Reads live data per request (and after revalidation from server actions).
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
 const LIVE = ["claimed", "in transit", "taken home"];
 
 export default async function FeedPage() {
+  await requireRole("volunteer", "org_admin");
   const session = await auth();
   // Org admins oversee rather than claim — the available-pickups feed isn't
   // their surface, so the root path sends them to their analytics home.

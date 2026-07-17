@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { requireRole } from "@/lib/authz";
 import { getDataMode } from "@/lib/mode";
 import { listAnnouncements } from "@/lib/announcements";
 import { AnnouncementComposer } from "@/components/AnnouncementComposer";
@@ -10,7 +10,7 @@ import type { AnchorOption } from "@/components/AnnouncementComposer";
 export const dynamic = "force-dynamic";
 
 export default async function AdminUpdatesPage() {
-  await auth();
+  await requireRole("org_admin");
   const world = await getDataMode();
   const sent = await listAnnouncements(world);
 

@@ -10,7 +10,13 @@ export const dynamic = "force-dynamic";
 // external scheduler. If CRON_SECRET is set, the header must match.
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
-  if (secret && req.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (secret) {
+    if (req.headers.get("authorization") !== `Bearer ${secret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  } else if (process.env.NODE_ENV === "production") {
+    // Fail closed: the sweep mutates real listings (expiries, broadcasts), so in
+    // prod it must never run unauthenticated. (Local dev without a secret runs.)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   // Top up future scheduled listings from active recurring posts first (these

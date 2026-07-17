@@ -3,7 +3,7 @@ import { NotificationsToggle } from "@/components/NotificationsToggle";
 import { QuietHoursControl } from "@/components/QuietHoursControl";
 import { ReplayWalkthroughButton } from "@/components/ReplayWalkthroughButton";
 import { getDataMode } from "@/lib/mode";
-import { auth } from "@/auth";
+import { requireUser } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
 export const metadata = { title: "Settings · Meal Move" };
@@ -11,20 +11,18 @@ export const metadata = { title: "Settings · Meal Move" };
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
+  const viewer = await requireUser();
   const mode = await getDataMode();
 
-  const session = await auth();
-  const me = session?.user?.id
-    ? await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: {
-          notificationsEnabled: true,
-          quietHoursStart: true,
-          quietHoursEnd: true,
-          demo: true,
-        },
-      })
-    : null;
+  const me = await prisma.user.findUnique({
+    where: { id: viewer.id },
+    select: {
+      notificationsEnabled: true,
+      quietHoursStart: true,
+      quietHoursEnd: true,
+      demo: true,
+    },
+  });
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-8">

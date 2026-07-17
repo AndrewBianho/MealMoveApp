@@ -5,6 +5,8 @@ import { SectionHeading } from "@/components/SectionHeading";
 import { DetailEmpty, DetailNotFound } from "@/components/DetailEmpty";
 import { getDropOffDetail } from "@/lib/listings";
 import { parseStoredHours } from "@/lib/hours";
+import { requireUser } from "@/lib/authz";
+import { isDemo } from "@/lib/mode";
 
 export const dynamic = "force-dynamic";
 
@@ -13,9 +15,13 @@ export default async function DropOffDetailPage({
 }: {
   params: { id: string };
 }) {
+  await requireUser();
+  const demo = await isDemo();
   const detail = await getDropOffDetail(params.id);
 
-  if (!detail) {
+  // Not found, or from the other world (demo vs real) — either way, a location
+  // the viewer has no business reaching by direct URL is simply "not found".
+  if (!detail || detail.dropOff.demo !== demo) {
     return <DetailNotFound label="Drop-off not found." />;
   }
 

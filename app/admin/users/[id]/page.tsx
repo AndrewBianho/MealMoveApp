@@ -17,6 +17,7 @@ import { getListings } from "@/lib/listings";
 import { isDemo } from "@/lib/mode";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
+import { requireRole } from "@/lib/authz";
 import { assertSameOrg } from "@/lib/orgRoster";
 import type { VolunteerImpact } from "@/lib/types";
 
@@ -34,6 +35,7 @@ export default async function MemberDetailPage({
 }: {
   params: { id: string };
 }) {
+  await requireRole("org_admin");
   const demo = await isDemo();
   const session = await auth();
   const user = await prisma.user.findUnique({

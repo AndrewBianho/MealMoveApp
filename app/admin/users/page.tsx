@@ -4,6 +4,7 @@ import { ApprovalActions } from "@/components/ApprovalActions";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { Avatar } from "@/components/Avatar";
 import { auth } from "@/auth";
+import { requireRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { isDemo } from "@/lib/mode";
 import { rosterWhere } from "@/lib/orgRoster";
@@ -39,6 +40,7 @@ type RosterUser = {
 };
 
 export default async function AdminUsersPage() {
+  await requireRole("org_admin");
   const session = await auth();
   // Demo org-admins are showcase-only: they can browse the roster but the
   // server blocks them from approving, declining, or changing real accounts, so

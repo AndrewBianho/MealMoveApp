@@ -6,7 +6,9 @@ import { getDropOffs } from "@/lib/map";
 import { rankDropOffs } from "@/lib/recommend";
 import { findActiveClaimFor } from "@/lib/activeClaim";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
+import { notFound } from "next/navigation";
+import { requireUser } from "@/lib/authz";
+import { isDemo } from "@/lib/mode";
 import type { DropOffChoice } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -16,9 +18,10 @@ export default async function ListingDetailPage({
 }: {
   params: { id: string };
 }) {
-  const session = await auth();
-  const viewerId = session?.user?.id;
-  const canClaim = session?.user?.role !== "org_admin";
+  const viewer = await requireUser();
+  const viewerId = viewer.id;
+  const canClaim = viewer.role !== "org_admin";
+  const demo = await isDemo();
   const listing = await getListing(params.id, viewerId);
 
   // Any active service notices for this listing's drop-off — a volunteer
@@ -26,6 +29,7 @@ export default async function ListingDetailPage({
   const listingRow = await prisma.foodListing.findUnique({
     where: { id: params.id },
     select: {
+      demo: true,
       dropOffId: true,
       status: true,
       category: true,
@@ -36,6 +40,10 @@ export default async function ListingDetailPage({
       dropOff: { select: { id: true, name: true, lat: true, lng: true } },
     },
   });
+  // World isolation: a listing from the other world (demo vs real) is treated
+  // as not existing, so its URL can't be reached by direct browsing.
+  if (listingRow && listingRow.demo !== demo) notFound();
+
   const dropOffNotices = listingRow?.dropOffId
     ? await getActiveDropOffNotices(listingRow.dropOffId)
     : [];

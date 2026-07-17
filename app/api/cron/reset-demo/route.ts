@@ -14,7 +14,13 @@ export const maxDuration = 60;
 // wiped back to the pristine showcase. Real data is never touched.
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
-  if (secret && req.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (secret) {
+    if (req.headers.get("authorization") !== `Bearer ${secret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  } else if (process.env.NODE_ENV === "production") {
+    // Fail closed: never expose an unauthenticated rebuild endpoint in prod just
+    // because the secret was left unset. (Local dev without a secret still runs.)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const counts = await resetDemoWorld(prisma);

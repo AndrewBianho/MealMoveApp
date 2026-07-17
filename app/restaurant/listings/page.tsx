@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { RestaurantListings } from "@/components/RestaurantListings";
 import { RestaurantAccuracySummary } from "@/components/RestaurantAccuracySummary";
 import { auth } from "@/auth";
+import { requireRole } from "@/lib/authz";
 import { getListings } from "@/lib/listings";
 import { isDemo } from "@/lib/mode";
 import { prisma } from "@/lib/prisma";
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
  * Posting lives on /restaurant.
  */
 export default async function RestaurantListingsPage() {
+  await requireRole("restaurant", "org_admin");
   const session = await auth();
   // Org admins oversee the chapter, not any one restaurant's listings — send
   // them to their analytics home rather than showing this tracking surface.

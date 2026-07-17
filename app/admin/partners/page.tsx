@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { requireRole } from "@/lib/authz";
 import { isDemo } from "@/lib/mode";
 import { prisma } from "@/lib/prisma";
 import { toDateInputValue } from "@/lib/orgNotes";
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 // is org-admin-gated in auth.config, so this page is org-admin only. Not shown to
 // volunteers; edits are logged to the AdminEvent stream.
 export default async function AdminPartnersPage() {
-  await auth();
+  await requireRole("org_admin");
   const demo = await isDemo();
 
   const notesSelect = {

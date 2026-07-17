@@ -5,8 +5,10 @@ import type { Role } from "@prisma/client";
 // bundles this file for the edge runtime. The Credentials provider (which does
 // touch the DB) lives in auth.ts instead.
 
-// Where each role lands after login.
-const ROLE_HOME: Record<Role, string> = {
+// Where each role lands after login. Exported so the server-side page guards
+// (`lib/authz.ts`) redirect to the same home the edge middleware does — one
+// source of truth for "where does this role belong".
+export const ROLE_HOME: Record<Role, string> = {
   volunteer: "/",
   restaurant: "/restaurant",
   drop_off: "/dropoff",

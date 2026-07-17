@@ -6,6 +6,8 @@ import { DetailEmpty, DetailNotFound } from "@/components/DetailEmpty";
 import { getRestaurantDetail } from "@/lib/listings";
 import { getDropOffs } from "@/lib/map";
 import { recommendDropOff } from "@/lib/recommend";
+import { requireUser } from "@/lib/authz";
+import { isDemo } from "@/lib/mode";
 import type { FoodCategory, MapRestaurant } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -15,9 +17,13 @@ export default async function RestaurantDetailPage({
 }: {
   params: { id: string };
 }) {
+  await requireUser();
+  const demo = await isDemo();
   const detail = await getRestaurantDetail(params.id);
 
-  if (!detail) {
+  // Not found, or from the other world (demo vs real) — a restaurant the viewer
+  // has no business reaching by direct URL is simply "not found".
+  if (!detail || detail.restaurant.demo !== demo) {
     return <DetailNotFound label="Restaurant not found." />;
   }
 

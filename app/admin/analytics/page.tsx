@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/auth";
+import { requireRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { isDemo } from "@/lib/mode";
 import { getHealthMetrics, type Ratio } from "@/lib/health";
@@ -80,6 +81,7 @@ export default async function AnalyticsPage({
 }: {
   searchParams: Promise<{ days?: string }>;
 }) {
+  await requireRole("org_admin");
   const session = await auth();
   const demo = await isDemo();
   const { days } = await searchParams;

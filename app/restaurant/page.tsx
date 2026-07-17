@@ -3,6 +3,7 @@ import { RestaurantPostHub } from "@/components/RestaurantPostHub";
 import { RecurringPostManager } from "@/components/RecurringPostManager";
 import { TeamPanel } from "@/components/TeamPanel";
 import { auth } from "@/auth";
+import { requireRole } from "@/lib/authz";
 import { isDemo } from "@/lib/mode";
 import { prisma } from "@/lib/prisma";
 import { countActiveVolunteersNear } from "@/lib/nearby";
@@ -16,6 +17,7 @@ export const dynamic = "force-dynamic";
  * lives on /restaurant/listings.
  */
 export default async function RestaurantPage() {
+  await requireRole("restaurant", "org_admin");
   const session = await auth();
   // Org admins oversee the chapter; they don't run a restaurant account, so the
   // posting surface is off-limits — send them to their analytics home.

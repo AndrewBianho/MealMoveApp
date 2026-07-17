@@ -1,4 +1,4 @@
-import { auth } from "@/auth";
+import { requireRole } from "@/lib/authz";
 import { isDemo } from "@/lib/mode";
 import { restaurantAccuracySummaries } from "@/lib/accuracy";
 import { RestaurantAccuracySummary } from "@/components/RestaurantAccuracySummary";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // auth.config, so this page is org-admin only. Private by design — an internal
 // operations read-out, never a public leaderboard or a grade on a partner.
 export default async function AdminReliabilityPage() {
-  await auth();
+  await requireRole("org_admin");
   const demo = await isDemo();
   const rows = await restaurantAccuracySummaries(demo);
 
