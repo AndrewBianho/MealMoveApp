@@ -14,7 +14,6 @@ import { sendPasswordResetEmail } from "@/lib/email";
 import { geocodeAddress } from "@/lib/geocode";
 import { cleanOrgNotes, type OrgNotesInput } from "@/lib/orgNotes";
 import { orgForEmail } from "@/lib/org";
-import { assertSameOrg } from "@/lib/orgRoster";
 import { releaseClaimFor } from "@/lib/checkins";
 import { claimsNeeded } from "@/lib/claims";
 import { findActiveClaimFor } from "@/lib/activeClaim";
@@ -38,6 +37,8 @@ import { cleanAudience, countAudience, resolveAudience } from "@/lib/segments";
 import { resetDemoWorld } from "@/prisma/seedDemo";
 import { materializeSchedules } from "@/lib/sweep";
 import { normalizeDaysOfWeek } from "@/lib/recurring";
+import { isAdmin } from "@/lib/roles";
+import { roleChangeError, deleteAccountError } from "@/lib/accountAdmin";
 
 const HOLD_MINUTES = 15;
 
@@ -1532,56 +1533,57 @@ export async function updateDropOffConstraints(
 // excluded — each is tied to a partner entity and only set at sign-up/approval.
 type ManagedRole = "volunteer" | "org_admin";
 
-/** Change a user's role. Org-admin only; never leaves zero org admins. */
+/** Change a user's role. Org-admin (and super-admin) only; never leaves zero org admins. */
 export async function setRole(
   userId: string,
-  role: ManagedRole
+  role: ManagedRole | "super_admin"
 ): Promise<SignUpResult> {
   const session = await auth();
-  if (session?.user?.role !== "org_admin") {
+  const actorRole = session?.user?.role;
+  if (!isAdmin(actorRole)) {
     return { ok: false, error: "Only org admins can change roles." };
   }
   const demoRole = await blockIfDemo();
   if (demoRole) return demoRole;
-  if (!["volunteer", "org_admin"].includes(role)) {
-    return { ok: false, error: "Invalid role." };
-  }
 
   const target = await prisma.user.findUnique({ where: { id: userId } });
   if (!target) return { ok: false, error: "User not found." };
-  if (target.role === "restaurant" || target.role === "drop_off") {
-    return { ok: false, error: "Partner accounts are managed at sign-up." };
-  }
 
-  // Cross-org guard: an admin manages members only within their own org
-  // (defense in depth — server actions aren't route-scoped).
   const actor = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: session!.user!.id },
     select: { organizationId: true },
   });
-  if (!assertSameOrg(actor?.organizationId ?? null, target.organizationId)) {
-    return { ok: false, error: "You can only manage members in your own organization." };
-  }
 
-  if (target.role === role) return { ok: true };
-
-  // Last-admin guard — don't let the org lock itself out. Scoped to the target's
-  // organization, since org admins now administer their own org.
-  if (target.role === "org_admin" && role !== "org_admin") {
-    const admins = await prisma.user.count({
+  // Counts for the last-admin guards.
+  const [orgAdminCount, superAdminCount] = await Promise.all([
+    prisma.user.count({
       where: { role: "org_admin", organizationId: target.organizationId },
-    });
-    if (admins <= 1) {
-      return { ok: false, error: "Can't remove the last org admin." };
-    }
-  }
+    }),
+    prisma.user.count({ where: { role: "super_admin" } }),
+  ]);
+
+  const error = roleChangeError({
+    actorRole: actorRole!,
+    actorId: session!.user!.id,
+    actorOrgId: actor?.organizationId ?? null,
+    target: {
+      id: target.id,
+      role: target.role,
+      organizationId: target.organizationId,
+    },
+    newRole: role,
+    orgAdminCount,
+    superAdminCount,
+  });
+  if (error) return { ok: false, error };
+  if (target.role === role) return { ok: true };
 
   await prisma.$transaction([
     prisma.user.update({ where: { id: userId }, data: { role } }),
     prisma.adminEvent.create({
       data: {
         type: "role_changed",
-        actorId: session.user.id,
+        actorId: session!.user!.id,
         targetId: userId,
         meta: { from: target.role, to: role },
       },
@@ -1615,7 +1617,7 @@ function readPendingOrg(value: Prisma.JsonValue | null): PendingOrg | null {
  */
 export async function approveAccount(userId: string): Promise<SignUpResult> {
   const session = await auth();
-  if (session?.user?.role !== "org_admin") {
+  if (!isAdmin(session?.user?.role)) {
     return { ok: false, error: "Only org admins can approve accounts." };
   }
   const demoApprove = await blockIfDemo();
@@ -1668,7 +1670,7 @@ export async function approveAccount(userId: string): Promise<SignUpResult> {
     await tx.adminEvent.create({
       data: {
         type: "account_approved",
-        actorId: session.user!.id,
+        actorId: session!.user!.id,
         targetId: userId,
         meta: { kind: pending.kind, name: pending.name },
       },
@@ -1690,7 +1692,7 @@ export async function approveAccount(userId: string): Promise<SignUpResult> {
  */
 export async function declineAccount(userId: string): Promise<SignUpResult> {
   const session = await auth();
-  if (session?.user?.role !== "org_admin") {
+  if (!isAdmin(session?.user?.role)) {
     return { ok: false, error: "Only org admins can decline accounts." };
   }
   const demoDecline = await blockIfDemo();
@@ -1716,50 +1718,49 @@ export async function declineAccount(userId: string): Promise<SignUpResult> {
  */
 export async function deleteAccount(userId: string): Promise<SignUpResult> {
   const session = await auth();
-  if (session?.user?.role !== "org_admin") {
+  const actorRole = session?.user?.role;
+  if (!isAdmin(actorRole)) {
     return { ok: false, error: "Only org admins can delete accounts." };
   }
   const demoDelete = await blockIfDemo();
   if (demoDelete) return demoDelete;
-  if (userId === session.user.id) {
-    return { ok: false, error: "You can't delete your own account." };
-  }
+
   const target = await prisma.user.findUnique({ where: { id: userId } });
   if (!target) return { ok: false, error: "Account not found." };
+
+  const actor = await prisma.user.findUnique({
+    where: { id: session!.user!.id },
+    select: { organizationId: true },
+  });
+  const [orgAdminCount, superAdminCount] = await Promise.all([
+    prisma.user.count({
+      where: { role: "org_admin", organizationId: target.organizationId },
+    }),
+    prisma.user.count({ where: { role: "super_admin" } }),
+  ]);
+
+  const error = deleteAccountError({
+    actorRole: actorRole!,
+    actorId: session!.user!.id,
+    actorOrgId: actor?.organizationId ?? null,
+    target: {
+      id: target.id,
+      role: target.role,
+      status: target.status,
+      organizationId: target.organizationId,
+    },
+    orgAdminCount,
+    superAdminCount,
+  });
+  if (error) return { ok: false, error };
   if (target.status === "deleted") return { ok: true };
-  if (target.status === "pending") {
-    return { ok: false, error: "Pending accounts are handled with Decline." };
-  }
-
-  // Cross-org guard for managed members (volunteer/org_admin). Partners
-  // (restaurant/drop_off) are global, so any org admin may remove them.
-  if (target.role === "volunteer" || target.role === "org_admin") {
-    const actor = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { organizationId: true },
-    });
-    if (!assertSameOrg(actor?.organizationId ?? null, target.organizationId)) {
-      return { ok: false, error: "You can only manage members in your own organization." };
-    }
-  }
-
-  // Last-admin guard — don't let the org lock itself out. Scoped to the target's
-  // organization, since org admins now administer their own org.
-  if (target.role === "org_admin") {
-    const admins = await prisma.user.count({
-      where: { role: "org_admin", status: "active", organizationId: target.organizationId },
-    });
-    if (admins <= 1) {
-      return { ok: false, error: "Can't remove the last org admin." };
-    }
-  }
 
   await prisma.$transaction([
     prisma.user.update({ where: { id: userId }, data: { status: "deleted" } }),
     prisma.adminEvent.create({
       data: {
         type: "account_deleted",
-        actorId: session.user.id,
+        actorId: session!.user!.id,
         targetId: userId,
         meta: { role: target.role, name: target.name },
       },
