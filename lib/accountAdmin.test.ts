@@ -147,3 +147,45 @@ test("deleteAccountError: cannot delete self, last super admin, or a super admin
     /master admin/
   );
 });
+
+test("roleChangeError returns null for a same-role no-op", () => {
+  assert.equal(
+    roleChangeError({
+      ...base,
+      actorRole: "org_admin",
+      target: { id: "t", role: "volunteer", organizationId: "orgA" },
+      newRole: "volunteer",
+    }),
+    null
+  );
+});
+
+test("roleChangeError allows demoting a non-last super admin", () => {
+  assert.equal(
+    roleChangeError({
+      ...base,
+      superAdminCount: 2,
+      actorRole: "super_admin",
+      target: { id: "t", role: "super_admin", organizationId: "orgB" },
+      newRole: "org_admin",
+    }),
+    null
+  );
+});
+
+test("deleteAccountError allows any admin to delete a partner account cross-org", () => {
+  const partner = {
+    id: "t",
+    role: "restaurant" as const,
+    status: "active",
+    organizationId: null,
+  };
+  assert.equal(
+    deleteAccountError({ ...base, actorRole: "org_admin", target: partner }),
+    null
+  );
+  assert.equal(
+    deleteAccountError({ ...base, actorRole: "super_admin", target: partner }),
+    null
+  );
+});
