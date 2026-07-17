@@ -81,7 +81,7 @@ export default async function MemberDetailPage({
   let volunteerImpact: VolunteerImpact | null = null;
   let past: Awaited<ReturnType<typeof getListings>> = [];
   if (role === "volunteer") {
-    volunteerImpact = await getVolunteerImpact(user.id);
+    volunteerImpact = await getVolunteerImpact(user.id, demo);
     const all = await getListings(user.id);
     past = all.filter(
       (l) => l.mine && ["delivered", "expired", "failed"].includes(l.status)
@@ -91,15 +91,15 @@ export default async function MemberDetailPage({
   let restaurantStats: Awaited<ReturnType<typeof getRestaurantImpactStats>> = [];
   let accuracy: Awaited<ReturnType<typeof restaurantAccuracy>> | null = null;
   if (role === "restaurant" && user.restaurant) {
-    restaurantStats = await getRestaurantImpactStats(user.restaurant.id);
-    accuracy = await restaurantAccuracy(user.restaurant.id);
+    restaurantStats = await getRestaurantImpactStats(user.restaurant.id, demo);
+    accuracy = await restaurantAccuracy(user.restaurant.id, demo);
   }
 
   let dropOffStats: Awaited<ReturnType<typeof getDropOffImpactStats>> = [];
   let donations: Awaited<ReturnType<typeof getDropOffDonations>> = [];
   if (role === "drop_off" && user.dropOff) {
-    dropOffStats = await getDropOffImpactStats(user.dropOff.id);
-    donations = await getDropOffDonations(user.dropOff.id);
+    dropOffStats = await getDropOffImpactStats(user.dropOff.id, demo);
+    donations = await getDropOffDonations(user.dropOff.id, demo);
   }
 
   // Restaurant metric ramp reads food-first (meals, lbs, hours), then operation.

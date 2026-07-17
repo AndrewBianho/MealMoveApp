@@ -77,12 +77,15 @@ type Db = Pick<typeof prisma, "pickup">;
  */
 export async function restaurantAccuracy(
   restaurantId: string,
+  demo: boolean,
   db: Db = prisma
 ): Promise<AccuracyAggregate> {
   const rows = await db.pickup.findMany({
     where: {
       rescueAccuracy: { not: null },
-      listing: { restaurantId },
+      // Scoped to the viewer's world so a real restaurant's accuracy never folds
+      // in demo signals (an event's world is its listing's).
+      listing: { restaurantId, demo },
     },
     select: { rescueAccuracy: true },
   });

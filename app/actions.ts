@@ -705,7 +705,7 @@ export async function markDelivered(listingId: string, photoUrl: string) {
       userId,
     );
   }
-  return getVolunteerImpact(userId);
+  return getVolunteerImpact(userId, await isDemo());
 }
 
 /**

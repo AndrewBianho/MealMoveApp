@@ -10,8 +10,11 @@ import type {
 // servings estimate (~0.8 lb/serving) for donations that weren't weighed.
 const LBS_PER_SERVING = 0.8;
 
-// All computed live from the database — no hardcoded numbers.
-export async function getImpactStats(): Promise<ImpactStat[]> {
+// All computed live from the database — no hardcoded numbers. Scoped to the
+// viewer's world (`demo`): the curated demo world and the chapter's real data
+// never mix, so a real account's totals never include seeded demo rows. A
+// pickup/event has no `demo` of its own — its world is its listing's.
+export async function getImpactStats(demo: boolean): Promise<ImpactStat[]> {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   // Run sequentially, not Promise.all: this page is the app's heaviest fan-out,
@@ -20,18 +23,19 @@ export async function getImpactStats(): Promise<ImpactStat[]> {
   // One connection at a time keeps the impact page from starving everything
   // else; it's a stats screen, so the small latency cost is fine.
   const delivered = await prisma.foodListing.findMany({
-    where: { status: "delivered" },
+    where: { status: "delivered", demo },
     select: { servings: true, weightLbs: true },
   });
   const completedPickups = await prisma.pickup.findMany({
-    where: { deliveredAt: { not: null } },
+    where: { deliveredAt: { not: null }, listing: { demo } },
     select: { claimedAt: true, deliveredAt: true },
   });
   const pickupsThisWeek = await prisma.pickup.count({
-    where: { claimedAt: { gte: weekAgo } },
+    where: { claimedAt: { gte: weekAgo }, listing: { demo } },
   });
-  const restaurants = await prisma.restaurant.count();
+  const restaurants = await prisma.restaurant.count({ where: { demo } });
   const distinctVolunteers = await prisma.pickup.findMany({
+    where: { listing: { demo } },
     distinct: ["volunteerId"],
     select: { volunteerId: true },
   });
@@ -60,30 +64,33 @@ export async function getImpactStats(): Promise<ImpactStat[]> {
 // volunteers" give way to numbers that mean something to a single restaurant:
 // the volunteers who've carried its food and the drop-offs that food reached.
 export async function getRestaurantImpactStats(
-  restaurantId: string
+  restaurantId: string,
+  demo: boolean
 ): Promise<ImpactStat[]> {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   // Sequential for the same reason as getImpactStats: one pooled connection at a
   // time keeps the impact page off the connection-pool ceiling (EMAXCONNSESSION).
+  // Scoped to the viewer's world too — a restaurant that posted while browsing
+  // the demo world holds demo listings under its real id, so id alone can mix.
   const delivered = await prisma.foodListing.findMany({
-    where: { restaurantId, status: "delivered" },
+    where: { restaurantId, status: "delivered", demo },
     select: { servings: true, weightLbs: true },
   });
   const completedPickups = await prisma.pickup.findMany({
-    where: { deliveredAt: { not: null }, listing: { restaurantId } },
+    where: { deliveredAt: { not: null }, listing: { restaurantId, demo } },
     select: { claimedAt: true, deliveredAt: true },
   });
   const pickupsThisWeek = await prisma.pickup.count({
-    where: { claimedAt: { gte: weekAgo }, listing: { restaurantId } },
+    where: { claimedAt: { gte: weekAgo }, listing: { restaurantId, demo } },
   });
   const volunteers = await prisma.pickup.findMany({
-    where: { listing: { restaurantId } },
+    where: { listing: { restaurantId, demo } },
     distinct: ["volunteerId"],
     select: { volunteerId: true },
   });
   const dropOffs = await prisma.foodListing.findMany({
-    where: { restaurantId, status: "delivered", dropOffId: { not: null } },
+    where: { restaurantId, status: "delivered", dropOffId: { not: null }, demo },
     distinct: ["dropOffId"],
     select: { dropOffId: true },
   });
@@ -108,26 +115,28 @@ export async function getRestaurantImpactStats(
 // food that actually reached this location. Framed as "received" rather than
 // "rescued": this is the destination's side of the same deliveries.
 export async function getDropOffImpactStats(
-  dropOffId: string
+  dropOffId: string,
+  demo: boolean
 ): Promise<ImpactStat[]> {
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   // Sequential for the same reason as getImpactStats: one pooled connection at a
-  // time keeps the impact surface off the connection-pool ceiling.
+  // time keeps the impact surface off the connection-pool ceiling. Scoped to the
+  // viewer's world so a real location's totals never include seeded demo rows.
   const delivered = await prisma.foodListing.findMany({
-    where: { dropOffId, status: "delivered" },
+    where: { dropOffId, status: "delivered", demo },
     select: { servings: true, weightLbs: true },
   });
   const arrivalsThisWeek = await prisma.pickup.count({
-    where: { deliveredAt: { gte: weekAgo }, listing: { dropOffId } },
+    where: { deliveredAt: { gte: weekAgo }, listing: { dropOffId, demo } },
   });
   const restaurants = await prisma.foodListing.findMany({
-    where: { dropOffId, status: "delivered" },
+    where: { dropOffId, status: "delivered", demo },
     distinct: ["restaurantId"],
     select: { restaurantId: true },
   });
   const volunteers = await prisma.pickup.findMany({
-    where: { deliveredAt: { not: null }, listing: { dropOffId } },
+    where: { deliveredAt: { not: null }, listing: { dropOffId, demo } },
     distinct: ["volunteerId"],
     select: { volunteerId: true },
   });
@@ -152,10 +161,11 @@ export async function getDropOffImpactStats(
 // first, capped so a long-running location's page stays light.
 export async function getDropOffDonations(
   dropOffId: string,
+  demo: boolean,
   take = 60
 ): Promise<DropOffDonation[]> {
   const rows = await prisma.foodListing.findMany({
-    where: { dropOffId, status: "delivered" },
+    where: { dropOffId, status: "delivered", demo },
     select: {
       id: true,
       title: true,
@@ -203,12 +213,14 @@ function driveHours(
 // Reliability from the event log: completed vs flaked attempts. A delivered
 // event counts for the volunteer; a released (hold expired) or failed event
 // counts against them. Non-punitive: a percentage, surfaced highest-first.
-export async function getVolunteerReliability(): Promise<Volunteer[]> {
+export async function getVolunteerReliability(demo: boolean): Promise<Volunteer[]> {
   const rows = await prisma.listingEvent.groupBy({
     by: ["actorId", "type"],
     where: {
       actorId: { not: null },
       type: { in: ["delivered", "released", "failed"] },
+      // An event's world is its listing's — keep demo/real reliability separate.
+      listing: { demo },
     },
     _count: { _all: true },
   });
@@ -255,10 +267,18 @@ type ImpactDb = Pick<typeof prisma, "listingEvent" | "foodListing" | "pickup">;
 // `delivered` event per seat, so a buddy who helped gets equal credit here.
 export async function getVolunteerImpact(
   userId: string,
+  demo: boolean,
   db: ImpactDb = prisma
 ): Promise<VolunteerImpact> {
+  // Scoped to the viewer's world: a real volunteer who explored the demo world
+  // has demo deliveries under the same actorId, so world scoping keeps their
+  // real harvest free of demo rows (an event's world is its listing's).
   const events = await db.listingEvent.findMany({
-    where: { actorId: userId, type: { in: ["delivered", "released", "failed"] } },
+    where: {
+      actorId: userId,
+      type: { in: ["delivered", "released", "failed"] },
+      listing: { demo },
+    },
     select: { type: true, listingId: true },
   });
 
