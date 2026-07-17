@@ -26,6 +26,7 @@ function pendingOrgName(value: unknown): string | null {
 // the org (who runs it → who moves food → who supplies it → who receives it),
 // not alphabetical by enum value.
 const GROUPS = [
+  { role: "super_admin", label: "Master admins" },
   { role: "org_admin", label: "Org admins" },
   { role: "volunteer", label: "Volunteers" },
   { role: "restaurant", label: "Restaurants" },
@@ -307,6 +308,17 @@ export default async function AdminUsersPage({
                               current={u.role as "volunteer" | "org_admin"}
                               demo={demo}
                             />
+                          </span>
+                          {superAdmin && (
+                            <span className="font-mono text-[13px] text-neutral-700">
+                              {u.organization?.name ?? "—"}
+                            </span>
+                          )}
+                        </div>
+                      ) : u.role === "super_admin" ? (
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="font-mono text-[11px] text-neutral-700">
+                            Master admin
                           </span>
                           {superAdmin && (
                             <span className="font-mono text-[13px] text-neutral-700">
