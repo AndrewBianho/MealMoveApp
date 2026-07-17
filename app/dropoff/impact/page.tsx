@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { DropOffImpact } from "@/components/DropOffImpact";
 import { DropOffNotLinked, DropOffTabShell } from "@/components/DropOffTabShell";
 import { loadDropOffConsole } from "@/lib/dropoffConsole";
+import { isDemo } from "@/lib/mode";
 import { getDropOffDonations, getDropOffImpactStats } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +16,9 @@ export default async function DropOffImpactPage() {
   if (!own) return <DropOffNotLinked />;
 
   // Sequential to stay off the connection-pool ceiling (see lib/stats).
-  const stats = await getDropOffImpactStats(own.id);
-  const donations = await getDropOffDonations(own.id);
+  const demo = await isDemo();
+  const stats = await getDropOffImpactStats(own.id, demo);
+  const donations = await getDropOffDonations(own.id, demo);
 
   return (
     <DropOffTabShell

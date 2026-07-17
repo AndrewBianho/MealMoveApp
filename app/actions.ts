@@ -13,6 +13,8 @@ import { passwordValid } from "@/lib/password";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { geocodeAddress } from "@/lib/geocode";
 import { cleanOrgNotes, type OrgNotesInput } from "@/lib/orgNotes";
+import { orgForEmail } from "@/lib/org";
+import { assertSameOrg } from "@/lib/orgRoster";
 import { releaseClaimFor } from "@/lib/checkins";
 import { claimsNeeded } from "@/lib/claims";
 import { findActiveClaimFor } from "@/lib/activeClaim";
@@ -214,9 +216,11 @@ export async function registerUser(input: {
     }
 
     // Volunteers are active immediately — low-stakes, and the whole point is a
-    // first-timer claiming a pickup without friction.
+    // first-timer claiming a pickup without friction. Auto-join their org by
+    // email domain (Malvern for @malvernprep.org, else the default org).
+    const org = await orgForEmail(email);
     const newUser = await prisma.user.create({
-      data: { name, email, phone, passwordHash, role: "volunteer" },
+      data: { name, email, phone, passwordHash, role: "volunteer", organizationId: org.id },
     });
     await resetLimit(`register:${ip}`);
     trackServer({ name: "signup_submitted", props: { role: "volunteer", hadInvite: false } }, newUser.id);
@@ -701,7 +705,7 @@ export async function markDelivered(listingId: string, photoUrl: string) {
       userId,
     );
   }
-  return getVolunteerImpact(userId);
+  return getVolunteerImpact(userId, await isDemo());
 }
 
 /**
@@ -1548,11 +1552,25 @@ export async function setRole(
   if (target.role === "restaurant" || target.role === "drop_off") {
     return { ok: false, error: "Partner accounts are managed at sign-up." };
   }
+
+  // Cross-org guard: an admin manages members only within their own org
+  // (defense in depth — server actions aren't route-scoped).
+  const actor = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { organizationId: true },
+  });
+  if (!assertSameOrg(actor?.organizationId ?? null, target.organizationId)) {
+    return { ok: false, error: "You can only manage members in your own organization." };
+  }
+
   if (target.role === role) return { ok: true };
 
-  // Last-admin guard — don't let the org lock itself out.
+  // Last-admin guard — don't let the org lock itself out. Scoped to the target's
+  // organization, since org admins now administer their own org.
   if (target.role === "org_admin" && role !== "org_admin") {
-    const admins = await prisma.user.count({ where: { role: "org_admin" } });
+    const admins = await prisma.user.count({
+      where: { role: "org_admin", organizationId: target.organizationId },
+    });
     if (admins <= 1) {
       return { ok: false, error: "Can't remove the last org admin." };
     }
@@ -1713,10 +1731,23 @@ export async function deleteAccount(userId: string): Promise<SignUpResult> {
     return { ok: false, error: "Pending accounts are handled with Decline." };
   }
 
-  // Last-admin guard — don't let the org lock itself out.
+  // Cross-org guard for managed members (volunteer/org_admin). Partners
+  // (restaurant/drop_off) are global, so any org admin may remove them.
+  if (target.role === "volunteer" || target.role === "org_admin") {
+    const actor = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { organizationId: true },
+    });
+    if (!assertSameOrg(actor?.organizationId ?? null, target.organizationId)) {
+      return { ok: false, error: "You can only manage members in your own organization." };
+    }
+  }
+
+  // Last-admin guard — don't let the org lock itself out. Scoped to the target's
+  // organization, since org admins now administer their own org.
   if (target.role === "org_admin") {
     const admins = await prisma.user.count({
-      where: { role: "org_admin", status: "active" },
+      where: { role: "org_admin", status: "active", organizationId: target.organizationId },
     });
     if (admins <= 1) {
       return { ok: false, error: "Can't remove the last org admin." };
@@ -1761,6 +1792,15 @@ export async function sendAnnouncementAction(
   if (b.length > ANN_BODY_MAX)
     return { ok: false, error: `Message is too long (max ${ANN_BODY_MAX}).` };
 
+  // An org admin only ever reaches their own organization's volunteers.
+  const actor = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { organizationId: true },
+  });
+  if (!actor?.organizationId) {
+    return { ok: false, error: "Your account isn't linked to an organization." };
+  }
+
   // The audience arrives from the client — validate it, never trust it.
   const audience = cleanAudience(audienceInput);
   if (!audience) return { ok: false, error: "Pick a valid group to send to." };
@@ -1769,7 +1809,7 @@ export async function sendAnnouncementAction(
 
   // Never send into the void: a group with nobody in it would create an
   // announcement no one hears.
-  if ((await countAudience(audience, world)) === 0) {
+  if ((await countAudience(audience, world, { organizationId: actor.organizationId })) === 0) {
     return { ok: false, error: "No volunteers match this group right now." };
   }
 
@@ -1779,6 +1819,7 @@ export async function sendAnnouncementAction(
     body: b,
     world,
     audience,
+    organizationId: actor.organizationId,
   });
   revalidatePath("/admin/updates");
   return { ok: true, recipientCount };
@@ -1795,13 +1836,23 @@ export async function countAudienceAction(
   { ok: true; count: number; label: string } | { ok: false; error: string }
 > {
   const session = await auth();
-  if (session?.user?.role !== "org_admin") {
+  if (session?.user?.role !== "org_admin" || !session.user.id) {
     return { ok: false, error: "Only org admins can preview a group." };
   }
   const audience = cleanAudience(audienceInput);
   if (!audience) return { ok: false, error: "Pick a valid group." };
+  // Scope the preview to the admin's org so the reach line matches the send.
+  const actor = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { organizationId: true },
+  });
+  if (!actor?.organizationId) {
+    return { ok: false, error: "Your account isn't linked to an organization." };
+  }
   const world = await getDataMode();
-  const { ids, label } = await resolveAudience(audience, world);
+  const { ids, label } = await resolveAudience(audience, world, {
+    organizationId: actor.organizationId,
+  });
   return { ok: true, count: ids.length, label };
 }
 

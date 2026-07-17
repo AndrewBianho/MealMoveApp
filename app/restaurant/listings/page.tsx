@@ -45,7 +45,7 @@ export default async function RestaurantListingsPage() {
 
   // How dependable this restaurant's pickups have been, per volunteers — a
   // private operations signal shown to the restaurant (and org admins).
-  const accuracy = restaurant ? await restaurantAccuracy(restaurant.id) : null;
+  const accuracy = restaurant ? await restaurantAccuracy(restaurant.id, demo) : null;
 
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">

@@ -54,7 +54,7 @@ test("sendAnnouncement dispatches to the resolved audience and stamps the label"
   }) as any;
 
   const res = await sendAnnouncement(
-    { authorId: "admin1", title: "T", body: "B", world: "real", audience: { kind: "everyone" } },
+    { authorId: "admin1", title: "T", body: "B", world: "real", audience: { kind: "everyone" }, organizationId: "org_x" },
     { db, dispatch }
   );
 
@@ -66,8 +66,9 @@ test("sendAnnouncement dispatches to the resolved audience and stamps the label"
     demo: false,
     audienceLabel: "Everyone",
     recipientIds: ["v1", "v2"],
+    organizationId: "org_x",
   });
-  assert.deepEqual(findWhere[0], { role: "volunteer", status: "active", dataMode: "real" });
+  assert.deepEqual(findWhere[0], { role: "volunteer", status: "active", dataMode: "real", organizationId: "org_x" });
   assert.equal(dispatched.length, 2);
   assert.equal(dispatched[0].opts.force, true);
   assert.deepEqual(updated[0], { where: { id: "ann1" }, data: { recipientCount: 2 } });
@@ -95,7 +96,7 @@ test("sendAnnouncement only reaches the audience's members", async () => {
   }) as any;
 
   const res = await sendAnnouncement(
-    { authorId: "a1", title: "T", body: "B", world: "real", audience: { kind: "new" } },
+    { authorId: "a1", title: "T", body: "B", world: "real", audience: { kind: "new" }, organizationId: "org_x" },
     { db, dispatch }
   );
 
@@ -122,7 +123,7 @@ test("sendAnnouncement throws when the resolved audience is empty (TOCTOU guard)
   await assert.rejects(
     () =>
       sendAnnouncement(
-        { authorId: "a1", title: "T", body: "B", world: "real", audience: { kind: "everyone" } },
+        { authorId: "a1", title: "T", body: "B", world: "real", audience: { kind: "everyone" }, organizationId: "org_x" },
         { db, dispatch }
       ),
     /no volunteers/i
@@ -202,4 +203,39 @@ test("listAnnouncementsFor filters by recipient, unlike the admin's listAnnounce
   await listAnnouncementsFor("v1", "real", { db });
   assert.equal(where.demo, false);
   assert.deepEqual(where.recipientIds, { has: "v1" });
+});
+
+test("sendAnnouncement stores organizationId and scopes the audience", async () => {
+  const created: any[] = [];
+  let resolveOrg: string | undefined = "unset";
+  const d: any = {
+    announcement: {
+      create: async (a: any) => {
+        created.push(a.data);
+        return { id: "a1", ...a.data };
+      },
+      update: async () => ({}),
+    },
+    user: { findMany: async () => [] },
+  };
+  await sendAnnouncement(
+    {
+      authorId: "admin1",
+      title: "Hi",
+      body: "Body",
+      world: "real",
+      audience: { kind: "everyone" },
+      organizationId: "org_malvern",
+    },
+    {
+      db: d,
+      dispatch: (async () => {}) as any,
+      resolve: (async (_a: any, _w: any, deps: any) => {
+        resolveOrg = deps?.organizationId;
+        return { ids: ["v1"], label: "Everyone" };
+      }) as any,
+    }
+  );
+  assert.equal(created[0].organizationId, "org_malvern");
+  assert.equal(resolveOrg, "org_malvern");
 });

@@ -24,15 +24,14 @@ export default async function ProfilePage() {
       phone: true,
       imageUrl: true,
       role: true,
+      organization: { select: { name: true } },
     },
   });
   if (!user) redirect("/login");
 
-  // This editable identity page is the volunteer's. Restaurant / drop-off /
-  // org-admin accounts speak for a venue or the chapter, not a personal
-  // profile, so their avatar keeps landing on the merged account+impact page.
-  if (user.role !== "volunteer") redirect("/impact");
-
+  // Editable identity for every account type — name, photo, and contact
+  // details. The role-specific numbers live on /impact; this surface is just
+  // who you are.
   return (
     <main className="mx-auto max-w-xl px-6 py-8">
       <header className="mb-6">
@@ -40,8 +39,8 @@ export default async function ProfilePage() {
           Your profile
         </h1>
         <p className="mt-1 text-[16px] text-neutral-700">
-          How you show up on Meal Move — restaurants and drop-offs see your name
-          during a rescue.
+          How you show up on Meal Move — your name and photo appear to the people
+          you coordinate a rescue with.
         </p>
       </header>
 
@@ -53,6 +52,7 @@ export default async function ProfilePage() {
             phone: user.phone ?? "",
             imageUrl: user.imageUrl,
           }}
+          organizationName={user.organization?.name ?? null}
         />
       </section>
 

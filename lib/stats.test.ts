@@ -61,7 +61,7 @@ test("aggregates impact, credits a buddy seat, and uses the weight fallback", as
     { listingId: "L1", claimedAt: at(0), deliveredAt: at(30) },
     { listingId: "L2", claimedAt: at(0), deliveredAt: at(90) },
   ];
-  const impact = await getVolunteerImpact("u1", makeDb(events, listings, pickups));
+  const impact = await getVolunteerImpact("u1", false, makeDb(events, listings, pickups));
 
   assert.equal(impact.mealsRescued, 15);
   assert.equal(impact.lbsSaved, 12); // 8 + round(5 * 0.8 = 4)
@@ -81,13 +81,13 @@ test("counts distinct restaurants once", async () => {
     { id: "L1", servings: 3, weightLbs: null, restaurantId: "r1" },
     { id: "L2", servings: 3, weightLbs: null, restaurantId: "r2" },
   ];
-  const impact = await getVolunteerImpact("u1", makeDb(events, listings));
+  const impact = await getVolunteerImpact("u1", false, makeDb(events, listings));
   assert.equal(impact.restaurantsHelped, 2);
   assert.equal(impact.completionRate, 100);
 });
 
 test("returns all zeros with no divide-by-zero for a new volunteer", async () => {
-  const impact = await getVolunteerImpact("nobody", makeDb([], []));
+  const impact = await getVolunteerImpact("nobody", false, makeDb([], []));
   assert.deepEqual(impact, {
     mealsRescued: 0,
     lbsSaved: 0,

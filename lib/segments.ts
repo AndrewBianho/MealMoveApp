@@ -82,15 +82,22 @@ async function findAnchor(
 export async function resolveAudience(
   audience: Audience,
   world: World,
-  deps: { db?: SegDb; now?: Date } = {}
+  deps: { db?: SegDb; now?: Date; organizationId?: string } = {}
 ): Promise<ResolvedAudience> {
   const db = deps.db ?? prisma;
   const now = deps.now ?? new Date();
   const demo = world === "demo";
 
-  // One base set, filtered five ways.
+  // One base set, filtered five ways. When an organizationId is given, the
+  // roster is scoped to that org's volunteers so an org admin only ever reaches
+  // their own organization.
   const base = await db.user.findMany({
-    where: { role: "volunteer", status: "active", dataMode: world },
+    where: {
+      role: "volunteer",
+      status: "active",
+      dataMode: world,
+      ...(deps.organizationId ? { organizationId: deps.organizationId } : {}),
+    },
     select: { id: true, lat: true, lng: true },
   });
 
@@ -211,7 +218,7 @@ export async function resolveAudience(
 export async function countAudience(
   audience: Audience,
   world: World,
-  deps: { db?: SegDb; now?: Date } = {}
+  deps: { db?: SegDb; now?: Date; organizationId?: string } = {}
 ): Promise<number> {
   return (await resolveAudience(audience, world, deps)).ids.length;
 }

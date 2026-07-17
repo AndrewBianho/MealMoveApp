@@ -29,6 +29,24 @@ export async function seedDemo(prisma: PrismaClient) {
   // All demo accounts share the password "MealMove1".
   const passwordHash = await bcrypt.hash("MealMove1", 10);
 
+  // Two starting organizations. Malvern auto-joins @malvernprep.org volunteers;
+  // everyone else falls to the default. Exactly one isDefault org. Upserted so
+  // reruns (full reseed or demo-only reset) don't create duplicate rows.
+  const defaultOrg = await prisma.organization.upsert({
+    where: { id: "org_default_cfr" },
+    update: {},
+    create: { id: "org_default_cfr", name: "Campus Food Rescue", isDefault: true },
+  });
+  const malvernOrg = await prisma.organization.upsert({
+    where: { id: "org_malvern" },
+    update: {},
+    create: { id: "org_malvern", name: "Malvern", emailDomain: "malvernprep.org" },
+  });
+  // Volunteers and org admins auto-join by email domain; restaurant/drop_off
+  // accounts stay org-less (partners are global, never org-scoped).
+  const orgForEmail = (email: string) =>
+    email.toLowerCase().endsWith("@malvernprep.org") ? malvernOrg.id : defaultOrg.id;
+
   // One anchor for the whole seed. Demo listings store this as their postedAt
   // and derive expiresAt from it, so "minutes left" reads as a fixed offset
   // (expiresAt − postedAt) instead of ticking against the wall clock — demo
@@ -130,10 +148,28 @@ export async function seedDemo(prisma: PrismaClient) {
     // into notifications so the escalating broadcast has demo targets to reach.
     const { lat, lng } = placeAround(i);
     const geo = { lat, lng, notificationsEnabled: true };
+    const organizationId = orgForEmail(email);
     const u = await prisma.user.upsert({
       where: { email },
-      update: { name, role: "volunteer", passwordHash, dataMode: "demo", demo: true, ...geo },
-      create: { name, email, role: "volunteer", passwordHash, dataMode: "demo", demo: true, ...geo },
+      update: {
+        name,
+        role: "volunteer",
+        passwordHash,
+        dataMode: "demo",
+        demo: true,
+        organizationId,
+        ...geo,
+      },
+      create: {
+        name,
+        email,
+        role: "volunteer",
+        passwordHash,
+        dataMode: "demo",
+        demo: true,
+        organizationId,
+        ...geo,
+      },
     });
     volunteerId.set(name, u.id);
   }
@@ -183,7 +219,13 @@ export async function seedDemo(prisma: PrismaClient) {
   });
   await prisma.user.upsert({
     where: { email: "admin@campus.edu" },
-    update: { passwordHash, role: "org_admin", dataMode: "demo", demo: true },
+    update: {
+      passwordHash,
+      role: "org_admin",
+      dataMode: "demo",
+      demo: true,
+      organizationId: orgForEmail("admin@campus.edu"),
+    },
     create: {
       name: "Org admin",
       email: "admin@campus.edu",
@@ -191,6 +233,7 @@ export async function seedDemo(prisma: PrismaClient) {
       passwordHash,
       dataMode: "demo",
       demo: true,
+      organizationId: orgForEmail("admin@campus.edu"),
     },
   });
 

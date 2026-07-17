@@ -16,6 +16,8 @@ import { restaurantAccuracy } from "@/lib/accuracy";
 import { getListings } from "@/lib/listings";
 import { isDemo } from "@/lib/mode";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/auth";
+import { assertSameOrg } from "@/lib/orgRoster";
 import type { VolunteerImpact } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +35,7 @@ export default async function MemberDetailPage({
   params: { id: string };
 }) {
   const demo = await isDemo();
+  const session = await auth();
   const user = await prisma.user.findUnique({
     where: { id: params.id },
     select: {
@@ -44,12 +47,28 @@ export default async function MemberDetailPage({
       createdAt: true,
       demo: true,
       imageUrl: true,
+      organizationId: true,
       restaurant: { select: { id: true, name: true } },
       dropOff: { select: { id: true, name: true } },
     },
   });
   // Only members in the viewer's world — demo and real never mix.
   if (!user || user.demo !== demo) notFound();
+
+  // Organizations scope volunteers/admins: an org admin can only open a managed
+  // member in their own org. Partners (restaurant/drop_off) are global and skip
+  // this guard. Block cross-org deep-links so one org can't view another's people.
+  if (user.role === "volunteer" || user.role === "org_admin") {
+    const actor = session?.user?.id
+      ? await prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { organizationId: true },
+        })
+      : null;
+    if (!assertSameOrg(actor?.organizationId ?? null, user.organizationId)) {
+      notFound();
+    }
+  }
 
   const role = user.role;
   const joined = new Intl.DateTimeFormat("en-US", {
@@ -62,7 +81,7 @@ export default async function MemberDetailPage({
   let volunteerImpact: VolunteerImpact | null = null;
   let past: Awaited<ReturnType<typeof getListings>> = [];
   if (role === "volunteer") {
-    volunteerImpact = await getVolunteerImpact(user.id);
+    volunteerImpact = await getVolunteerImpact(user.id, demo);
     const all = await getListings(user.id);
     past = all.filter(
       (l) => l.mine && ["delivered", "expired", "failed"].includes(l.status)
@@ -72,15 +91,15 @@ export default async function MemberDetailPage({
   let restaurantStats: Awaited<ReturnType<typeof getRestaurantImpactStats>> = [];
   let accuracy: Awaited<ReturnType<typeof restaurantAccuracy>> | null = null;
   if (role === "restaurant" && user.restaurant) {
-    restaurantStats = await getRestaurantImpactStats(user.restaurant.id);
-    accuracy = await restaurantAccuracy(user.restaurant.id);
+    restaurantStats = await getRestaurantImpactStats(user.restaurant.id, demo);
+    accuracy = await restaurantAccuracy(user.restaurant.id, demo);
   }
 
   let dropOffStats: Awaited<ReturnType<typeof getDropOffImpactStats>> = [];
   let donations: Awaited<ReturnType<typeof getDropOffDonations>> = [];
   if (role === "drop_off" && user.dropOff) {
-    dropOffStats = await getDropOffImpactStats(user.dropOff.id);
-    donations = await getDropOffDonations(user.dropOff.id);
+    dropOffStats = await getDropOffImpactStats(user.dropOff.id, demo);
+    donations = await getDropOffDonations(user.dropOff.id, demo);
   }
 
   // Restaurant metric ramp reads food-first (meals, lbs, hours), then operation.

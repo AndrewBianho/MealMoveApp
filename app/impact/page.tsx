@@ -13,6 +13,7 @@ import {
   getDropOffDonations,
 } from "@/lib/stats";
 import { getListings } from "@/lib/listings";
+import { isDemo } from "@/lib/mode";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import type { VolunteerImpact } from "@/lib/types";
@@ -43,6 +44,9 @@ export default async function ImpactPage() {
   });
   if (!user) redirect("/login");
 
+  // The whole page reads the viewer's current world; demo and real never mix.
+  const demo = await isDemo();
+
   const role = user.role;
   const isOrgAdmin = role === "org_admin";
   const isVolunteer = role === "volunteer";
@@ -59,7 +63,7 @@ export default async function ImpactPage() {
   let myImpact: VolunteerImpact | null = null;
   let myPast: Awaited<ReturnType<typeof getListings>> = [];
   if (isVolunteer) {
-    myImpact = await getVolunteerImpact(userId);
+    myImpact = await getVolunteerImpact(userId, demo);
     const all = await getListings(userId);
     myPast = all.filter(
       (l) => l.mine && ["delivered", "expired", "failed"].includes(l.status)
@@ -70,8 +74,8 @@ export default async function ImpactPage() {
   let dropOffStats: Awaited<ReturnType<typeof getDropOffImpactStats>> = [];
   let donations: Awaited<ReturnType<typeof getDropOffDonations>> = [];
   if (isDropOff && user.dropOffId) {
-    dropOffStats = await getDropOffImpactStats(user.dropOffId);
-    donations = await getDropOffDonations(user.dropOffId);
+    dropOffStats = await getDropOffImpactStats(user.dropOffId, demo);
+    donations = await getDropOffDonations(user.dropOffId, demo);
   }
 
   // Restaurant / volunteer / org-admin all read the ramp of aggregate stats
@@ -85,9 +89,9 @@ export default async function ImpactPage() {
   if (!isDropOff) {
     try {
       stats = restaurant
-        ? await getRestaurantImpactStats(restaurant.id)
-        : await getImpactStats();
-      if (isOrgAdmin) volunteers = await getVolunteerReliability();
+        ? await getRestaurantImpactStats(restaurant.id, demo)
+        : await getImpactStats(demo);
+      if (isOrgAdmin) volunteers = await getVolunteerReliability(demo);
     } catch {
       loadFailed = true;
     }

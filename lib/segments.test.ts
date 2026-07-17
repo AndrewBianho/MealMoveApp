@@ -210,6 +210,37 @@ test("countAudience returns the resolved size", async () => {
   assert.equal(await countAudience({ kind: "everyone" }, "real", { db: db() }), 3);
 });
 
+test("everyone is scoped to the given organization when provided", async () => {
+  let where: any = null;
+  const d = db({
+    user: {
+      findMany: async (a: any) => {
+        where = a.where;
+        return VOLS;
+      },
+    },
+  });
+  await resolveAudience({ kind: "everyone" }, "real", { db: d, organizationId: "org_malvern" });
+  assert.equal(where.organizationId, "org_malvern");
+  assert.equal(where.role, "volunteer");
+  assert.equal(where.status, "active");
+  assert.equal(where.dataMode, "real");
+});
+
+test("without an organizationId the base query is not org-scoped", async () => {
+  let where: any = null;
+  const d = db({
+    user: {
+      findMany: async (a: any) => {
+        where = a.where;
+        return VOLS;
+      },
+    },
+  });
+  await resolveAudience({ kind: "everyone" }, "real", { db: d });
+  assert.equal("organizationId" in where, false);
+});
+
 test("cleanAudience accepts valid shapes and rejects bad ones", () => {
   assert.deepEqual(cleanAudience({ kind: "everyone" }), { kind: "everyone" });
   assert.deepEqual(cleanAudience({ kind: "new" }), { kind: "new" });
