@@ -13,7 +13,7 @@ test("rosterWhere scopes managed roles to the admin's org but keeps partners glo
   assert.deepEqual(w.OR[0], { role: { in: ["restaurant", "drop_off"] } });
   // managed branch: scoped to the org
   assert.deepEqual(w.OR[1], {
-    role: { in: ["volunteer", "org_admin"] },
+    role: { in: ["volunteer", "org_admin", "super_admin"] },
     organizationId: "org_malvern",
   });
 });
@@ -23,6 +23,24 @@ test("rosterWhere with no admin org shows partners only (managed roles excluded)
   assert.equal(w.demo, true);
   assert.equal(w.OR.length, 1);
   assert.deepEqual(w.OR[0], { role: { in: ["restaurant", "drop_off"] } });
+});
+
+test("rosterWhere global mode includes managed roles across all orgs", () => {
+  const w: any = rosterWhere(null, false, { global: true });
+  // Two OR branches: partners (always) + managed roles with no org filter.
+  const managed = w.OR.find(
+    (b: any) => Array.isArray(b.role?.in) && b.role.in.includes("org_admin")
+  );
+  assert.ok(managed, "managed-role branch present in global mode");
+  assert.equal(managed.organizationId, undefined, "no org filter in global mode");
+});
+
+test("rosterWhere non-global still scopes managed roles to the org", () => {
+  const w: any = rosterWhere("org_x", false);
+  const managed = w.OR.find(
+    (b: any) => Array.isArray(b.role?.in) && b.role.in.includes("org_admin")
+  );
+  assert.equal(managed.organizationId, "org_x");
 });
 
 test("assertSameOrg is true only for matching non-null orgs", () => {
