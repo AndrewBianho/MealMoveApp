@@ -1557,9 +1557,9 @@ export async function setRole(
   // Counts for the last-admin guards.
   const [orgAdminCount, superAdminCount] = await Promise.all([
     prisma.user.count({
-      where: { role: "org_admin", organizationId: target.organizationId },
+      where: { role: "org_admin", status: "active", organizationId: target.organizationId },
     }),
-    prisma.user.count({ where: { role: "super_admin" } }),
+    prisma.user.count({ where: { role: "super_admin", status: "active" } }),
   ]);
 
   const error = roleChangeError({
@@ -1734,9 +1734,9 @@ export async function deleteAccount(userId: string): Promise<SignUpResult> {
   });
   const [orgAdminCount, superAdminCount] = await Promise.all([
     prisma.user.count({
-      where: { role: "org_admin", organizationId: target.organizationId },
+      where: { role: "org_admin", status: "active", organizationId: target.organizationId },
     }),
-    prisma.user.count({ where: { role: "super_admin" } }),
+    prisma.user.count({ where: { role: "super_admin", status: "active" } }),
   ]);
 
   const error = deleteAccountError({
