@@ -1,3 +1,6 @@
+// The `any` casts below inspect the shape of the returned Prisma `where` object
+// in tests; they don't warrant a full type. Same convention as lib/stats.test.ts.
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { rosterWhere, assertSameOrg } from "./orgRoster";
