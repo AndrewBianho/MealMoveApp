@@ -1,12 +1,15 @@
 import Link from "next/link";
+import type { Prisma } from "@prisma/client";
 import { RoleSelect } from "@/components/RoleSelect";
 import { ApprovalActions } from "@/components/ApprovalActions";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { Avatar } from "@/components/Avatar";
+import { GlobalRosterControls } from "@/components/GlobalRosterControls";
 import { auth } from "@/auth";
 import { requireRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { isDemo } from "@/lib/mode";
+import { isSuperAdmin } from "@/lib/roles";
 import { rosterWhere } from "@/lib/orgRoster";
 
 export const dynamic = "force-dynamic";
@@ -37,15 +40,24 @@ type RosterUser = {
   imageUrl: string | null;
   restaurant: { name: string } | null;
   dropOff: { name: string } | null;
+  organization: { name: string } | null;
 };
 
-export default async function AdminUsersPage() {
-  await requireRole("org_admin");
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ org?: string; q?: string }>;
+}) {
+  const actorUser = await requireRole("org_admin", "super_admin");
   const session = await auth();
   // Demo org-admins are showcase-only: they can browse the roster but the
   // server blocks them from approving, declining, or changing real accounts, so
   // disable the controls and say why rather than let a click fail.
   const demo = await isDemo();
+  // A super admin (master admin) sees every org's roster, plus an org filter
+  // and email search; a regular org admin's view is unchanged below.
+  const superAdmin = isSuperAdmin(actorUser.role);
+  const { org: orgFilter, q } = await searchParams;
   // Scope the roster to the viewer's world — demo and real never mix. A demo
   // org-admin (or any account browsing demo) sees only the curated demo
   // accounts, never real people; a real admin sees only real accounts.
@@ -59,13 +71,27 @@ export default async function AdminUsersPage() {
     : null;
   const adminOrgId = actor?.organizationId ?? null;
 
+  const rosterBase = superAdmin
+    ? rosterWhere(null, demo, { global: true })
+    : rosterWhere(adminOrgId, demo);
+
+  // Super-admin-only filters, ANDed onto the base roster.
+  const filters: Prisma.UserWhereInput[] = [];
+  if (superAdmin && orgFilter) filters.push({ organizationId: orgFilter });
+  if (superAdmin && q) {
+    filters.push({ email: { contains: q, mode: "insensitive" } });
+  }
+  const rosterFilter: Prisma.UserWhereInput =
+    filters.length > 0 ? { AND: [rosterBase, ...filters] } : rosterBase;
+
   // Explicit select — phone is deliberately omitted so a volunteer's number is
   // never even fetched into admin-facing code (the sign-up promise, kept in code).
-  const [users, pending] = await Promise.all([
+  const [users, pending, orgs] = await Promise.all([
     prisma.user.findMany({
       // Active accounts only — pending partners live in their own queue below.
-      // Managed roles scoped to this admin's org; partners global.
-      where: rosterWhere(adminOrgId, demo),
+      // Managed roles scoped to this admin's org (or every org for a super
+      // admin); partners global.
+      where: rosterFilter,
       orderBy: { name: "asc" },
       select: {
         id: true,
@@ -75,6 +101,7 @@ export default async function AdminUsersPage() {
         imageUrl: true,
         restaurant: { select: { name: true } },
         dropOff: { select: { name: true } },
+        organization: { select: { name: true } },
       },
     }),
     prisma.user.findMany({
@@ -82,6 +109,14 @@ export default async function AdminUsersPage() {
       orderBy: { createdAt: "asc" },
       select: { id: true, name: true, email: true, role: true, pendingOrg: true },
     }),
+    // Org list for the filter dropdown — only a super admin needs it, so a
+    // regular org admin's page load never pays for this query.
+    superAdmin
+      ? prisma.organization.findMany({
+          select: { id: true, name: true },
+          orderBy: { name: "asc" },
+        })
+      : Promise.resolve([]),
   ]);
 
   const groups = GROUPS.map((g) => ({
@@ -101,6 +136,8 @@ export default async function AdminUsersPage() {
           can&apos;t be removed.
         </p>
       </header>
+
+      {superAdmin && <GlobalRosterControls orgs={orgs} />}
 
       {demo && (
         <div className="mb-6 rounded-xl border border-transit-200/60 bg-transit-50 px-4 py-3 text-sm text-transit-800">
@@ -263,13 +300,20 @@ export default async function AdminUsersPage() {
                       className="min-w-0 pl-11 md:table-cell md:px-4 md:py-3 md:pl-4"
                     >
                       {managed ? (
-                        <span className="relative z-10 inline-block">
-                          <RoleSelect
-                            userId={u.id}
-                            current={u.role as "volunteer" | "org_admin"}
-                            demo={demo}
-                          />
-                        </span>
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="relative z-10 inline-block">
+                            <RoleSelect
+                              userId={u.id}
+                              current={u.role as "volunteer" | "org_admin"}
+                              demo={demo}
+                            />
+                          </span>
+                          {superAdmin && (
+                            <span className="font-mono text-[13px] text-neutral-700">
+                              {u.organization?.name ?? "—"}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <>
                           <span className="font-mono text-[11px] text-neutral-700">
