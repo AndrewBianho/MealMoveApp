@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import type { Role } from "@prisma/client";
 import { auth } from "@/auth";
 import { ROLE_HOME } from "@/auth.config";
+import { roleAllowed } from "@/lib/roles";
 
 // Server-side authorization for pages, layouts, and route segments.
 //
@@ -29,6 +30,7 @@ export async function requireUser(): Promise<SessionUser> {
  */
 export async function requireRole(...roles: Role[]): Promise<SessionUser> {
   const user = await requireUser();
-  if (!roles.includes(user.role)) redirect(ROLE_HOME[user.role]);
+  // A super admin passes every gate; everyone else must be listed.
+  if (!roleAllowed(user.role, roles)) redirect(ROLE_HOME[user.role]);
   return user;
 }

@@ -13,7 +13,7 @@ export const ROLE_HOME: Record<Role, string> = {
   restaurant: "/restaurant",
   drop_off: "/dropoff",
   org_admin: "/",
-  super_admin: "/",
+  super_admin: "/admin/analytics",
 };
 
 // Role-restricted route prefixes. Anything not listed is open to any signed-in
@@ -48,6 +48,10 @@ export const authConfig = {
       if (isAuthPage) {
         return Response.redirect(new URL(ROLE_HOME[user.role], nextUrl));
       }
+
+      // Master admin monitors globally — reachable on every route (still must be
+      // signed in, handled above).
+      if (user.role === "super_admin") return true;
 
       const rule = ACCESS.find((r) => matches(path, r.prefix));
       if (rule && !rule.roles.includes(user.role)) {
