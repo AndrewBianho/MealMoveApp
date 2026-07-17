@@ -4,6 +4,7 @@ import { getListings } from "@/lib/listings";
 import { getActiveNoticesByDropOff } from "@/lib/dropoffNotices";
 import { isDemo } from "@/lib/mode";
 import { prisma } from "@/lib/prisma";
+import { isAdmin } from "@/lib/roles";
 
 // Shared data for the drop-off console, now split across four tab routes
 // (About us / Conversations / Incoming / Impact). Each route loads this once
@@ -18,7 +19,7 @@ export async function loadDropOffConsole() {
   // `org_admin` (redirected on to analytics by each tab). Volunteers and
   // restaurants are turned away here, not just by middleware.
   const { id: viewerId, role } = await requireRole("drop_off", "org_admin");
-  const isOrgAdmin = role === "org_admin";
+  const isOrgAdmin = isAdmin(role);
 
   let myDropOffId: string | null = null;
   if (!isOrgAdmin && viewerId) {

@@ -4,6 +4,7 @@ import { RecurringPostManager } from "@/components/RecurringPostManager";
 import { TeamPanel } from "@/components/TeamPanel";
 import { auth } from "@/auth";
 import { requireRole } from "@/lib/authz";
+import { isAdmin } from "@/lib/roles";
 import { isDemo } from "@/lib/mode";
 import { prisma } from "@/lib/prisma";
 import { countActiveVolunteersNear } from "@/lib/nearby";
@@ -21,7 +22,7 @@ export default async function RestaurantPage() {
   const session = await auth();
   // Org admins oversee the chapter; they don't run a restaurant account, so the
   // posting surface is off-limits — send them to their analytics home.
-  if (session?.user?.role === "org_admin") redirect("/admin/analytics");
+  if (isAdmin(session?.user?.role)) redirect("/admin/analytics");
   const me = session?.user?.id
     ? await prisma.user.findUnique({
         where: { id: session.user.id },

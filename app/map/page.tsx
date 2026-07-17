@@ -2,6 +2,7 @@ import { RescueMap } from "@/components/RescueMap";
 import { getMapData } from "@/lib/map";
 import { auth } from "@/auth";
 import { requireRole } from "@/lib/authz";
+import { isAdmin } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +12,7 @@ export default async function MapPage() {
     getMapData(),
     auth(),
   ]);
-  const canClaim = session?.user?.role !== "org_admin";
+  const canClaim = !isAdmin(session?.user?.role);
 
   return (
     // Full-bleed: fill the viewport below the sticky header (and above the mobile

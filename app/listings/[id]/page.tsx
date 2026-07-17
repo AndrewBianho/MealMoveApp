@@ -8,6 +8,7 @@ import { findActiveClaimFor } from "@/lib/activeClaim";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/authz";
+import { isAdmin } from "@/lib/roles";
 import { isDemo } from "@/lib/mode";
 import type { DropOffChoice } from "@/lib/types";
 
@@ -20,7 +21,7 @@ export default async function ListingDetailPage({
 }) {
   const viewer = await requireUser();
   const viewerId = viewer.id;
-  const canClaim = viewer.role !== "org_admin";
+  const canClaim = !isAdmin(viewer.role);
   const demo = await isDemo();
   const listing = await getListing(params.id, viewerId);
 

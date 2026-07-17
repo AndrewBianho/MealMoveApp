@@ -11,6 +11,7 @@ import { getDataMode } from "@/lib/mode";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { requireRole } from "@/lib/authz";
+import { isAdmin } from "@/lib/roles";
 
 // Reads live data per request (and after revalidation from server actions).
 export const dynamic = "force-dynamic";
@@ -22,7 +23,7 @@ export default async function FeedPage() {
   const session = await auth();
   // Org admins oversee rather than claim — the available-pickups feed isn't
   // their surface, so the root path sends them to their analytics home.
-  if (session?.user?.role === "org_admin") redirect("/admin/analytics");
+  if (isAdmin(session?.user?.role)) redirect("/admin/analytics");
   const viewerId = session?.user?.id;
   const listings = await getListings(viewerId);
   const world = await getDataMode();

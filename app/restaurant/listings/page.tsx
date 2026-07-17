@@ -3,6 +3,7 @@ import { RestaurantListings } from "@/components/RestaurantListings";
 import { RestaurantAccuracySummary } from "@/components/RestaurantAccuracySummary";
 import { auth } from "@/auth";
 import { requireRole } from "@/lib/authz";
+import { isAdmin } from "@/lib/roles";
 import { getListings } from "@/lib/listings";
 import { isDemo } from "@/lib/mode";
 import { prisma } from "@/lib/prisma";
@@ -22,7 +23,7 @@ export default async function RestaurantListingsPage() {
   const session = await auth();
   // Org admins oversee the chapter, not any one restaurant's listings — send
   // them to their analytics home rather than showing this tracking surface.
-  if (session?.user?.role === "org_admin") redirect("/admin/analytics");
+  if (isAdmin(session?.user?.role)) redirect("/admin/analytics");
   const me = session?.user?.id
     ? await prisma.user.findUnique({
         where: { id: session.user.id },
