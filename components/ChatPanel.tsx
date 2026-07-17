@@ -19,6 +19,7 @@ const ROLE_LABEL: Record<Role, string> = {
   restaurant: "restaurant",
   drop_off: "drop-off",
   org_admin: "org admin",
+  super_admin: "master admin",
 };
 
 const POLL_MS = 4000;

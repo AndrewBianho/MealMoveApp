@@ -22,6 +22,9 @@ enum Role {
   // location is an org_admin capability, not this role's.
   drop_off
   org_admin
+  // Global, cross-org master admin. Not self-registerable (sign-up offers only
+  // the three public roles); granted by role change or the promote script.
+  super_admin
 }
 
 // A drop-off's self-reported appetite for food right now — a standing, manual

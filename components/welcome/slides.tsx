@@ -68,6 +68,40 @@ const THEME_NAV: Slide = {
   art: "themenav",
 };
 
+const SLIDES_BY_ROLE_ORG_ADMIN_DECK: Deck = {
+  home: "/",
+  cta: "Go to the feed",
+  slides: [
+    WELCOME(
+      "You're running the chapter. Here's a tour of what your volunteers, restaurants, and drop-offs now have."
+    ),
+    MAP_ROUTE,
+    {
+      ...CLAIM,
+      title: "Claim, deliver, celebrate",
+      body: "Volunteers hold a pickup, deliver it, and get a calm celebration of the meals saved. Fewer abandoned pickups.",
+    },
+    {
+      id: "members",
+      statusCode: "members",
+      tone: "clay",
+      title: "Provision your teams",
+      body: "Approve new restaurants and drop-offs, assign roles, and manage everyone from one members page.",
+      art: "team",
+    },
+    {
+      ...RELIABILITY,
+      title: "Reliability at a glance",
+      body: "See who's showing up with calm bars and percentages. Encouraging, never a leaderboard.",
+    },
+    {
+      ...THEME_NAV,
+      title: "Works on every phone",
+      body: "Bottom-tab navigation and a light or dark theme, so the whole org can run it from a pocket.",
+    },
+  ],
+};
+
 export const SLIDES_BY_ROLE: Record<Role, Deck> = {
   volunteer: {
     home: "/",
@@ -153,37 +187,6 @@ export const SLIDES_BY_ROLE: Record<Role, Deck> = {
     ],
   },
 
-  org_admin: {
-    home: "/",
-    cta: "Go to the feed",
-    slides: [
-      WELCOME(
-        "You're running the chapter. Here's a tour of what your volunteers, restaurants, and drop-offs now have."
-      ),
-      MAP_ROUTE,
-      {
-        ...CLAIM,
-        title: "Claim, deliver, celebrate",
-        body: "Volunteers hold a pickup, deliver it, and get a calm celebration of the meals saved. Fewer abandoned pickups.",
-      },
-      {
-        id: "members",
-        statusCode: "members",
-        tone: "clay",
-        title: "Provision your teams",
-        body: "Approve new restaurants and drop-offs, assign roles, and manage everyone from one members page.",
-        art: "team",
-      },
-      {
-        ...RELIABILITY,
-        title: "Reliability at a glance",
-        body: "See who's showing up with calm bars and percentages. Encouraging, never a leaderboard.",
-      },
-      {
-        ...THEME_NAV,
-        title: "Works on every phone",
-        body: "Bottom-tab navigation and a light or dark theme, so the whole org can run it from a pocket.",
-      },
-    ],
-  },
+  org_admin: SLIDES_BY_ROLE_ORG_ADMIN_DECK,
+  super_admin: SLIDES_BY_ROLE_ORG_ADMIN_DECK,
 };

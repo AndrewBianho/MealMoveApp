@@ -53,6 +53,8 @@ const NAV_BY_ROLE: Record<Role, Item[]> = {
   // don't claim). They lead with members (people), then impact and analytics
   // (the stats) and reliability + partner notes (restaurants).
   org_admin: [MEMBERS, ADMIN_UPDATES, IMPACT, ANALYTICS, RELIABILITY, PARTNERS],
+  // Master admin uses the same augmented /admin console as org admins.
+  super_admin: [MEMBERS, ADMIN_UPDATES, IMPACT, ANALYTICS, RELIABILITY, PARTNERS],
 };
 
 // Line icons for the mobile bottom bar / more-sheet, keyed by Item.icon.

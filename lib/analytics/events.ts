@@ -1,7 +1,7 @@
 // lib/analytics/events.ts
 // Vendor-agnostic event taxonomy. Props here are pre-sanitization shapes;
 // identify.ts strips any PII before an event leaves the process.
-export type Role = "volunteer" | "restaurant" | "drop_off" | "org_admin";
+export type Role = "volunteer" | "restaurant" | "drop_off" | "org_admin" | "super_admin";
 
 export type AnalyticsEvent =
   // auth & onboarding

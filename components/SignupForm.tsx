@@ -14,6 +14,7 @@ import { registerUser, findPendingInvite } from "@/app/actions";
 import { trackClient } from "@/lib/analytics/client";
 
 type Role = "volunteer" | "restaurant" | "drop_off";
+type RoleLabel = Role | "org_admin" | "super_admin";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TOTAL = 6;
@@ -23,17 +24,21 @@ const ROLES: { id: Role; label: string; blurb: string }[] = [
   { id: "restaurant", label: "Restaurant", blurb: "Post surplus food for volunteers to claim." },
   { id: "drop_off", label: "Drop-off", blurb: "Receive and distribute rescued food." },
 ];
-const ROLE_LABEL: Record<Role, string> = {
+const ROLE_LABEL: Record<RoleLabel, string> = {
   volunteer: "Volunteer",
   restaurant: "Restaurant",
   drop_off: "Drop-off",
+  org_admin: "Org admin",
+  super_admin: "Master admin",
 };
 
 // Notification copy adapts to the role so the promise is concrete, not generic.
-const NOTIF_COPY: Record<Role, { email: string; sms: string }> = {
+const NOTIF_COPY: Record<RoleLabel, { email: string; sms: string }> = {
   volunteer: { email: "New pickups near you.", sms: "Time-sensitive pickup alerts." },
   restaurant: { email: "Claim and reminder updates.", sms: "When a volunteer is on the way." },
   drop_off: { email: "Incoming drop-off summaries.", sms: "When a delivery is inbound." },
+  org_admin: { email: "Chapter updates and reports.", sms: "Important operational alerts." },
+  super_admin: { email: "Chapter updates and reports.", sms: "Important operational alerts." },
 };
 
 // Per-step width classes for the progress fill (no inline styles — Tailwind only).

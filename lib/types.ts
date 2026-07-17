@@ -4,7 +4,7 @@
 
 import type { RetrievalHours } from "./hours";
 
-export type Role = "volunteer" | "restaurant" | "drop_off" | "org_admin";
+export type Role = "volunteer" | "restaurant" | "drop_off" | "org_admin" | "super_admin";
 
 /** A drop-off's self-reported appetite for food right now — a standing, manual
  *  signal it sets, shown to volunteers choosing where to deliver. Not urgency. */

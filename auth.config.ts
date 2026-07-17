@@ -13,6 +13,7 @@ export const ROLE_HOME: Record<Role, string> = {
   restaurant: "/restaurant",
   drop_off: "/dropoff",
   org_admin: "/",
+  super_admin: "/",
 };
 
 // Role-restricted route prefixes. Anything not listed is open to any signed-in
