@@ -3,10 +3,12 @@ import { auth } from "@/auth";
 import { requireRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 import { isDemo } from "@/lib/mode";
+import { isSuperAdmin } from "@/lib/roles";
 import { getHealthMetrics, type Ratio } from "@/lib/health";
 import { getDashboardData } from "@/lib/analytics/dashboardData";
 import { getOrgVolunteerImpact } from "@/lib/orgStats";
 import { ACCENTS, type MetricAccent } from "@/components/MetricCard";
+import { OrgStatsSwitcher } from "@/components/OrgStatsSwitcher";
 import { cn } from "@/components/cn";
 
 export const dynamic = "force-dynamic";
@@ -79,12 +81,12 @@ function FunnelBar({ label, count, total }: { label: string; count: number; tota
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ days?: string }>;
+  searchParams: Promise<{ days?: string; org?: string }>;
 }) {
   await requireRole("org_admin");
   const session = await auth();
   const demo = await isDemo();
-  const { days } = await searchParams;
+  const { days, org: orgParam } = await searchParams;
   const windowDays = WINDOWS.some((w) => String(w.days) === days)
     ? Number(days)
     : 30;
@@ -95,18 +97,45 @@ export default async function AnalyticsPage({
   ]);
   const funnelTotal = d.funnel.claimed;
 
-  // The acting admin's own organization — its volunteers' lifetime impact.
-  // Skipped gracefully if the admin isn't linked to an org.
+  // A super admin sees every org and can pick one to scope the volunteer-
+  // centric sections below; an org admin is always scoped to their own.
+  const superAdmin = isSuperAdmin(session?.user?.role);
+  const orgs = superAdmin
+    ? await prisma.organization.findMany({
+        select: { id: true, name: true },
+        orderBy: { name: "asc" },
+      })
+    : [];
+
+  // The acting admin's own organization — used for a plain org admin's scope,
+  // and as the default label source. Skipped gracefully if unlinked.
   const actor = session?.user?.id
     ? await prisma.user.findUnique({
         where: { id: session.user.id },
         select: { organization: { select: { name: true, id: true } } },
       })
     : null;
-  const org = actor?.organization ?? null;
-  const orgImpact = org
-    ? await getOrgVolunteerImpact(org.id, { world: demo ? "demo" : "real" })
+
+  // For a super admin, the selected org comes from `?org=` (none = all orgs,
+  // no org section rendered); everyone else keeps their own organization.
+  const selectedOrgId = superAdmin
+    ? orgParam ?? null
+    : (actor?.organization?.id ?? null);
+  const selectedOrgName = superAdmin
+    ? (orgs.find((o) => o.id === selectedOrgId)?.name ?? null)
+    : (actor?.organization?.name ?? null);
+  const orgImpact = selectedOrgId
+    ? await getOrgVolunteerImpact(selectedOrgId, { world: demo ? "demo" : "real" })
     : null;
+
+  // Preserve `?org=` across the time-window links so a super admin's org
+  // selection survives switching windows.
+  function withDays(dayCount: number): string {
+    const next = new URLSearchParams();
+    next.set("days", String(dayCount));
+    if (superAdmin && orgParam) next.set("org", orgParam);
+    return `/admin/analytics?${next.toString()}`;
+  }
 
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">
@@ -126,7 +155,7 @@ export default async function AnalyticsPage({
           return (
             <Link
               key={w.days}
-              href={`/admin/analytics?days=${w.days}`}
+              href={withDays(w.days)}
               aria-current={active ? "page" : undefined}
               className={cn(
                 "rounded-full px-4 py-2 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400",
@@ -140,6 +169,8 @@ export default async function AnalyticsPage({
           );
         })}
       </nav>
+
+      {superAdmin && <OrgStatsSwitcher orgs={orgs} />}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Metric
@@ -186,19 +217,21 @@ export default async function AnalyticsPage({
         />
       </div>
 
-      {org && orgImpact && (
+      {selectedOrgId && selectedOrgName && orgImpact && (
         <section className="mt-8">
           <h2 className="mb-1 font-display text-lg font-semibold">
-            {org.name} volunteers
+            {selectedOrgName} volunteers
           </h2>
           <p className="mb-4 font-mono text-[11px] text-neutral-700">
-            your organization&apos;s lifetime rescue impact
+            {superAdmin
+              ? "this organization's lifetime rescue impact"
+              : "your organization's lifetime rescue impact"}
           </p>
           <div className="grid gap-4 sm:grid-cols-3">
             <Metric
               value={orgImpact.meals.toLocaleString()}
               label="Meals rescued"
-              caption={`by ${org.name} volunteers`}
+              caption={`by ${selectedOrgName} volunteers`}
               accent="rescued"
             />
             <Metric

@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 import type {
   DropOffDonation,
@@ -210,10 +211,29 @@ function driveHours(
   return ms / 3_600_000;
 }
 
+// Pure where-builder for the reliability roster query — a tally of actor ids
+// scoped to an organization when one is given (e.g. a super admin viewing a
+// single org's analytics), or left chapter-wide otherwise. Split out so it's
+// unit-testable without a database.
+export function reliabilityUserWhere(
+  ids: string[],
+  organizationId?: string
+): Prisma.UserWhereInput {
+  return organizationId
+    ? { id: { in: ids }, organizationId }
+    : { id: { in: ids } };
+}
+
 // Reliability from the event log: completed vs flaked attempts. A delivered
 // event counts for the volunteer; a released (hold expired) or failed event
 // counts against them. Non-punitive: a percentage, surfaced highest-first.
-export async function getVolunteerReliability(demo: boolean): Promise<Volunteer[]> {
+// When `organizationId` is given, the roster is limited to that org's
+// volunteers (used by the super-admin analytics org switcher); omitted, it
+// stays chapter-wide as before.
+export async function getVolunteerReliability(
+  demo: boolean,
+  organizationId?: string
+): Promise<Volunteer[]> {
   const rows = await prisma.listingEvent.groupBy({
     by: ["actorId", "type"],
     where: {
@@ -238,7 +258,7 @@ export async function getVolunteerReliability(demo: boolean): Promise<Volunteer[
   if (ids.length === 0) return [];
 
   const users = await prisma.user.findMany({
-    where: { id: { in: ids } },
+    where: reliabilityUserWhere(ids, organizationId),
     select: { id: true, name: true },
   });
 

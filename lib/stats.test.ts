@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { getVolunteerImpact } from "./stats";
+import { getVolunteerImpact, reliabilityUserWhere } from "./stats";
 
 type Ev = { actorId: string; type: string; listingId: string };
 type Lst = {
@@ -97,4 +97,12 @@ test("returns all zeros with no divide-by-zero for a new volunteer", async () =>
     completionRate: 0,
     attempts: 0,
   });
+});
+
+test("reliabilityUserWhere scopes to org when provided", () => {
+  assert.deepEqual(reliabilityUserWhere(["a", "b"], "org_x"), {
+    id: { in: ["a", "b"] },
+    organizationId: "org_x",
+  });
+  assert.deepEqual(reliabilityUserWhere(["a"]), { id: { in: ["a"] } });
 });
