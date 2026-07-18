@@ -5,6 +5,7 @@ import { ApprovalActions } from "@/components/ApprovalActions";
 import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 import { Avatar } from "@/components/Avatar";
 import { GlobalRosterControls } from "@/components/GlobalRosterControls";
+import { OrgAdminInvitePanel } from "@/components/OrgAdminInvitePanel";
 import { auth } from "@/auth";
 import { requireRole } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
@@ -87,7 +88,7 @@ export default async function AdminUsersPage({
 
   // Explicit select — phone is deliberately omitted so a volunteer's number is
   // never even fetched into admin-facing code (the sign-up promise, kept in code).
-  const [users, pending, orgs] = await Promise.all([
+  const [users, pending, orgs, invites] = await Promise.all([
     prisma.user.findMany({
       // Active accounts only — pending partners live in their own queue below.
       // Managed roles scoped to this admin's org (or every org for a super
@@ -118,7 +119,32 @@ export default async function AdminUsersPage({
           orderBy: { name: "asc" },
         })
       : Promise.resolve([]),
+    // Org-admin invite links — super admin only.
+    superAdmin
+      ? prisma.orgAdminInvite.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 25,
+          select: {
+            id: true,
+            email: true,
+            status: true,
+            createdAt: true,
+            organization: { select: { name: true } },
+          },
+        })
+      : Promise.resolve([]),
   ]);
+
+  const inviteRows = invites.map((inv) => ({
+    id: inv.id,
+    email: inv.email,
+    orgName: inv.organization.name,
+    status: inv.status,
+    createdAt: inv.createdAt.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    }),
+  }));
 
   const groups = GROUPS.map((g) => ({
     ...g,
@@ -139,6 +165,10 @@ export default async function AdminUsersPage({
       </header>
 
       {superAdmin && <GlobalRosterControls orgs={orgs} />}
+
+      {superAdmin && (
+        <OrgAdminInvitePanel orgs={orgs} invites={inviteRows} demo={demo} />
+      )}
 
       {demo && (
         <div className="mb-6 rounded-xl border border-transit-200/60 bg-transit-50 px-4 py-3 text-sm text-transit-800">

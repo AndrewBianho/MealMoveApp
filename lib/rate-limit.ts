@@ -188,4 +188,7 @@ export const LIMITS = {
   chatRead: { limit: 120, windowMs: 60_000 },
   // Sending messages: brisk typing is fine, floods are not.
   chatWrite: { limit: 30, windowMs: 60_000 },
+  // Org-admin invite links: super-admin-only, so this only guards against a
+  // runaway UI, not an abuse vector — kept generous.
+  orgAdminInvite: { limit: 30, windowMs: 15 * 60_000 },
 } as const;

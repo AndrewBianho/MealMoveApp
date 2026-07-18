@@ -39,9 +39,14 @@ export const authConfig = {
       const user = auth?.user;
       const path = nextUrl.pathname;
       const isAuthPage = ["/login", "/signup", "/forgot-password", "/reset-password"].includes(path);
-      // Public pages — viewable without signing in (design reference, and the
-      // privacy policy, which must be reachable before anyone creates an account).
-      const isPublic = path === "/styleguide" || path === "/privacy";
+      // Public pages — viewable without signing in (design reference, the
+      // privacy policy, which must be reachable before anyone creates an account,
+      // and the org-admin invite-link accept page, opened by a recipient who has
+      // no account yet).
+      const isPublic =
+        path === "/styleguide" ||
+        path === "/privacy" ||
+        matches(path, "/admin-invite");
 
       if (!user) return isAuthPage || isPublic; // signed out: auth pages + public
 

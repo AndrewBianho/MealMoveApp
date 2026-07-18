@@ -189,6 +189,28 @@ model Organization {
   createdAt     DateTime       @default(now())
   users         User[]
   announcements Announcement[]
+  orgAdminInvites OrgAdminInvite[]
+}
+
+// Single-use, no-expiry, revocable bearer links a super_admin generates to
+// bootstrap an org_admin for a given organization. Like PasswordResetToken, only
+// the sha256 of the token is stored — the raw token lives solely in the link, so
+// a database leak can't be replayed. The suggested `email` prefills the accept
+// form but the recipient may change it; the token, not the email, is the
+// credential.
+model OrgAdminInvite {
+  id             String       @id @default(cuid())
+  tokenHash      String       @unique // sha256 of the raw token
+  email          String // suggested invitee email, lowercased
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  createdById    String // super_admin user id (scalar — no FK, mirrors TeamInvite.invitedById)
+  status         String       @default("pending") // pending | accepted | revoked
+  acceptedUserId String? // the org_admin account created from this invite
+  createdAt      DateTime     @default(now())
+  acceptedAt     DateTime?
+
+  @@index([status])
 }
 
 // Single-use, time-boxed tokens for the email password-reset flow. Only the

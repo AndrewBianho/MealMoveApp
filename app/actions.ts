@@ -37,8 +37,14 @@ import { cleanAudience, countAudience, resolveAudience } from "@/lib/segments";
 import { resetDemoWorld } from "@/prisma/seedDemo";
 import { materializeSchedules } from "@/lib/sweep";
 import { normalizeDaysOfWeek } from "@/lib/recurring";
-import { isAdmin } from "@/lib/roles";
+import { isAdmin, isSuperAdmin } from "@/lib/roles";
 import { roleChangeError, deleteAccountError } from "@/lib/accountAdmin";
+import {
+  mintToken,
+  resolveInviteOrg,
+  loadPendingInvite,
+  emailTaken,
+} from "@/lib/orgAdminInvite";
 
 const HOLD_MINUTES = 15;
 
@@ -381,6 +387,174 @@ export async function findPendingInvite(
     : null;
   if (!d) return null;
   return { orgName: d.name, role: "drop_off" };
+}
+
+// ---- Org-admin invite links: super-admin bootstraps an org_admin ----------
+
+type CreateInviteResult =
+  | { ok: true; url: string }
+  | { ok: false; error: string };
+
+/**
+ * Generate a one-time, no-expiry, revocable link a super_admin sends to bootstrap
+ * an org_admin for a chosen (or newly created) organization. Only the token hash
+ * is stored, so the returned URL is the sole copy of the raw token — it can't be
+ * re-displayed later; a lost link is handled by revoke + regenerate.
+ */
+export async function createOrgAdminInvite(input: {
+  email: string;
+  orgId?: string | null;
+  newOrgName?: string | null;
+  newOrgDomain?: string | null;
+}): Promise<CreateInviteResult> {
+  const session = await auth();
+  const actor = session?.user;
+  if (!actor?.id) return { ok: false, error: "Not authenticated." };
+  if (!isSuperAdmin(actor.role)) {
+    return { ok: false, error: "Only a master admin can invite org admins." };
+  }
+  const demo = await blockIfDemo();
+  if (demo) return demo;
+
+  const ip = clientIp(headers());
+  const gate = await rateLimit(`org-admin-invite:${ip}`, LIMITS.orgAdminInvite);
+  if (!gate.ok) {
+    return { ok: false, error: "Too many invites just now. Please try again shortly." };
+  }
+
+  const email = (input.email ?? "").trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return { ok: false, error: "Please enter a valid email address." };
+  }
+
+  const resolved = await resolveInviteOrg(
+    { orgId: input.orgId, newOrgName: input.newOrgName, newOrgDomain: input.newOrgDomain },
+    { db: prisma }
+  );
+  if (!resolved.ok) return resolved;
+
+  const origin = requestOrigin();
+  if (!origin) {
+    return { ok: false, error: "Server misconfigured (APP_URL unset) — can't build a link." };
+  }
+
+  const { raw, hash } = mintToken();
+  await prisma.orgAdminInvite.create({
+    data: {
+      tokenHash: hash,
+      email,
+      organizationId: resolved.org.id,
+      createdById: actor.id,
+    },
+  });
+  revalidatePath("/admin/users");
+  return { ok: true, url: `${origin}/admin-invite/${raw}` };
+}
+
+/** Revoke a still-pending invite. Super-admin only. */
+export async function revokeOrgAdminInvite(inviteId: string): Promise<SignUpResult> {
+  const session = await auth();
+  if (!isSuperAdmin(session?.user?.role)) {
+    return { ok: false, error: "Only a master admin can revoke invites." };
+  }
+  const demo = await blockIfDemo();
+  if (demo) return demo;
+
+  const invite = await prisma.orgAdminInvite.findUnique({ where: { id: inviteId } });
+  if (!invite || invite.status !== "pending") {
+    return { ok: false, error: "That invite is no longer pending." };
+  }
+  await prisma.orgAdminInvite.update({
+    where: { id: inviteId },
+    data: { status: "revoked" },
+  });
+  revalidatePath("/admin/users");
+  return { ok: true };
+}
+
+/**
+ * Redeem an invite link: create an active org_admin for the invite's org. The
+ * email prefills but is editable, so it's validated and uniqueness-checked here;
+ * the token, not the email, is the credential. Returns ok so the client can then
+ * sign in with the credentials the recipient just set.
+ */
+export async function acceptOrgAdminInvite(input: {
+  token: string;
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+}): Promise<SignUpResult> {
+  const ip = clientIp(headers());
+  const gate = await rateLimit(`register:${ip}`, LIMITS.register);
+  if (!gate.ok) {
+    return { ok: false, error: "Too many attempts. Please try again later." };
+  }
+
+  const loaded = await loadPendingInvite(input.token, { db: prisma });
+  if (!loaded.ok) return loaded;
+
+  const name = (input.name ?? "").trim();
+  const email = (input.email ?? "").trim().toLowerCase();
+  const phone = (input.phone ?? "").replace(/\D/g, "");
+  const password = input.password ?? "";
+
+  if (!name) return { ok: false, error: "Please enter your name." };
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return { ok: false, error: "Please enter a valid email address." };
+  }
+  if (phone.length !== 10) {
+    return { ok: false, error: "Please enter a valid 10-digit phone number." };
+  }
+  if (!passwordValid(password)) {
+    return { ok: false, error: "Password must be 8+ characters with an uppercase letter and a number." };
+  }
+  if (await emailTaken(email, { db: prisma })) {
+    return { ok: false, error: "That email already has an account." };
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  try {
+    const created = await prisma.$transaction(async (tx) => {
+      // Re-check the invite is still pending inside the write so two concurrent
+      // redemptions can't both mint an account from one link.
+      const fresh = await tx.orgAdminInvite.findUnique({
+        where: { id: loaded.invite.id },
+        select: { status: true },
+      });
+      if (!fresh || fresh.status !== "pending") {
+        throw new Prisma.PrismaClientKnownRequestError("consumed", {
+          code: "P2025",
+          clientVersion: Prisma.prismaVersion.client,
+        });
+      }
+      const user = await tx.user.create({
+        data: {
+          name,
+          email,
+          phone,
+          passwordHash,
+          role: "org_admin",
+          status: "active",
+          organizationId: loaded.invite.organizationId,
+        },
+      });
+      await tx.orgAdminInvite.update({
+        where: { id: loaded.invite.id },
+        data: { status: "accepted", acceptedUserId: user.id, acceptedAt: new Date() },
+      });
+      return user;
+    });
+    trackServer({ name: "signup_submitted", props: { role: "org_admin", hadInvite: true } }, created.id);
+    identifyServer(created.id, "org_admin");
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError) {
+      if (e.code === "P2002") return { ok: false, error: "That email already has an account." };
+      if (e.code === "P2025") return { ok: false, error: "This invite link is no longer valid." };
+    }
+    return { ok: false, error: "Something went wrong. Please try again." };
+  }
 }
 
 // Password reset is single-use and time-boxed. We store only the sha256 of the
