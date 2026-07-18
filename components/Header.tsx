@@ -18,13 +18,19 @@ export async function Header() {
   // created (indexed PK lookup). 0 = unknown → the intro simply won't auto-open.
   let createdAt = 0;
   let image: string | null = null;
+  // Name is read from the DB (not session.user.name) so a profile rename shows
+  // up on the next router.refresh() — the JWT-embedded name stays stale until
+  // re-login, but imageUrl is already sourced here, so the avatar's photo and
+  // its fallback initials update together.
+  let name = user?.name ?? "?";
   if (user) {
     const row = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { createdAt: true, imageUrl: true },
+      select: { createdAt: true, imageUrl: true, name: true },
     });
     createdAt = row?.createdAt.getTime() ?? 0;
     image = row?.imageUrl ?? null;
+    if (row?.name) name = row.name;
   }
 
   return (
@@ -73,7 +79,7 @@ export async function Header() {
           )}
 
           {user && (
-            <NavBar role={user.role} name={user.name ?? "?"} image={image} unseen={updatesUnseen} />
+            <NavBar role={user.role} name={name} image={image} unseen={updatesUnseen} />
           )}
         </div>
       </header>
@@ -81,7 +87,7 @@ export async function Header() {
       {user && (
         <WelcomeIntro
           role={user.role}
-          name={user.name ?? "?"}
+          name={name}
           createdAt={createdAt}
         />
       )}
