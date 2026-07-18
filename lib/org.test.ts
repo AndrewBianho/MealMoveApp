@@ -5,7 +5,7 @@ import { orgForEmail } from "./org";
 
 const ORGS = [
   { id: "org_malvern", name: "Malvern", emailDomain: "malvernprep.org", isDefault: false },
-  { id: "org_default_cfr", name: "Campus Food Rescue", emailDomain: null, isDefault: true },
+  { id: "org_default_cfr", name: "None", emailDomain: null, isDefault: true },
 ];
 
 function db(over: any = {}): any {

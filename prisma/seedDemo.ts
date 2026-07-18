@@ -35,7 +35,7 @@ export async function seedDemo(prisma: PrismaClient) {
   const defaultOrg = await prisma.organization.upsert({
     where: { id: "org_default_cfr" },
     update: {},
-    create: { id: "org_default_cfr", name: "Campus Food Rescue", isDefault: true },
+    create: { id: "org_default_cfr", name: "None", isDefault: true },
   });
   const malvernOrg = await prisma.organization.upsert({
     where: { id: "org_malvern" },

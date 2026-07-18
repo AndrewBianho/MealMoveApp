@@ -4,7 +4,7 @@ import { prisma } from "./prisma";
 // The chapter this deployment runs for. Kept as an app-wide brand/fallback
 // string (e.g. the profile org line falls back to it when a user has no org).
 // Volunteer organizations (below) are the real per-user grouping.
-export const CHAPTER_NAME = "Campus Food Rescue";
+export const CHAPTER_NAME = "None";
 
 type OrgDb = Pick<PrismaClient, "organization">;
 type OrgLite = { id: string; name: string };
