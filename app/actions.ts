@@ -520,10 +520,10 @@ function refreshViews(listingId?: string) {
 export async function claimListing(listingId: string, dropOffId?: string) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Not authenticated.");
-  // Claiming is a volunteer action. Org admins oversee the operation (stats,
-  // approvals, special posts) and never carry pickups, so they can't claim.
-  if (session.user.role === "org_admin") {
-    throw new Error("Org admins oversee rescues — claiming is for volunteers.");
+  // Claiming is a volunteer action. Admins (org + master) oversee the operation
+  // (stats, approvals, special posts) and never carry pickups, so they can't claim.
+  if (isAdmin(session.user.role)) {
+    throw new Error("Admins oversee rescues — claiming is for volunteers.");
   }
   const volunteerId = session.user.id;
   let trackData: { expiresAt: Date; servings: number; dropOffId: string } | null = null;

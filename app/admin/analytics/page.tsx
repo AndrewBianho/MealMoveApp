@@ -7,8 +7,10 @@ import { isSuperAdmin } from "@/lib/roles";
 import { getHealthMetrics, type Ratio } from "@/lib/health";
 import { getDashboardData } from "@/lib/analytics/dashboardData";
 import { getOrgVolunteerImpact } from "@/lib/orgStats";
+import { getVolunteerReliability } from "@/lib/stats";
 import { ACCENTS, type MetricAccent } from "@/components/MetricCard";
 import { OrgStatsSwitcher } from "@/components/OrgStatsSwitcher";
+import { ReliabilityMeter } from "@/components/ReliabilityMeter";
 import { cn } from "@/components/cn";
 
 export const dynamic = "force-dynamic";
@@ -127,6 +129,13 @@ export default async function AnalyticsPage({
   const orgImpact = selectedOrgId
     ? await getOrgVolunteerImpact(selectedOrgId, { world: demo ? "demo" : "real" })
     : null;
+  // A master admin picking an org also sees that org's volunteer reliability —
+  // the non-punitive, org-scoped read the design called for. Org admins get
+  // reliability on their own /impact page, so this section is master-admin-only.
+  const orgReliability =
+    superAdmin && selectedOrgId
+      ? await getVolunteerReliability(demo, selectedOrgId)
+      : [];
 
   // Preserve `?org=` across the time-window links so a super admin's org
   // selection survives switching windows.
@@ -247,6 +256,34 @@ export default async function AnalyticsPage({
               accent="clay"
             />
           </div>
+        </section>
+      )}
+
+      {superAdmin && selectedOrgId && selectedOrgName && (
+        <section className="mt-8">
+          <h2 className="mb-1 font-display text-lg font-semibold">
+            {selectedOrgName} reliability
+          </h2>
+          <p className="mb-4 font-mono text-[11px] text-neutral-700">
+            a bar and a percentage, never a grade — who needs support, not who to
+            shame
+          </p>
+          {orgReliability.length > 0 ? (
+            <div className="max-w-xl space-y-4 rounded-xl border border-neutral-200/40 bg-card p-5">
+              {orgReliability.map((v) => (
+                <div key={v.id}>
+                  <ReliabilityMeter name={v.name} pct={v.reliability} />
+                  <p className="mt-1 font-mono text-[11px] text-neutral-700">
+                    {v.pickups} {v.pickups === 1 ? "pickup" : "pickups"}
+                  </p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-neutral-700">
+              No pickups yet — reliability appears once volunteers start claiming.
+            </p>
+          )}
         </section>
       )}
 

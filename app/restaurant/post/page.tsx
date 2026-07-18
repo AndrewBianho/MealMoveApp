@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PostSurplusWizard, type PastPost } from "@/components/PostSurplusWizard";
 import { auth } from "@/auth";
+import { isAdmin } from "@/lib/roles";
 import { prisma } from "@/lib/prisma";
 import { isDemo } from "@/lib/mode";
 import { countActiveVolunteersNear } from "@/lib/nearby";
@@ -13,9 +14,10 @@ export const dynamic = "force-dynamic";
 export default async function PostSurplusPage() {
   const session = await auth();
   const role = session?.user?.role;
-  // Only restaurants reach the wizard. Org admins oversee rather than post, so
-  // they go to their analytics home; any other non-restaurant lands on the feed.
-  if (role === "org_admin") redirect("/admin/analytics");
+  // Only restaurants reach the wizard. Admins (org + master) oversee rather than
+  // post, so they go to their analytics home; any other non-restaurant lands on
+  // the feed.
+  if (isAdmin(role)) redirect("/admin/analytics");
   if (role !== "restaurant") redirect("/");
 
   const me = session?.user?.id

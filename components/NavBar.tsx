@@ -53,8 +53,11 @@ const NAV_BY_ROLE: Record<Role, Item[]> = {
   // don't claim). They lead with members (people), then impact and analytics
   // (the stats) and reliability + partner notes (restaurants).
   org_admin: [MEMBERS, ADMIN_UPDATES, IMPACT, ANALYTICS, RELIABILITY, PARTNERS],
-  // Master admin uses the same augmented /admin console as org admins.
-  super_admin: [MEMBERS, ADMIN_UPDATES, IMPACT, ANALYTICS, RELIABILITY, PARTNERS],
+  // Master admin oversees people + stats across every org. Announcements and
+  // partner notes are org-admin operational tasks (their write actions are
+  // org-scoped and reject a master admin, who has no single org), so they're
+  // deliberately left off this console.
+  super_admin: [MEMBERS, IMPACT, ANALYTICS, RELIABILITY],
 };
 
 // Line icons for the mobile bottom bar / more-sheet, keyed by Item.icon.
