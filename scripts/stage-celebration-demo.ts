@@ -1,5 +1,6 @@
-// Stage a demo: volunteer you@campus.edu has an in-transit listing ready to be
-// marked delivered, so the RescueCelebration can be seen live.
+// Stage a demo: the demo volunteer (you@campus.edu, "Robin Alvarez") has an
+// in-transit listing ready to be marked delivered, so the RescueCelebration can
+// be seen live.
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();

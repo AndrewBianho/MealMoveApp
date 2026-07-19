@@ -26,7 +26,9 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   // Default on — matches the current always-persistent session. (Wiring the
   // off-state to a shorter session maxAge is a follow-up in auth.config.ts.)
-  const [remember, setRemember] = useState(true);
+  // Default off: on shared campus/restaurant devices an opt-in keeps a session
+  // from persisting longer than the volunteer expects (UX audit MM-05).
+  const [remember, setRemember] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);

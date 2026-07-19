@@ -674,6 +674,8 @@ export function RescueMap({
         head.style.cssText = `line-height:0;`;
         head.innerHTML = pinSVG(PICKUP, GLYPH_REST);
         el.appendChild(head);
+        el.setAttribute("role", "button");
+        el.setAttribute("aria-label", `Pickup: ${r.name}, ${r.servings} servings`);
         el.addEventListener("click", (ev) => {
           ev.stopPropagation();
           setSelected((cur) =>
@@ -698,6 +700,8 @@ export function RescueMap({
         dot.style.cssText = `line-height:0;`;
         dot.innerHTML = pinSVG(DROP, GLYPH_DROP);
         el.appendChild(dot);
+        el.setAttribute("role", "button");
+        el.setAttribute("aria-label", `Drop-off: ${d.name}`);
         el.addEventListener("click", (ev) => {
           ev.stopPropagation();
           setSelected((cur) =>

@@ -12,6 +12,13 @@ function toEnum(status: string): ListingStatus {
   return status.replace(/ /g, "_") as ListingStatus;
 }
 
+// The volunteer you sign in as in demo mode. The display name reads as a real
+// person (so the app never greets you as the placeholder "You"), while the login
+// email stays the stable, memorable `you@campus.edu` — it's a credential, never
+// shown as identity. Must match the "Volunteer" prefill in LoginForm's DEMO grid
+// and the claimedBy on this persona's rescues in lib/mock.ts.
+const DEMO_VOLUNTEER = { name: "Robin Alvarez", email: "you@campus.edu" };
+
 // Spread restaurants deterministically around Malvern Prep so the rescue map
 // shows realistic, spaced-out routes (not a single cluster). Place restaurant i
 // on a golden-angle spiral, radius cycling 1.5/3/4.5 mi, converting miles→deg.
@@ -131,19 +138,26 @@ export async function seedDemo(prisma: PrismaClient) {
     }
   });
 
-  // Volunteers (everyone who has claimed something, plus "You"). Upserted so a
+  // Volunteers (everyone who has claimed something, plus the demo persona
+  // "Robin Alvarez" — the account you sign in as). Upserted so a
   // reset re-creates them without colliding on email. Seeded accounts default to
   // the demo world so logging in as one lands straight in the sample data.
   const volunteerId = new Map<string, string>();
   const names = Array.from(
     new Set<string>([
-      "You",
+      DEMO_VOLUNTEER.name,
       ...(LISTINGS.flatMap((l) => [l.claimedBy, l.buddyName]).filter(Boolean) as string[]),
     ])
   );
   for (let i = 0; i < names.length; i++) {
     const name = names[i];
-    const email = `${name.toLowerCase().replace(/[^a-z]+/g, ".")}@campus.edu`;
+    // The persona keeps its stable login email; everyone else derives one from
+    // their name. The email is a credential, never shown — so pinning it lets a
+    // reseed update the persona in place (no orphaned "you@campus.edu" login).
+    const email =
+      name === DEMO_VOLUNTEER.name
+        ? DEMO_VOLUNTEER.email
+        : `${name.toLowerCase().replace(/[^a-z]+/g, ".")}@campus.edu`;
     // Spread volunteers around Malvern (same spiral as restaurants) and opt them
     // into notifications so the escalating broadcast has demo targets to reach.
     const { lat, lng } = placeAround(i);
@@ -195,7 +209,7 @@ export async function seedDemo(prisma: PrismaClient) {
     },
   });
   // A per-location drop-off account. Linked to St. Mark's Shelter — the
-  // destination of "You"'s in-flight rescue — so the seeded three-way chat and
+  // destination of Robin's in-flight rescue — so the seeded three-way chat and
   // the drop-off console both showcase a location speaking for itself.
   const demoDropOffId = dropOffId.get("St. Mark's Shelter") ?? null;
   const dropOffAdmin = await prisma.user.upsert({
@@ -217,7 +231,7 @@ export async function seedDemo(prisma: PrismaClient) {
       demo: true,
     },
   });
-  await prisma.user.upsert({
+  const orgAdmin = await prisma.user.upsert({
     where: { email: "admin@campus.edu" },
     update: {
       passwordHash,
@@ -235,6 +249,29 @@ export async function seedDemo(prisma: PrismaClient) {
       demo: true,
       organizationId: orgForEmail("admin@campus.edu"),
     },
+  });
+
+  // One chapter update so the volunteer's Updates inbox isn't empty in demo
+  // mode — a warm, non-shouty note from the org admin to every demo volunteer.
+  // Fixed id so reseeds update this row in place instead of stacking duplicates;
+  // recipientIds is rewritten each run since a full wipe regenerates user ids.
+  const demoVolunteerIds = Array.from(volunteerId.values());
+  const demoUpdate = {
+    authorId: orgAdmin.id,
+    title: "Thanks for a strong week of rescues",
+    body: "Hi everyone — together we moved just over 400 servings this week, the most we've ever rescued in seven days. Two small reminders before your next pickup: check the drop-off's hours so you're not left waiting at a closed door, and snap the pickup photo when you grab the food — it's how the restaurant knows a real person showed up. You make this work. See you out there.",
+    audienceLabel: "Everyone",
+    demo: true,
+    recipientCount: demoVolunteerIds.length,
+    recipientIds: demoVolunteerIds,
+    organizationId: orgForEmail("admin@campus.edu"),
+    // Dated to yesterday so it reads as a recent note, not this exact instant.
+    createdAt: new Date(anchor.getTime() - 20 * 60 * 60 * 1000),
+  };
+  await prisma.announcement.upsert({
+    where: { id: "demo_update_welcome" },
+    update: demoUpdate,
+    create: { id: "demo_update_welcome", ...demoUpdate },
   });
 
   // Listings + their pickups + event trail.
@@ -363,9 +400,9 @@ export async function seedDemo(prisma: PrismaClient) {
           data: { listingId: listing.id, type: status, actorId, at },
         });
       }
-      // Seed the coordination thread on "You"'s in-flight rescue so the chat
+      // Seed the coordination thread on Robin's in-flight rescue so the chat
       // shows a real back-and-forth (volunteer ↔ drop-off) out of the box.
-      if (inTransit && l.claimedBy === "You") {
+      if (inTransit && l.claimedBy === DEMO_VOLUNTEER.name) {
         await prisma.message.create({
           data: {
             listingId: listing.id,

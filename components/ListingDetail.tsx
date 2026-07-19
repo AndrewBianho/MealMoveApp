@@ -29,6 +29,8 @@ import { OpenInMapsButton } from "./OpenInMapsButton";
 import { SafetyChecklist } from "./SafetyChecklist";
 import { RescueAccuracySignal } from "./RescueAccuracySignal";
 import { startFailureReplay } from "@/lib/analytics/client";
+import { formatEventTime } from "@/lib/time";
+import { capitalize } from "@/lib/text";
 import type { SafetyAnswers } from "@/lib/safety";
 import type { RescueAccuracy } from "@/lib/accuracy";
 import { OpenNowBadge } from "./RetrievalHoursDisplay";
@@ -75,14 +77,9 @@ const STEP_LABEL: Record<string, string> = {
 // same geometry as PickupTimelineCard's timeline.
 const STEP_FILL: Record<number, string> = { 0: "w-0", 1: "w-1/4", 2: "w-2/4", 3: "w-3/4" };
 
-// "1:05 PM" today, "Thu, 1:05 PM" otherwise — matching the deliverBy labels.
-function stepStamp(ms?: number): string {
-  if (!ms) return "";
-  const d = new Date(ms);
-  return d.toDateString() === new Date().toDateString()
-    ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-    : d.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
-}
+// Shared org-timezone formatter so the stepper matches the feed card exactly
+// (see formatEventTime — server vs. client zones otherwise diverged by hours).
+const stepStamp = formatEventTime;
 
 function StepCheck() {
   return (
@@ -658,7 +655,7 @@ export function ListingDetail({
               labelClassName="w-24"
               rows={[
                 ...(listing.category
-                  ? [{ label: "food type", value: listing.category }]
+                  ? [{ label: "food type", value: capitalize(listing.category) }]
                   : []),
                 ...(listing.tempHandling
                   ? [

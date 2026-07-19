@@ -4,6 +4,7 @@ import { cn } from "./cn";
 import { MapPin, ArrowRight } from "./icons";
 import { StatusBadge } from "./StatusBadge";
 import { OpenInMapsButton } from "./OpenInMapsButton";
+import { formatEventTime } from "@/lib/time";
 import type { Listing } from "@/lib/types";
 
 // The "My pickups" card — one pickup's full story told through a horizontal
@@ -39,15 +40,6 @@ function progressOf(l: Listing): number {
     default:
       return 0;
   }
-}
-
-// "1:05 PM" today, "Thu, 1:05 PM" otherwise — same recipe as deliverBy labels.
-function stamp(ms?: number): string {
-  if (!ms) return "";
-  const d = new Date(ms);
-  return d.toDateString() === new Date().toDateString()
-    ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-    : d.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" });
 }
 
 function Check({ className }: { className?: string }) {
@@ -211,7 +203,7 @@ export function PickupTimelineCard({
                   i <= progress ? "text-neutral-900" : "text-neutral-700"
                 )}
               >
-                {i <= progress ? stamp(times[i]) : ""}
+                {i <= progress ? formatEventTime(times[i]) : ""}
               </div>
             ))}
           </div>

@@ -431,6 +431,13 @@ export function ListingsMap({
         // edge definition on bright imagery, a soft drop to lift off the map.
         el.style.cssText = `width:30px;height:30px;border-radius:50%;background:${urgencyColor(l)};border:3px solid #fff;box-shadow:0 0 0 1.5px rgba(0,0,0,.18),0 4px 10px rgba(51,52,44,.42);display:grid;place-items:center;cursor:pointer;`;
         el.innerHTML = ICON_LISTING;
+        // Name the pin from its data so a screen reader can tell one from the
+        // next — without this, Mapbox announces every pin as "Map marker".
+        el.setAttribute("role", "button");
+        el.setAttribute(
+          "aria-label",
+          `Pickup: ${l.title}, ${l.source} — ~${l.servings} servings, ${l.status}`
+        );
         const popup = new mapboxgl.Popup({ offset: 16, closeButton: false }).setHTML(
           popupHtml(l)
         );

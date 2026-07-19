@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import type { Role } from "@prisma/client";
@@ -44,6 +44,9 @@ export function WelcomeIntro({
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState<1 | -1>(1);
+  // The element focused when the tour opened, so dismissal can hand focus back
+  // (e.g. the "Replay welcome" nav item) instead of dropping it to <body>.
+  const openerRef = useRef<HTMLElement | null>(null);
 
   const deck = SLIDES_BY_ROLE[role] ?? SLIDES_BY_ROLE.volunteer;
   const slides = deck.slides;
@@ -88,6 +91,8 @@ export function WelcomeIntro({
   const close = useCallback(() => {
     markSeen();
     setOpen(false);
+    // Return focus to whatever launched the tour once it's gone.
+    requestAnimationFrame(() => openerRef.current?.focus());
   }, [markSeen]);
 
   const finish = useCallback(() => {
@@ -106,9 +111,11 @@ export function WelcomeIntro({
     setStep((s) => (s <= 0 ? s : s - 1));
   }, []);
 
-  // Keyboard: Esc closes, arrows navigate. Lock body scroll while open.
+  // Keyboard: Esc closes, arrows navigate. Lock body scroll while open, and
+  // remember the opener so close() can restore focus to it.
   useEffect(() => {
     if (!open) return;
+    openerRef.current = (document.activeElement as HTMLElement) ?? null;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
       else if (e.key === "ArrowRight") next();
@@ -134,9 +141,12 @@ export function WelcomeIntro({
       aria-labelledby="welcome-intro-title"
       className="fixed inset-0 z-modal grid place-items-center overflow-y-auto p-4"
     >
-      <button
-        type="button"
-        aria-label="Close the welcome tour"
+      {/* Decorative click-to-dismiss scrim. It's not the labelled close control
+          — its hit area spans the whole viewport but its centre sits under the
+          card, so "activating" it there does nothing. The skip pill below is the
+          real, always-hittable Close. */}
+      <div
+        aria-hidden
         onClick={close}
         className="absolute inset-0 cursor-default bg-neutral-900/40 backdrop-blur-sm animate-fade-in"
       />
@@ -158,6 +168,7 @@ export function WelcomeIntro({
           <button
             type="button"
             onClick={close}
+            aria-label="Close the welcome tour"
             className="-my-1 inline-flex items-center gap-1 rounded-full px-2.5 py-2 font-mono text-[11px] text-neutral-700 transition-colors hover:bg-neutral-100 hover:text-neutral-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
           >
             skip

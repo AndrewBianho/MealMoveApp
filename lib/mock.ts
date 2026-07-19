@@ -3,7 +3,7 @@
 import type { FoodCategory, Listing } from "./types";
 import type { RetrievalHours } from "./hours";
 
-export const CURRENT_USER = { name: "You", role: "volunteer" as const };
+export const CURRENT_USER = { name: "Robin Alvarez", role: "volunteer" as const };
 
 // The restaurant account viewing the restaurant console.
 export const RESTAURANT = "Saxbys — Commons";
@@ -155,7 +155,7 @@ export const LISTINGS: Listing[] = [
     weightLbs: 26,
     distance: "0.3 mi",
     status: "in transit",
-    claimedBy: "You",
+    claimedBy: "Robin Alvarez",
     dropOff: "St. Mark's Shelter",
     category: "prepared",
     perishable: true,
@@ -171,7 +171,8 @@ export const LISTINGS: Listing[] = [
     weightLbs: 18,
     distance: "0.6 mi",
     status: "taken home",
-    // One live pickup per volunteer — "You" already carries PU-4825, so this
+    // One live pickup per volunteer — Robin (the demo "you") already carries
+    // PU-4825, so this
     // (and the two other overflow claims below) belong to their own people.
     claimedBy: "Alex P.",
     dropOff: "Community Fridge — 4th & Elm",
@@ -191,7 +192,7 @@ export const LISTINGS: Listing[] = [
     weightLbs: 25,
     distance: "0.8 mi",
     status: "delivered",
-    claimedBy: "You",
+    claimedBy: "Robin Alvarez",
     dropOff: "Community Fridge — 4th & Elm",
     category: "prepared",
     perishable: true,
@@ -308,7 +309,8 @@ export const LISTINGS: Listing[] = [
     status: "in transit",
     claimedBy: "Noah S.",
     // Rescued as a pair — shows the buddy feature on a card without touching
-    // "You" (who stays free to invite a buddy live on their own pickup).
+    // Robin, the demo "you" (who stays free to invite a buddy live on their own
+    // pickup).
     buddyName: "Dana K.",
     dropOff: "Grace Kitchen",
     category: "prepared",
