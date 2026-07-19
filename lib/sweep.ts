@@ -1,6 +1,7 @@
 import { prisma } from "./prisma";
 import { occurrencesWithin, SCHEDULE_HORIZON_DAYS } from "./recurring";
 import { trackServer } from "@/lib/analytics";
+import { sendRestaurantRescueNotice } from "./notify";
 
 // How far ahead we materialize scheduled listings. Every account sees at most
 // the next week of upcoming pickups; the sweep tops this up (and prunes past
@@ -121,11 +122,25 @@ export async function materializeSchedules(
 //   2. Expires open listings whose pickup window has passed.
 // Both write ListingEvents, so flaking and expiry become part of the record
 // (and feed volunteer reliability).
-export async function runSweep(): Promise<{
+type SweepDb = Pick<
+  typeof prisma,
+  "pickup" | "foodListing" | "buddyInvite" | "listingEvent" | "$transaction"
+>;
+
+export async function runSweep(
+  deps: {
+    db?: SweepDb;
+    notify?: typeof sendRestaurantRescueNotice;
+    track?: typeof trackServer;
+  } = {}
+): Promise<{
   released: number;
   expired: number;
   at: string;
 }> {
+  const db = deps.db ?? prisma;
+  const notify = deps.notify ?? sendRestaurantRescueNotice;
+  const track = deps.track ?? trackServer;
   const now = new Date();
   let released = 0;
   let expired = 0;
@@ -134,7 +149,7 @@ export async function runSweep(): Promise<{
   //    several claims, and one lapsing shouldn't touch the others. A claim is
   //    still in its hold stage until the pickup photo lands; the listing may be
   //    "open" (waiting on more cars) or "claimed" (full).
-  const flaked = await prisma.pickup.findMany({
+  const flaked = await db.pickup.findMany({
     where: {
       holdUntil: { lt: now },
       photoAtPickupUrl: null,
@@ -143,18 +158,19 @@ export async function runSweep(): Promise<{
       // otherwise seeded claims dissolve 15 wall-clock minutes after a reseed.
       listing: { status: { in: ["open", "claimed"] }, demo: false },
     },
+    include: { listing: { select: { restaurantId: true, title: true } } },
   });
   for (const pickup of flaked) {
     // When this was the last car on the listing, the drop-off choice is
     // released too — the destination belongs to the claim, and whoever claims
     // next picks their own.
-    const otherCars = await prisma.pickup.count({
+    const otherCars = await db.pickup.count({
       where: { listingId: pickup.listingId, id: { not: pickup.id } },
     });
-    await prisma.$transaction([
-      prisma.pickup.delete({ where: { id: pickup.id } }),
+    await db.$transaction([
+      db.pickup.delete({ where: { id: pickup.id } }),
       // Dropping a claim always puts the listing back under capacity.
-      prisma.foodListing.update({
+      db.foodListing.update({
         where: { id: pickup.listingId },
         data: {
           status: "open",
@@ -164,7 +180,7 @@ export async function runSweep(): Promise<{
       // Cancel this volunteer's pending buddy invites so a stale one can't
       // later attach a buddy to whoever re-claims. Other cars' invites on the
       // same listing are untouched.
-      prisma.buddyInvite.updateMany({
+      db.buddyInvite.updateMany({
         where: {
           listingId: pickup.listingId,
           inviterId: pickup.volunteerId,
@@ -172,7 +188,7 @@ export async function runSweep(): Promise<{
         },
         data: { status: "cancelled", respondedAt: now },
       }),
-      prisma.listingEvent.create({
+      db.listingEvent.create({
         data: {
           listingId: pickup.listingId,
           type: "released",
@@ -181,7 +197,7 @@ export async function runSweep(): Promise<{
         },
       }),
     ]);
-    trackServer(
+    track(
       {
         name: "flaked",
         props: {
@@ -192,12 +208,26 @@ export async function runSweep(): Promise<{
       },
       pickup.volunteerId,
     );
+    // The 15-min hold lapsed with no pickup — the food is back open. Tell the
+    // restaurant, but only when this was the last car covering it. Best-effort.
+    if (otherCars === 0) {
+      try {
+        await notify({
+          event: "fell_through",
+          restaurantId: pickup.listing.restaurantId,
+          listingId: pickup.listingId,
+          listingTitle: pickup.listing.title,
+        });
+      } catch {
+        // best-effort notification
+      }
+    }
     released++;
   }
 
   // 2) Expire open listings past their window (includes any just re-opened
   //    above whose expiry has also passed).
-  const stale = await prisma.foodListing.findMany({
+  const stale = await db.foodListing.findMany({
     where: {
       status: "open",
       expiresAt: { lt: now },
@@ -211,12 +241,12 @@ export async function runSweep(): Promise<{
     select: { id: true },
   });
   for (const listing of stale) {
-    await prisma.$transaction([
-      prisma.foodListing.update({
+    await db.$transaction([
+      db.foodListing.update({
         where: { id: listing.id },
         data: { status: "expired" },
       }),
-      prisma.listingEvent.create({
+      db.listingEvent.create({
         data: { listingId: listing.id, type: "expired" },
       }),
     ]);

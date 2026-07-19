@@ -17,6 +17,7 @@ import { orgForEmail } from "@/lib/org";
 import { releaseClaimFor } from "@/lib/checkins";
 import { claimsNeeded } from "@/lib/claims";
 import { findActiveClaimFor } from "@/lib/activeClaim";
+import { sendRestaurantRescueNotice } from "@/lib/notify";
 import {
   startDeliveryWithPhotoFor,
   markDeliveredWithPhotoFor,
@@ -701,6 +702,9 @@ export async function claimListing(listingId: string, dropOffId?: string) {
   }
   const volunteerId = session.user.id;
   let trackData: { expiresAt: Date; servings: number; dropOffId: string } | null = null;
+  let notifyData:
+    | { restaurantId: string; title: string; carsNeeded: number | null; carsClaimed: number }
+    | null = null;
   await prisma.$transaction(async (tx) => {
     const listing = await tx.foodListing.findUnique({
       where: { id: listingId },
@@ -778,6 +782,12 @@ export async function claimListing(listingId: string, dropOffId?: string) {
       servings: listing.servings ?? 0,
       dropOffId: chosenDropOffId,
     };
+    notifyData = {
+      restaurantId: listing.restaurantId,
+      title: listing.title,
+      carsNeeded: listing.carsNeeded,
+      carsClaimed: listing.pickups.length + 1,
+    };
   });
   refreshViews(listingId);
   if (trackData) {
@@ -795,6 +805,24 @@ export async function claimListing(listingId: string, dropOffId?: string) {
       },
       volunteerId,
     );
+  }
+  // Reassure the restaurant that a volunteer is on the way. Fired after commit,
+  // best-effort — the claim already succeeded, so a push failure must not throw.
+  if (notifyData) {
+    const claimNotifyData: { restaurantId: string; title: string; carsNeeded: number | null; carsClaimed: number } =
+      notifyData;
+    try {
+      await sendRestaurantRescueNotice({
+        event: "claimed",
+        restaurantId: claimNotifyData.restaurantId,
+        listingId,
+        listingTitle: claimNotifyData.title,
+        carsNeeded: claimNotifyData.carsNeeded,
+        carsClaimed: claimNotifyData.carsClaimed,
+      });
+    } catch {
+      // best-effort notification
+    }
   }
 }
 

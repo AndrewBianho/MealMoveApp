@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { isOnClaim } from "./buddies";
+import { sendRestaurantRescueNotice } from "./notify";
 
 // A structural slice of the Prisma client — just the methods these functions
 // touch. Lets tests inject a fake db without standing up a database.
@@ -43,7 +44,8 @@ async function loadOwnedClaim(db: Db, userId: string, listingId: string) {
 export async function releaseClaimFor(
   db: Db,
   userId: string,
-  listingId: string
+  listingId: string,
+  notify = sendRestaurantRescueNotice
 ): Promise<void> {
   const pickup = await loadOwnedClaim(db, userId, listingId);
 
@@ -107,4 +109,20 @@ export async function releaseClaimFor(
       },
     }),
   ]);
+
+  // The food lost its only volunteer — tell the restaurant it's back open so
+  // they aren't left expecting a no-show. Only when no other car still covers.
+  // Best-effort: the release already committed, so a push failure must not throw.
+  if (otherCars === 0) {
+    try {
+      await notify({
+        event: "fell_through",
+        restaurantId: pickup.listing.restaurantId,
+        listingId,
+        listingTitle: pickup.listing.title,
+      });
+    } catch {
+      // best-effort notification
+    }
+  }
 }

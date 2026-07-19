@@ -140,3 +140,87 @@ export async function sendDropOffPickupNotice(
   const payload = buildDropOffPayload(notice);
   await Promise.all(ids.map((id) => dispatch(id, payload)));
 }
+
+export type RestaurantRescueEvent = "claimed" | "delivered" | "fell_through";
+
+export interface RestaurantRescueNotice {
+  event: RestaurantRescueEvent;
+  restaurantId: string;
+  listingId: string;
+  listingTitle: string;
+  // Only the "claimed" event reads these; omit for delivered / fell_through.
+  carsNeeded?: number | null;
+  carsClaimed?: number;
+}
+
+// A restaurant-facing rescue update. Copy is sentence case and non-punitive —
+// the fell-through case never names or blames the volunteer. Always links to the
+// restaurant's own listings console.
+export function buildRestaurantRescuePayload(
+  notice: RestaurantRescueNotice
+): NotifyPayload {
+  const raw = notice.listingTitle;
+  const title = escapeHtml(raw);
+  const multiCar =
+    notice.event === "claimed" &&
+    notice.carsNeeded != null &&
+    notice.carsNeeded > 1 &&
+    notice.carsClaimed != null;
+
+  let pushTitle: string;
+  let pushBody: string;
+  let bodyHtml: string;
+  switch (notice.event) {
+    case "claimed":
+      if (multiCar) {
+        pushTitle = "Your pickup was claimed";
+        pushBody = `"${raw}" — ${notice.carsClaimed} of ${notice.carsNeeded} cars claimed.`;
+        bodyHtml = `"${title}" — ${notice.carsClaimed} of ${notice.carsNeeded} cars claimed.`;
+      } else {
+        pushTitle = "Someone's coming for your pickup";
+        pushBody = `A volunteer claimed "${raw}" and is on their way.`;
+        bodyHtml = `A volunteer claimed "${title}" and is on their way.`;
+      }
+      break;
+    case "delivered":
+      pushTitle = "Your food was delivered";
+      pushBody = `"${raw}" reached its drop-off. Thank you!`;
+      bodyHtml = `"${title}" reached its drop-off. Thank you!`;
+      break;
+    case "fell_through":
+      pushTitle = "Your pickup is open again";
+      pushBody = `The volunteer for "${raw}" couldn't make it — it's back open and we're finding someone new.`;
+      bodyHtml = `The volunteer for "${title}" couldn't make it — it's back open and we're finding someone new.`;
+      break;
+  }
+
+  return {
+    title: pushTitle,
+    body: pushBody,
+    url: `/restaurant/listings`,
+    email: {
+      subject: pushTitle,
+      html: `<p>${bodyHtml}</p>` + emailButton("View your listings", `/restaurant/listings`),
+    },
+  };
+}
+
+// Fans out a rescue update to every account that shares the restaurant
+// (User.restaurantId), via the existing per-user dispatch (which honors each
+// member's opt-out, quiet hours, and push→email fallback). Best-effort:
+// Promise.allSettled so one dead token / bounced email never rejects the batch.
+// Recipient lookup and dispatch are injectable for tests.
+export async function sendRestaurantRescueNotice(
+  notice: RestaurantRescueNotice,
+  deps: {
+    recipientIds?: (db: Pick<PrismaClient, "user">) => Promise<string[]>;
+    dispatch?: typeof dispatchToUser;
+  } = {}
+): Promise<void> {
+  const dispatch = deps.dispatch ?? dispatchToUser;
+  const recipientIds =
+    deps.recipientIds ?? ((db) => restaurantMemberIds(db, notice.restaurantId));
+  const ids = await recipientIds(prisma);
+  const payload = buildRestaurantRescuePayload(notice);
+  await Promise.allSettled(ids.map((id) => dispatch(id, payload)));
+}

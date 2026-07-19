@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { releaseClaimFor } from "./checkins";
 
-function txDb(pickupRow: any) {
+function txDb(pickupRow: any, opts: { otherCars?: number } = {}) {
   const pickup = pickupRow
     ? { id: "pk1", buddyId: null, photoAtPickupUrl: null, ...pickupRow }
     : null;
@@ -22,8 +22,8 @@ function txDb(pickupRow: any) {
         return pickup;
       },
       // The sole-volunteer release checks for other cars before clearing the
-      // listing's drop-off; these single-claim fixtures never have any.
-      count: async () => 0,
+      // listing's drop-off; controllable per test (defaults to none).
+      count: async () => opts.otherCars ?? 0,
     },
     foodListing: {
       update: async ({ data }: any) => {
@@ -98,4 +98,44 @@ test("releaseClaimFor: the primary steps off — buddy is promoted, claim stays 
   assert.equal(calls.updated.buddyId, null);
   assert.equal(calls.events[0].type, "withdrawn");
   assert.equal(calls.events[0].meta.promotedBuddy, "vol2");
+});
+
+test("releaseClaimFor: notifies the restaurant when the last car falls through", async () => {
+  const { db } = txDb({
+    volunteerId: "vol1",
+    listing: { status: "claimed", restaurantId: "r1", title: "Bagels" },
+  });
+  const notices: any[] = [];
+  await releaseClaimFor(db, "vol1", "ls1", async (n) => {
+    notices.push(n);
+  });
+  assert.equal(notices.length, 1);
+  assert.equal(notices[0].event, "fell_through");
+  assert.equal(notices[0].restaurantId, "r1");
+  assert.equal(notices[0].listingTitle, "Bagels");
+});
+
+test("releaseClaimFor: no restaurant notice when another car still covers", async () => {
+  const { db } = txDb(
+    { volunteerId: "vol1", listing: { status: "open", restaurantId: "r1", title: "Bagels" } },
+    { otherCars: 1 }
+  );
+  const notices: any[] = [];
+  await releaseClaimFor(db, "vol1", "ls1", async (n) => {
+    notices.push(n);
+  });
+  assert.equal(notices.length, 0);
+});
+
+test("releaseClaimFor: no restaurant notice when the buddy steps off (coverage stays)", async () => {
+  const { db } = txDb({
+    volunteerId: "vol1",
+    buddyId: "vol2",
+    listing: { status: "claimed", restaurantId: "r1", title: "Bagels" },
+  });
+  const notices: any[] = [];
+  await releaseClaimFor(db, "vol2", "ls1", async (n) => {
+    notices.push(n);
+  });
+  assert.equal(notices.length, 0);
 });
