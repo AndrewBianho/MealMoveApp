@@ -52,6 +52,35 @@ test("rankDropOffs: eligible first, then nearest", () => {
   assert.match(ranked[2].reason ?? "", /refrigerated/);
 });
 
+test("rankDropOffs: higher need edges out a steady drop-off it's marginally farther than", () => {
+  // `mid` (eligible, steady) is at 40.02; a high-need drop-off just past it is
+  // within the ~0.5 mi need credit, so it surfaces above the nearer steady one.
+  const highNeedFar: DropOffLocation = {
+    ...mid,
+    id: "highNeedFar",
+    name: "High need (just farther)",
+    lat: 40.025, // ~0.35 mi past mid
+    needLevel: "high",
+  };
+  const ranked = rankDropOffs(rest, [mid, highNeedFar]).filter((x) => x.eligible);
+  assert.deepEqual(ranked.map((x) => x.dropOff.id), ["highNeedFar", "mid"]);
+  // Display still reports the real distance, not the discounted one.
+  assert.ok(ranked[0].miles > ranked[1].miles);
+});
+
+test("rankDropOffs: need never overrides a much-closer drop-off", () => {
+  // `mid` is high-need but `far`… flip it: a much-closer steady drop-off beats a
+  // far high-need one, because the credit is bounded (~0.5 mi).
+  const highNeedFar: DropOffLocation = {
+    ...far, // 40.05, well past mid (40.02) — ~2 mi
+    id: "highNeedFar",
+    name: "High need (far)",
+    needLevel: "high",
+  };
+  const ranked = rankDropOffs(rest, [mid, highNeedFar]).filter((x) => x.eligible);
+  assert.deepEqual(ranked.map((x) => x.dropOff.id), ["mid", "highNeedFar"]);
+});
+
 test("rankRestaurantsForDropOff: mirrors eligibility from the drop-off side", () => {
   const r2: MapRestaurant = { ...rest, id: "r2", name: "Far one", lat: 40.06 };
   // `mid` accepts prepared + is refrigerated, so both restaurants are eligible;

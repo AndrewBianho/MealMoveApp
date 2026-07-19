@@ -294,6 +294,14 @@ export function ListingDetail({
   // Whether the chosen drop-off is open right now — drives the closed pill,
   // the warning banner, and the in-transit guidance. null = no hours on file.
   const dropOffOpen = listing.dropOffHours ? isOpenNow(listing.dropOffHours) : null;
+  // The literally-nearest eligible drop-off. The picker orders by a need-aware
+  // credit (higher-need surfaces first), so the top card isn't always the
+  // closest — the "Nearest" pill labels whichever one truly is, keeping both
+  // signals honest.
+  const nearestDropOffId = dropOffChoices.reduce<DropOffChoice | null>(
+    (min, d) => (min && min.miles <= d.miles ? min : d),
+    null
+  )?.id;
   // Straight-line pickup → drop-off miles for the route overlay on the map.
   const routeMiles =
     listing.lat != null && listing.lng != null && chosenDropOffPin
@@ -846,7 +854,7 @@ export function ListingDetail({
                           </p>
                         ) : (
                           <div className="space-y-2">
-                            {dropOffChoices.map((d, i) => {
+                            {dropOffChoices.map((d) => {
                               const sel = chosenDropOff === d.id;
                               return (
                                 <button
@@ -858,7 +866,7 @@ export function ListingDetail({
                                     trackClient("drop_off_selected", {
                                       listingId: listing.id,
                                       dropOffId: d.id,
-                                      wasNearest: i === 0,
+                                      wasNearest: d.id === nearestDropOffId,
                                     });
                                   }}
                                   disabled={isPending}
@@ -889,7 +897,7 @@ export function ListingDetail({
                                     <span className="tabular-nums">
                                       {d.miles.toFixed(1)} mi from pickup
                                     </span>
-                                    {i === 0 && (
+                                    {d.id === nearestDropOffId && (
                                       <span className="rounded-full bg-rescued-100 px-2 py-0.5 text-[13px] text-rescued-800">
                                         Nearest
                                       </span>
@@ -903,11 +911,12 @@ export function ListingDetail({
                                         </span>
                                       </>
                                     )}
-                                    {d.needLevel !== "steady" && (
-                                      <span>
-                                        {d.needLevel === "high" ? "high need" : "low need"}
+                                    {d.needLevel === "high" && (
+                                      <span className="rounded-full bg-clay-100 px-2 py-0.5 text-[13px] text-clay-800">
+                                        Needs food now
                                       </span>
                                     )}
+                                    {d.needLevel === "low" && <span>lower need</span>}
                                   </span>
                                   {d.notes && (
                                     <span className="mt-1 block text-[14px] text-neutral-700">

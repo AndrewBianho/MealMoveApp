@@ -1,5 +1,5 @@
 import { milesBetween } from "./geo";
-import type { DropOffLocation, MapRestaurant } from "./types";
+import type { DropOffLocation, MapRestaurant, NeedLevel } from "./types";
 
 export interface RankedDropOff {
   dropOff: DropOffLocation;
@@ -22,7 +22,26 @@ export function eligibility(
   return { eligible: true };
 }
 
-// All drop-offs ranked: eligible first, then nearest.
+// A higher-need drop-off is ranked as if it were this many miles closer, so it
+// can edge out a steady one it's only marginally farther than — a calm nudge
+// toward where food is needed, never a wholesale override of distance. Campus
+// hauls are short, so the credit is small: a drop-off more than this much closer
+// still wins regardless of need. Display always uses the real `miles`.
+const NEED_CREDIT_MI: Record<NeedLevel, number> = {
+  high: 0.5,
+  steady: 0,
+  low: -0.5,
+};
+
+// The distance the ranking sorts by: real miles discounted by need, so demand
+// can break near-ties without overriding a genuinely closer option.
+function effectiveMiles(miles: number, needLevel: NeedLevel): number {
+  return miles - NEED_CREDIT_MI[needLevel];
+}
+
+// All drop-offs ranked: eligible first, then nearest — with a small
+// need-aware credit so higher-need drop-offs surface ahead of a steady one
+// they're only marginally farther than.
 export function rankDropOffs(
   r: MapRestaurant,
   dropOffs: DropOffLocation[]
@@ -34,7 +53,10 @@ export function rankDropOffs(
     })
     .sort((a, b) => {
       if (a.eligible !== b.eligible) return a.eligible ? -1 : 1;
-      return a.miles - b.miles;
+      return (
+        effectiveMiles(a.miles, a.dropOff.needLevel) -
+        effectiveMiles(b.miles, b.dropOff.needLevel)
+      );
     });
 }
 
