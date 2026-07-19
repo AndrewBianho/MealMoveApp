@@ -6,7 +6,7 @@ import {
   LIVE_LISTING_STATUSES,
   type ClaimPickup,
 } from "./claims";
-import { sendDropOffPickupNotice } from "./notify";
+import { sendDropOffPickupNotice, sendRestaurantRescueNotice } from "./notify";
 import { cleanSafetyAnswers, type SafetyAnswers } from "./safety";
 import {
   cleanAccuracyNote,
@@ -153,7 +153,8 @@ export async function markDeliveredWithPhotoFor(
   userId: string,
   listingId: string,
   photoUrl: string,
-  now: number = Date.now()
+  now: number = Date.now(),
+  notifyRestaurant = sendRestaurantRescueNotice
 ): Promise<void> {
   const url = photoUrl?.trim();
   if (!url) throw new Error("A delivery photo is required to mark delivered.");
@@ -171,6 +172,8 @@ export async function markDeliveredWithPhotoFor(
     ? [pickup.volunteerId, pickup.buddyId]
     : [pickup.volunteerId];
 
+  const newStatus = nextListingStatus(pickup, { deliveredAt: new Date(now) });
+
   await db.$transaction([
     db.pickup.update({
       where: { id: pickup.id },
@@ -178,9 +181,7 @@ export async function markDeliveredWithPhotoFor(
     }),
     db.foodListing.update({
       where: { id: listingId },
-      data: {
-        status: nextListingStatus(pickup, { deliveredAt: new Date(now) }),
-      },
+      data: { status: newStatus },
     }),
     db.listingEvent.create({
       data: {
@@ -196,6 +197,22 @@ export async function markDeliveredWithPhotoFor(
       })
     ),
   ]);
+
+  // The restaurant learns their food made it — only once the listing is fully
+  // delivered (a multi-car listing stays quiet until the last car lands).
+  // Best-effort: the rescue is already complete, so a push failure must not throw.
+  if (newStatus === "delivered") {
+    try {
+      await notifyRestaurant({
+        event: "delivered",
+        restaurantId: pickup.listing.restaurantId,
+        listingId,
+        listingTitle: pickup.listing.title,
+      });
+    } catch {
+      // best-effort notification
+    }
+  }
 }
 
 /**

@@ -279,3 +279,50 @@ test("markDeliveredWithPhotoFor: a buddy can capture the photo, and both seats g
     .sort();
   assert.deepEqual(credited, ["vol1", "vol2"]);
 });
+
+test("markDeliveredWithPhotoFor: notifies the restaurant on full delivery", async () => {
+  const { db } = txDb({
+    volunteerId: "vol1",
+    listing: { status: "in_transit", restaurantId: "r1", title: "Bagels" },
+  });
+  const notices: any[] = [];
+  await markDeliveredWithPhotoFor(db, "vol1", "ls1", "https://x/d.jpg", t0, async (n) => {
+    notices.push(n);
+  });
+  assert.equal(notices.length, 1);
+  assert.equal(notices[0].event, "delivered");
+  assert.equal(notices[0].restaurantId, "r1");
+  assert.equal(notices[0].listingTitle, "Bagels");
+});
+
+test("markDeliveredWithPhotoFor: no restaurant notice on a partial multi-car delivery", async () => {
+  // Two cars; the other has not delivered, so the listing is not yet "delivered".
+  const other: any = {
+    id: "pk2",
+    photoAtPickupUrl: "https://x/seed2.jpg",
+    takenHomeAt: null,
+    deliveredAt: null,
+  };
+  const acting: any = {
+    id: "pk1",
+    buddyId: null,
+    volunteerId: "vol1",
+    photoAtPickupUrl: "https://x/seed1.jpg",
+    takenHomeAt: null,
+    deliveredAt: null,
+    listing: { status: "in_transit", carsNeeded: 2, restaurantId: "r1", title: "Trays" },
+  };
+  acting.listing.pickups = [acting, other];
+  const db: any = {
+    pickup: { findFirst: async () => acting, update: async () => acting },
+    foodListing: { update: async () => ({}) },
+    listingEvent: { create: async ({ data }: any) => data },
+    message: { create: async ({ data }: any) => data },
+    $transaction: async (ops: Promise<unknown>[]) => Promise.all(ops),
+  };
+  const notices: any[] = [];
+  await markDeliveredWithPhotoFor(db, "vol1", "ls1", "https://x/d.jpg", t0, async (n) => {
+    notices.push(n);
+  });
+  assert.equal(notices.length, 0);
+});
