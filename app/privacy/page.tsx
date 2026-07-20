@@ -15,7 +15,7 @@ import { DonorProtectionNote } from "@/components/DonorProtectionNote";
 // GDPR or CCPA) before you rely on it.
 
 const ORG_NAME = "Meal Move";
-const CONTACT_EMAIL = "support@mealmove.app";
+const CONTACT_EMAIL = "support@mealmove.org";
 const EFFECTIVE_DATE = "June 16, 2026";
 
 export const metadata: Metadata = {
