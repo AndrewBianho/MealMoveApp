@@ -21,6 +21,12 @@ const DEMO = [
 ] as const;
 const DEMO_PASSWORD = "MealMove1";
 
+// The seeded demo accounts don't exist in the live production database, so the
+// one-tap demo grid only shows off the production deployment (local dev + Vercel
+// previews keep it for testing). Vercel exposes NEXT_PUBLIC_VERCEL_ENV to the
+// client; it's undefined on local dev.
+const SHOW_DEMO = process.env.NEXT_PUBLIC_VERCEL_ENV !== "production";
+
 export function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,11 +41,15 @@ export function LoginForm() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
     if (!EMAIL_RE.test(email) || !password) {
       setError("Enter your email and password to continue.");
       return;
     }
+    await signInWith(email, password);
+  }
+
+  async function signInWith(emailArg: string, passwordArg: string) {
+    setError(null);
     setLoading(true);
 
     // A failed sign-in has two very different causes that must read differently:
@@ -51,7 +61,7 @@ export function LoginForm() {
     // the first is the user's fault, so only it blames their credentials.
     let res: Awaited<ReturnType<typeof signIn>> | undefined;
     try {
-      res = await signIn("credentials", { email, password, redirect: false });
+      res = await signIn("credentials", { email: emailArg, password: passwordArg, redirect: false });
     } catch {
       setLoading(false);
       setError("We're having trouble signing you in right now. Please try again in a moment.");
@@ -75,10 +85,10 @@ export function LoginForm() {
     }, 900);
   }
 
-  function prefillDemo(demoEmail: string) {
+  function useDemo(demoEmail: string) {
     setEmail(demoEmail);
     setPassword(DEMO_PASSWORD);
-    setError(null);
+    signInWith(demoEmail, DEMO_PASSWORD);
   }
 
   if (done) {
@@ -177,6 +187,7 @@ export function LoginForm() {
         </Link>
       </p>
 
+      {SHOW_DEMO && (
       <div className="mt-6 border-t border-neutral-200/70 pt-5">
         <p className="mb-2.5 font-mono text-[13px] text-neutral-700">
           Or try a demo login
@@ -186,11 +197,13 @@ export function LoginForm() {
             <button
               key={d.email}
               type="button"
-              onClick={() => prefillDemo(d.email)}
+              onClick={() => useDemo(d.email)}
+              disabled={loading}
               className={cn(
                 "rounded-md border border-neutral-200 bg-neutral-50/60 px-3 py-2.5 text-[16px] font-medium text-neutral-800 transition-colors",
                 "hover:border-rescued-400 hover:bg-rescued-50 hover:text-rescued-800",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2"
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2",
+                "disabled:cursor-not-allowed disabled:opacity-60"
               )}
             >
               {d.role}
@@ -198,6 +211,7 @@ export function LoginForm() {
           ))}
         </div>
       </div>
+      )}
     </>
   );
 }
