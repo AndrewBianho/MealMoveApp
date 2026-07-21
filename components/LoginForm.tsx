@@ -85,7 +85,10 @@ export function LoginForm() {
     }, 900);
   }
 
-  function useDemo(demoEmail: string) {
+  // Not a hook — a click handler. Named `useDemo` it tripped
+  // react-hooks/rules-of-hooks, which treats any `use*` function as a hook and
+  // fails the build when one is called from a callback.
+  function signInAsDemo(demoEmail: string) {
     setEmail(demoEmail);
     setPassword(DEMO_PASSWORD);
     signInWith(demoEmail, DEMO_PASSWORD);
@@ -197,7 +200,7 @@ export function LoginForm() {
             <button
               key={d.email}
               type="button"
-              onClick={() => useDemo(d.email)}
+              onClick={() => signInAsDemo(d.email)}
               disabled={loading}
               className={cn(
                 "rounded-md border border-neutral-200 bg-neutral-50/60 px-3 py-2.5 text-[16px] font-medium text-neutral-800 transition-colors",
