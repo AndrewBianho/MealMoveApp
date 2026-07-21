@@ -31,7 +31,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://mealmove.org"),
+  metadataBase: new URL("https://app.mealmove.org"),
   title: "Meal Move",
   description: "Food-rescue for a campus volunteer org.",
   manifest: "/manifest.json",
