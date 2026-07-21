@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { Button } from "./Button";
 import { PasswordField } from "./PasswordField";
@@ -21,11 +21,13 @@ const DEMO = [
 ] as const;
 const DEMO_PASSWORD = "MealMove1";
 
-// The seeded demo accounts don't exist in the live production database, so the
-// one-tap demo grid only shows off the production deployment (local dev + Vercel
-// previews keep it for testing). Vercel exposes NEXT_PUBLIC_VERCEL_ENV to the
-// client; it's undefined on local dev.
-const SHOW_DEMO = process.env.NEXT_PUBLIC_VERCEL_ENV !== "production";
+// Local dev and Vercel previews always show the one-tap demo grid; production
+// shows it only for ?demo=1. The seeded accounts DO exist in production — the
+// daily /api/cron/reset-demo job rebuilds the demo world there — so the grid
+// works on the live domain. We just don't advertise four live logins to every
+// visitor who lands on it. Vercel exposes NEXT_PUBLIC_VERCEL_ENV to the client;
+// it's undefined on local dev.
+const DEMO_ALWAYS = process.env.NEXT_PUBLIC_VERCEL_ENV !== "production";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -38,6 +40,14 @@ export function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
+  // Read ?demo=1 after mount, not during render: the server render has no query
+  // string, so gating the markup on it directly would mismatch on hydration.
+  const [showDemo, setShowDemo] = useState(DEMO_ALWAYS);
+  useEffect(() => {
+    if (!DEMO_ALWAYS && new URLSearchParams(window.location.search).get("demo") === "1") {
+      setShowDemo(true);
+    }
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -190,7 +200,7 @@ export function LoginForm() {
         </Link>
       </p>
 
-      {SHOW_DEMO && (
+      {showDemo && (
       <div className="mt-6 border-t border-neutral-200/70 pt-5">
         <p className="mb-2.5 font-mono text-[13px] text-neutral-700">
           Or try a demo login
