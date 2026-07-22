@@ -17,7 +17,7 @@ const config: Config = {
         mono: ["var(--font-mono)", "monospace"], // JetBrains Mono
       },
       // All color tokens resolve to CSS variables (RGB channels) defined in
-      // globals.css (:root = the "Arctic Blue" light theme). The channel form
+      // globals.css (:root = the "Soft Harvest" light theme). The channel form
       // keeps `/opacity` utilities working.
       colors: {
         rescued: {
