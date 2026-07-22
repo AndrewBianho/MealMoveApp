@@ -35,7 +35,11 @@
 
 **Interfaces:**
 - Consumes: nothing.
-- Produces: `Stop`, `TripPlan`, `SlotName`, `DEFAULT_START`, `emptyTrip()`, `slotForKind()`, `toggleEntity()`, `setSlot()`, `clearTrip()`, `serializeTrip()`, `hydrateTrip()`.
+- Produces: `Stop`, `EntityStop`, `TripPlan`, `SlotName`, `DEFAULT_START`, `emptyTrip()`, `slotForKind()`, `toggleEntity()`, `setSlot()`, `clearTrip()`, `hydrateTrip()`.
+
+There is deliberately no `serializeTrip()`. A `TripPlan` is already a plain
+JSON-safe object, so callers use `JSON.stringify(plan)` directly rather than
+routing through an identity function.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -49,7 +53,6 @@ import {
   clearTrip,
   emptyTrip,
   hydrateTrip,
-  serializeTrip,
   setSlot,
   slotForKind,
   toggleEntity,
@@ -115,7 +118,7 @@ test("hydrate round-trips a serialized plan", () => {
   plan = toggleEntity(plan, shelter);
 
   const restored = hydrateTrip(
-    JSON.parse(JSON.stringify(serializeTrip(plan))),
+    JSON.parse(JSON.stringify(plan)),
     new Set(["r1"]),
     new Set(["d1"])
   );
@@ -126,7 +129,7 @@ test("hydrate drops a stop whose entity no longer exists", () => {
   let plan = toggleEntity(emptyTrip(), bakery);
   plan = toggleEntity(plan, shelter);
 
-  const restored = hydrateTrip(serializeTrip(plan), new Set<string>(), new Set(["d1"]));
+  const restored = hydrateTrip(plan, new Set<string>(), new Set(["d1"]));
   assert.equal(restored.pickup, null, "stale restaurant id must not survive hydration");
   assert.deepEqual(restored.dropOff, shelter);
 });
@@ -134,7 +137,7 @@ test("hydrate drops a stop whose entity no longer exists", () => {
 test("hydrate keeps free-form place stops regardless of known ids", () => {
   const end: Stop = { kind: "place", center: [-75.2, 40.8], label: "Campus" };
   const plan = setSlot(emptyTrip(), "end", end);
-  const restored = hydrateTrip(serializeTrip(plan), new Set<string>(), new Set<string>());
+  const restored = hydrateTrip(plan, new Set<string>(), new Set<string>());
   assert.deepEqual(restored.end, end);
 });
 
@@ -217,10 +220,6 @@ export function toggleEntity(plan: TripPlan, stop: EntityStop): TripPlan {
 /** Resets the journey but keeps where the volunteer is starting from. */
 export function clearTrip(plan: TripPlan): TripPlan {
   return { start: plan.start, pickup: null, dropOff: null, end: null };
-}
-
-export function serializeTrip(plan: TripPlan): TripPlan {
-  return plan;
 }
 
 function isStop(v: unknown): v is Stop {
@@ -629,12 +628,11 @@ Create `components/map/useTripPlan.ts`:
 ```ts
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   clearTrip,
   emptyTrip,
   hydrateTrip,
-  serializeTrip,
   setSlot,
   toggleEntity,
   type EntityStop,
@@ -671,27 +669,28 @@ export function useTripPlan({
   const [plan, setPlan] = useState<TripPlan>(() => emptyTrip());
   const [hydrated, setHydrated] = useState(false);
 
-  // Read once on mount. Entity ids are captured in refs so re-fetching the map
-  // data later never re-triggers hydration and clobbers in-progress edits.
-  const restIds = useRef(new Set(restaurants.map((r) => r.id)));
-  const dropIds = useRef(new Set(dropOffs.map((d) => d.id)));
-  restIds.current = new Set(restaurants.map((r) => r.id));
-  dropIds.current = new Set(dropOffs.map((d) => d.id));
-
   useEffect(() => {
+    // Built inside the effect, not during render: the effect runs once, so
+    // these are the mount-time ids — exactly what hydration should validate
+    // against — and nothing mutates a ref mid-render.
+    const restIds = new Set(restaurants.map((r) => r.id));
+    const dropIds = new Set(dropOffs.map((d) => d.id));
     try {
       const raw = localStorage.getItem(KEY);
-      if (raw) setPlan(hydrateTrip(raw, restIds.current, dropIds.current));
+      if (raw) setPlan(hydrateTrip(raw, restIds, dropIds));
     } catch {
       /* ignore corrupt storage */
     }
     setHydrated(true);
+    // Mount-only by design: re-hydrating when the map data refetches would
+    // clobber edits the volunteer has already made.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!hydrated) return;
     try {
-      localStorage.setItem(KEY, JSON.stringify(serializeTrip(plan)));
+      localStorage.setItem(KEY, JSON.stringify(plan));
     } catch {
       /* ignore */
     }
@@ -970,6 +969,7 @@ Create `components/map/TripItinerary.tsx`:
 ```tsx
 "use client";
 
+import type { ReactNode } from "react";
 import { cn } from "@/components/cn";
 import type { SlotName, Stop, TripPlan } from "@/lib/tripPlan";
 
@@ -981,12 +981,77 @@ export interface SlotSuggestion {
   recommended: boolean;
 }
 
-const ROWS: { slot: SlotName; label: string; prompt: string }[] = [
-  { slot: "start", label: "Start", prompt: "Set where you're starting from" },
+// `start` is structurally non-null, so it is rendered outside this list — it
+// has no empty state to describe.
+const OPTIONAL_ROWS: {
+  slot: "pickup" | "dropOff" | "end";
+  label: string;
+  prompt: string;
+}[] = [
   { slot: "pickup", label: "Pickup", prompt: "Choose a pickup — tap a pin" },
   { slot: "dropOff", label: "Drop-off", prompt: "Choose a drop-off — tap a pin" },
   { slot: "end", label: "End", prompt: "Add a final destination (optional)" },
 ];
+
+/** One node on the trip: connector, dot, label, and either a stop or a prompt. */
+function Row({
+  label,
+  stop,
+  prompt,
+  last,
+  onClear,
+  children,
+}: {
+  label: string;
+  stop: Stop | null;
+  prompt?: string;
+  last?: boolean;
+  onClear?: () => void;
+  children?: ReactNode;
+}) {
+  return (
+    <li className="relative pl-6">
+      {!last && (
+        <span
+          aria-hidden
+          className="absolute bottom-0 left-[5px] top-4 w-px bg-neutral-900/15"
+        />
+      )}
+      <span
+        aria-hidden
+        className={cn(
+          "absolute left-0 top-2.5 h-[11px] w-[11px] rounded-full border-2",
+          stop ? "border-route bg-route" : "border-neutral-900/25 bg-card"
+        )}
+      />
+      <div className="pb-3">
+        <div className="font-mono text-[11px] text-neutral-700">{label}</div>
+        {stop ? (
+          <div className="flex items-start justify-between gap-2">
+            <span className="min-w-0 flex-1 truncate text-sm font-medium text-neutral-900">
+              {stop.label}
+            </span>
+            {onClear && (
+              <button
+                type="button"
+                onClick={onClear}
+                aria-label={`Remove ${label.toLowerCase()}`}
+                className="-my-1 shrink-0 rounded-full p-1 text-neutral-700 transition-colors hover:bg-neutral-900/5 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+              >
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-neutral-700">{prompt}</p>
+        )}
+        {children}
+      </div>
+    </li>
+  );
+}
 
 /**
  * The trip as a sequence of rows joined by a connector line — the same visual
@@ -1010,9 +1075,6 @@ export function TripItinerary({
   onClearSlot: (slot: SlotName) => void;
   onClearTrip: () => void;
 }) {
-  const filled = (slot: SlotName): Stop | null =>
-    slot === "start" ? plan.start : (plan[slot] as Stop | null);
-
   const hasAny = plan.pickup || plan.dropOff || plan.end;
 
   return (
@@ -1031,89 +1093,58 @@ export function TripItinerary({
       </div>
 
       <ol className="mt-2">
-        {ROWS.map((row, i) => {
-          const stop = filled(row.slot);
-          const last = i === ROWS.length - 1;
-          const showSuggestions = !stop && suggestions?.slot === row.slot;
+        <Row label="Start" stop={plan.start} />
+
+        {OPTIONAL_ROWS.map((row, i) => {
+          const stop = plan[row.slot];
+          // Narrowed to a value (not a boolean) so `sug.items` typechecks below.
+          const sug =
+            !stop && suggestions && suggestions.slot === row.slot ? suggestions : null;
 
           return (
-            <li key={row.slot} className="relative pl-6">
-              {/* Connector: a hairline from this node to the next row. */}
-              {!last && (
-                <span
-                  aria-hidden
-                  className="absolute left-[5px] top-4 bottom-0 w-px bg-neutral-900/15"
-                />
-              )}
-              <span
-                aria-hidden
-                className={cn(
-                  "absolute left-0 top-2.5 h-[11px] w-[11px] rounded-full border-2",
-                  stop ? "border-route bg-route" : "border-neutral-900/25 bg-card"
-                )}
-              />
-
-              <div className="pb-3">
-                <div className="font-mono text-[11px] text-neutral-700">{row.label}</div>
-
-                {stop ? (
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-neutral-900">
-                      {stop.label}
-                    </span>
-                    {row.slot !== "start" && (
+            <Row
+              key={row.slot}
+              label={row.label}
+              stop={stop}
+              prompt={row.prompt}
+              last={i === OPTIONAL_ROWS.length - 1}
+              onClear={stop ? () => onClearSlot(row.slot) : undefined}
+            >
+              {sug && sug.items.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {sug.items.map((s) => (
+                    <li key={s.id}>
                       <button
                         type="button"
-                        onClick={() => onClearSlot(row.slot)}
-                        aria-label={`Remove ${row.label.toLowerCase()}`}
-                        className="-my-1 shrink-0 rounded-full p-1 text-neutral-700 transition-colors hover:bg-neutral-900/5 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+                        onClick={() => onPick(sug.slot, s.id)}
+                        className="flex w-full items-center gap-3 rounded-xl border border-neutral-900/10 px-3 py-2 text-left transition-colors hover:border-neutral-900/25 hover:bg-neutral-900/[0.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
                       >
-                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                          <path d="M18 6 6 18M6 6l12 12" />
-                        </svg>
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="truncate text-sm font-medium text-neutral-900">
+                            {s.name}
+                          </span>
+                          {s.recommended && (
+                            <span className="mt-1 inline-flex w-fit items-center rounded-full bg-clay-50 px-1.5 py-0.5 font-mono text-[9px] text-clay-800">
+                              Fastest
+                            </span>
+                          )}
+                        </span>
+                        <span className="shrink-0 text-right">
+                          {s.minutes != null && (
+                            <span className="block font-mono text-sm font-bold tabular-nums text-neutral-900">
+                              {s.minutes} min
+                            </span>
+                          )}
+                          <span className="block font-mono text-[11px] tabular-nums text-neutral-700">
+                            {s.miles.toFixed(1)} mi
+                          </span>
+                        </span>
                       </button>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-sm text-neutral-700">{row.prompt}</p>
-                )}
-
-                {showSuggestions && suggestions.items.length > 0 && (
-                  <ul className="mt-2 space-y-1">
-                    {suggestions.items.map((s) => (
-                      <li key={s.id}>
-                        <button
-                          type="button"
-                          onClick={() => onPick(suggestions.slot, s.id)}
-                          className="flex w-full items-center gap-3 rounded-xl border border-neutral-900/10 px-3 py-2 text-left transition-colors hover:border-neutral-900/25 hover:bg-neutral-900/[0.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
-                        >
-                          <span className="flex min-w-0 flex-1 flex-col">
-                            <span className="truncate text-sm font-medium text-neutral-900">
-                              {s.name}
-                            </span>
-                            {s.recommended && (
-                              <span className="mt-1 inline-flex w-fit items-center rounded-full bg-clay-50 px-1.5 py-0.5 font-mono text-[9px] text-clay-800">
-                                Fastest
-                              </span>
-                            )}
-                          </span>
-                          <span className="shrink-0 text-right">
-                            {s.minutes != null && (
-                              <span className="block font-mono text-sm font-bold tabular-nums text-neutral-900">
-                                {s.minutes} min
-                              </span>
-                            )}
-                            <span className="block font-mono text-[11px] tabular-nums text-neutral-700">
-                              {s.miles.toFixed(1)} mi
-                            </span>
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </li>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Row>
           );
         })}
       </ol>
@@ -1405,10 +1436,12 @@ and call it in the effect:
 
 ```ts
 useEffect(() => {
+  const restIds = new Set(restaurants.map((r) => r.id));
+  const dropIds = new Set(dropOffs.map((d) => d.id));
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
-      setPlan(hydrateTrip(raw, restIds.current, dropIds.current));
+      setPlan(hydrateTrip(raw, restIds, dropIds));
     } else {
       const migrated = migrateLegacy();
       if (migrated) setPlan(migrated);
@@ -1417,6 +1450,7 @@ useEffect(() => {
     /* ignore corrupt storage */
   }
   setHydrated(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
 }, []);
 ```
 
