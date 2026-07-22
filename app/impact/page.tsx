@@ -110,8 +110,14 @@ export default async function ImpactPage() {
   const foodMoved = stats.slice(0, 3);
   const operation = stats.slice(3);
 
+  // Width follows content (DESIGN.md), so this page caps at 5xl rather than the
+  // shared 1760px shell: nothing here exceeds 896px for any role — harvest panel
+  // and stat grids at max-w-4xl, past pickups at 780px, org-admin reliability at
+  // max-w-xl. Under 1760px that stranded ~680px of dead surface on one side at a
+  // 1600px viewport; capped, the same whitespace becomes symmetric margin. The
+  // feed does the same with max-w-[1200px] around its 1136px of content.
   return (
-    <main className="mx-auto max-w-[1760px] px-6 py-8">
+    <main className="mx-auto max-w-5xl px-6 py-8">
       <header className="mb-8 flex items-center gap-4">
         <Avatar name={user.name} src={user.imageUrl} size="lg" className="shadow-card" />
         <div>
