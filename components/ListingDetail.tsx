@@ -27,6 +27,7 @@ import { BuddyInvitePicker } from "./BuddyInvitePicker";
 import { ImageUploadField } from "./ImageUploadField";
 import { OpenInMapsButton } from "./OpenInMapsButton";
 import { SafetyChecklist } from "./SafetyChecklist";
+import { ClaimHoldPanel } from "./ClaimHoldPanel";
 import { RescueAccuracySignal } from "./RescueAccuracySignal";
 import { startFailureReplay } from "@/lib/analytics/client";
 import { formatEventTime } from "@/lib/time";
@@ -322,7 +323,9 @@ export function ListingDetail({
       try {
         await claimListing(id, chosenDropOff ?? undefined);
         if (canPrimeNotifications) setPrimeOpen(true);
-        show("Claimed — it's yours for the next fifteen minutes.");
+        // The hold panel now carries "it's yours" and the live countdown, so
+        // the toast just points forward instead of repeating it.
+        show("Claimed — head over when you're ready.");
       } catch (e) {
         show(e instanceof Error ? e.message : "Couldn't claim this pickup.");
       }
@@ -961,6 +964,15 @@ export function ListingDetail({
               {listing.status === "claimed" &&
                 (listing.mine ? (
                   <>
+                    {listing.holdUntil && !listing.photoAtPickupUrl && (
+                      <ClaimHoldPanel
+                        holdUntil={listing.holdUntil}
+                        claimedAt={listing.claimedAt}
+                        source={listing.source}
+                        dropOff={listing.dropOff}
+                        className="mb-4"
+                      />
+                    )}
                     <OpenInMapsButton
                       pickup={mapsPickup}
                       dropOff={mapsDropOff}

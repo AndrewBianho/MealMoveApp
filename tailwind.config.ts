@@ -136,6 +136,14 @@ const config: Config = {
           from: { transform: "translateY(100%)" },
           to: { transform: "translateY(0)" },
         },
+        // The claim confirmation's check drawing itself in a single stroke
+        // (ClaimHoldPanel). Counts down from the path's ~20-unit dasharray;
+        // `both` leaves it drawn, so reduced motion simply shows a finished
+        // check instead of animating one.
+        "draw-check": {
+          from: { strokeDashoffset: "20" },
+          to: { strokeDashoffset: "0" },
+        },
         // Celebration leaves: drift down with a gentle sway and fade out.
         // Decorative only (RescueCelebration), gated behind motion-safe.
         "leaf-fall": {
@@ -156,6 +164,7 @@ const config: Config = {
         "slide-in-right": "slide-in-right 0.4s cubic-bezier(0.22,1,0.36,1) both",
         "slide-in-left": "slide-in-left 0.4s cubic-bezier(0.22,1,0.36,1) both",
         "sheet-up": "sheet-up 0.28s cubic-bezier(0.22,1,0.36,1) both",
+        "draw-check": "draw-check 0.45s cubic-bezier(0.22,1,0.36,1) 0.12s both",
         "leaf-fall": "leaf-fall 6s ease-in both",
       },
       // Semantic layering scale — sticky header < dropdown/menu < modal overlay
