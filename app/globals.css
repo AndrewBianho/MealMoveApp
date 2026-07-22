@@ -90,11 +90,24 @@ h3 {
 
    The motif is a **linen weave** — warp and weft threads, the cloth a meal is
    served on. Four gradient layers, not two: a flat two-layer lattice at one
-   period is what reads as graph paper. The warp and weft periods (6px / 7px)
-   and the slub periods (29px / 31px) are **coprime**, so the threads never
-   line up into a repeating square cell, and the two directions carry different
-   weights the way a real weave does. The slubs are the occasional heavier
-   thread that keeps it from looking machine-ruled.
+   period is what reads as graph paper. The slubs (47px / 61px) are the
+   occasional heavier thread that keeps it from looking machine-ruled; every
+   period here is coprime with the others, so nothing lines up into a repeating
+   cell before 9*14*47*61 px.
+
+   **Two things matter more than coprimality, both learned the hard way.** The
+   first pass ran warp/weft at 5%/3.8% on 6px/7px periods and read as graph
+   paper on screen: a 1px line every 6px at a 10% luminance drop is *seen*, not
+   felt. Alpha is now 2%/1.5% — a ~2-4% drop, at the edge of perception on the
+   n-50 surface. Keep it there; this is the largest surface in the product and
+   it is meant to be noticed only if you look for it.
+
+   The second: coprime periods only guarantee the *tile* doesn't repeat. 6 and 7
+   are coprime, but they're close enough that the eye still resolves a ~6.5px
+   square lattice — which is the drafting grid this was supposed to replace. The
+   periods are now 9px and 14px, far enough apart (1.56x) that the two
+   directions read as different, the way warp and weft do in real cloth. Ratio,
+   not coprimality, is what stops it looking square.
 
    The washes are clay (top-left) and sage (top-right), both ramp-600. The
    clay one replaced an untokenised `rgba(70,120,175)` blue left over from the
@@ -104,10 +117,10 @@ body {
   background-color: rgb(var(--n-50));
   background-image:
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)' opacity='0.09'/%3E%3C/svg%3E"),
-    repeating-linear-gradient(90deg, rgb(var(--n-900) / 0.05) 0 1px, transparent 1px 6px),
-    repeating-linear-gradient(0deg, rgb(var(--n-900) / 0.038) 0 1px, transparent 1px 7px),
-    repeating-linear-gradient(90deg, rgb(var(--n-900) / 0.03) 0 1px, transparent 1px 29px),
-    repeating-linear-gradient(0deg, rgb(var(--n-900) / 0.024) 0 1px, transparent 1px 31px),
+    repeating-linear-gradient(90deg, rgb(var(--n-900) / 0.02) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(0deg, rgb(var(--n-900) / 0.015) 0 1px, transparent 1px 14px),
+    repeating-linear-gradient(90deg, rgb(var(--n-900) / 0.026) 0 1px, transparent 1px 47px),
+    repeating-linear-gradient(0deg, rgb(var(--n-900) / 0.02) 0 1px, transparent 1px 61px),
     radial-gradient(620px 340px at 12% -8%, rgba(192, 109, 64, 0.09), transparent 70%),
     radial-gradient(560px 320px at 96% 2%, rgba(95, 126, 80, 0.09), transparent 72%);
   background-size: 200px 200px, auto, auto, auto, auto, 100% 100%, 100% 100%;
