@@ -92,10 +92,12 @@ const config: Config = {
         "3xl": "34px",
       },
       boxShadow: {
-        // Layered, cool-neutral elevation: a tight contact shadow + a soft
-        // diffuse one for a premium, tactile depth on the themed surfaces.
-        card: "0 1px 2px -1px rgba(18,26,44,0.12), 0 16px 36px -22px rgba(18,26,44,0.32)",
-        lift: "0 2px 6px -2px rgba(18,26,44,0.16), 0 26px 52px -22px rgba(18,26,44,0.42)",
+        // Layered, warm-neutral elevation: a tight contact shadow + a soft
+        // diffuse one for a premium, tactile depth on the themed surfaces. The
+        // shadow ink is a warm brown-black, matching the surface it falls on —
+        // a cool navy shadow on warm paper reads grey and slightly dirty.
+        card: "0 1px 2px -1px rgba(44,34,24,0.12), 0 16px 36px -22px rgba(44,34,24,0.32)",
+        lift: "0 2px 6px -2px rgba(44,34,24,0.16), 0 26px 52px -22px rgba(44,34,24,0.42)",
         glow: "0 10px 24px -12px rgba(95,126,80,0.85)",
       },
       keyframes: {

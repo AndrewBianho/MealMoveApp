@@ -2,24 +2,33 @@
 @tailwind components;
 @tailwind utilities;
 
-/* One theme, "Arctic Blue" (light): a cool off-white surface, navy ink, white
-   cards. Tokens are RGB channels consumed by tailwind.config so /opacity
-   utilities keep working. bg-neutral-50 is the app background; text-neutral-900
-   is the ink. */
+/* One theme, "Soft Harvest" (light): a warm paper surface, soft brown-black
+   ink, warm white cards. Tokens are RGB channels consumed by tailwind.config so
+   /opacity utilities keep working. bg-neutral-50 is the app background;
+   text-neutral-900 is the ink.
+
+   The neutrals are tinted toward the brand's own clay/honey hue at low chroma,
+   not toward a generic warm-white. This replaces the earlier cool "Arctic Blue"
+   ramp: the surface owns ~90% of every screen, so a blue-grey ground fought the
+   sage/honey/tomato/clay accents and left the app reading as corporate rather
+   than appetizing. The value ladder is unchanged (each stop matches its cool
+   predecessor's relative luminance within ±0.02), so every contrast pair the
+   old ramp passed still passes. Note lib/rampColors.ts never left the warm
+   palette — the map pins have been on these neutrals all along. */
 :root {
   color-scheme: light;
-  --n-50: 237 241 246;
-  --n-100: 226 232 240;
-  --n-200: 211 220 232;
-  --n-300: 186 198 214;
-  --n-400: 147 161 180;
-  --n-500: 102 115 138;
-  --n-600: 86 98 115;
-  --n-700: 58 69 85;
-  --n-800: 40 48 60;
-  --n-900: 27 36 48;
-  --card: 255 255 255;
-  --chrome: 244 246 248; /* frosted map chrome surface */
+  --n-50: 245 242 236;
+  --n-100: 238 233 225;
+  --n-200: 227 220 209;
+  --n-300: 203 194 180;
+  --n-400: 165 154 139;
+  --n-500: 120 110 97;
+  --n-600: 101 92 80;
+  --n-700: 71 64 55;
+  --n-800: 48 43 37;
+  --n-900: 33 29 25;
+  --card: 255 253 250;
+  --chrome: 247 244 239; /* frosted map chrome surface */
 
   --rescued-50: 238 243 233;
   --rescued-100: 213 226 200;
@@ -66,16 +75,48 @@ h3 {
   letter-spacing: -0.02em;
 }
 
-/* Two soft, blurred washes (cool blue + sage) give the surface depth instead
-   of a flat fill, over a faint dot-grid for texture. */
+/* The app surface: a fine paper grain under two soft warm washes, so the
+   largest surface in the product reads as paper rather than as a flat fill.
+
+   The grain replaced a 22px dot-grid. A dot grid is a *drafting* texture — it
+   says technical tool, which is the one thing "Soft Harvest" is not — and it's
+   the single most common background in software. Fibrous grain says paper, ties
+   to the brand's own metaphor, and at ~3% is felt rather than seen.
+
+   Built with feTurbulence and desaturated to grey by feColorMatrix (raw
+   fractalNoise randomises each RGB channel independently, which reads as
+   colour static). `stitchTiles` makes the 200px tile seamless, so this is one
+   ~400-byte inline SVG repeated, not a full-viewport filter rasterisation.
+
+   The motif is a **linen weave** — warp and weft threads, the cloth a meal is
+   served on. Four gradient layers, not two: a flat two-layer lattice at one
+   period is what reads as graph paper. The warp and weft periods (6px / 7px)
+   and the slub periods (29px / 31px) are **coprime**, so the threads never
+   line up into a repeating square cell, and the two directions carry different
+   weights the way a real weave does. The slubs are the occasional heavier
+   thread that keeps it from looking machine-ruled.
+
+   The washes are clay (top-left) and sage (top-right), both ramp-600. The
+   clay one replaced an untokenised `rgba(70,120,175)` blue left over from the
+   Arctic Blue theme, which sat as a grey-blue cast in the corner of every
+   warm screen. */
 body {
   background-color: rgb(var(--n-50));
   background-image:
-    radial-gradient(rgb(var(--n-900) / 0.035) 1px, transparent 1.7px),
-    radial-gradient(620px 340px at 12% -8%, rgba(70, 120, 175, 0.1), transparent 70%),
-    radial-gradient(560px 320px at 96% 2%, rgba(95, 126, 80, 0.08), transparent 72%);
-  background-size: 22px 22px, 100% 100%, 100% 100%;
-  background-attachment: fixed;
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)' opacity='0.09'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(90deg, rgb(var(--n-900) / 0.05) 0 1px, transparent 1px 6px),
+    repeating-linear-gradient(0deg, rgb(var(--n-900) / 0.038) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(90deg, rgb(var(--n-900) / 0.03) 0 1px, transparent 1px 29px),
+    repeating-linear-gradient(0deg, rgb(var(--n-900) / 0.024) 0 1px, transparent 1px 31px),
+    radial-gradient(620px 340px at 12% -8%, rgba(192, 109, 64, 0.09), transparent 70%),
+    radial-gradient(560px 320px at 96% 2%, rgba(95, 126, 80, 0.09), transparent 72%);
+  background-size: 200px 200px, auto, auto, auto, auto, 100% 100%, 100% 100%;
+  background-repeat: repeat, repeat, repeat, repeat, repeat, no-repeat, no-repeat;
+  /* The textures tile, so they scroll with the page — cheaper, and cloth should
+     move with the surface. Only the washes are `fixed`, which keeps them
+     anchored as corner glows; under `scroll` their `100% 100%` would resolve
+     against the full document height and stretch them down a long page. */
+  background-attachment: scroll, scroll, scroll, scroll, scroll, fixed, fixed;
 }
 
 /* Map popups: a frosted, rounded "Soft Harvest" card that sits in front of the
