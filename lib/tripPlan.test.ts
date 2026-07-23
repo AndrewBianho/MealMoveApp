@@ -86,6 +86,12 @@ test("hydrate drops a stop whose entity no longer exists", () => {
   assert.deepEqual(restored.dropOff, shelter);
 });
 
+test("hydrate replaces a start whose entity no longer exists", () => {
+  const staleStart = { start: bakery, pickup: null, dropOff: null, end: null };
+  const restored = hydrateTrip(staleStart, new Set<string>(), new Set<string>());
+  assert.deepEqual(restored.start, DEFAULT_START);
+});
+
 test("hydrate keeps free-form place stops regardless of known ids", () => {
   const end: Stop = { kind: "place", center: [-75.2, 40.8], label: "Campus" };
   const plan = setSlot(emptyTrip(), "end", end);

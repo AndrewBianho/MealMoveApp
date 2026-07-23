@@ -22,7 +22,7 @@ export interface Suggestion {
 }
 
 export const SUGGESTION_LIMIT = 8;
-export const RECENT_LIMIT = 3;
+const RECENT_LIMIT = 3;
 
 interface Located {
   id: string;

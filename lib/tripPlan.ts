@@ -103,7 +103,7 @@ export function hydrateTrip(
   };
 
   return {
-    start: isStop(p.start) ? p.start : DEFAULT_START,
+    start: keep(p.start) ?? DEFAULT_START,
     pickup: keep(p.pickup),
     dropOff: keep(p.dropOff),
     end: keep(p.end),
