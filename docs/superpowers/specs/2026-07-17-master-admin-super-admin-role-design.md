@@ -4,7 +4,7 @@ _Date: 2026-07-17. Status: approved (design). Scope: the `Code/` Next.js app._
 
 ## Goal
 
-Give one privileged identity (`duoduobianpc@gmail.com`) global, cross-org
+Give one privileged identity (`admin@example.com`) global, cross-org
 powers on top of the existing per-org admin model:
 
 1. **Monitor globally** — reach and view every console / every org's data.
@@ -48,7 +48,7 @@ for this one role, contained behind a single helper so the 72 existing
 - Prisma migration adds the enum value: `ALTER TYPE "Role" ADD VALUE 'super_admin'`
   (Postgres enum additions run outside a transaction; Prisma handles this).
 - `scripts/promote-super-admin.ts` — idempotent: sets `role = super_admin`
-  where `email = duoduobianpc@gmail.com` (configurable via arg/env), no-op if
+  where `email = admin@example.com` (configurable via arg/env), no-op if
   already set or the account doesn't exist. Add the same promotion to the dev
   seed so local has one.
 - Not self-registerable: `registerUser` already restricts sign-up to

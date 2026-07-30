@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a first-class `super_admin` role that gives one identity (`duoduobianpc@gmail.com`) global, cross-org powers — monitor everything, change `volunteer ↔ org_admin` (and grant/revoke `super_admin`) for any account by email, delete any account, and view per-org stats — reusing the existing org-admin machinery.
+**Goal:** Add a first-class `super_admin` role that gives one identity (`admin@example.com`) global, cross-org powers — monitor everything, change `volunteer ↔ org_admin` (and grant/revoke `super_admin`) for any account by email, delete any account, and view per-org stats — reusing the existing org-admin machinery.
 
 **Architecture:** A new `Role` enum value `super_admin`, plus a thin `lib/roles.ts` (`isAdmin`/`isSuperAdmin`/`roleAllowed`) that lets one override in `requireRole` and the middleware grant the role global access without editing all 72 existing `org_admin` references. Cross-org account actions move their guard logic into pure, unit-tested helpers (`lib/accountAdmin.ts`) that `setRole`/`deleteAccount` call; the `/admin/users` roster and `/admin/analytics` pages gain a global mode + org switcher for super admins.
 
@@ -18,7 +18,7 @@
 - **Typecheck:** `npx tsc --noEmit` must stay clean. **Lint:** `npx next lint`.
 - **Master admin is not self-registerable** — `registerUser` only accepts `volunteer | restaurant | drop_off`; do not change that.
 - **Every admin mutation** stays demo-blocked (`blockIfDemo`) and writes to `AdminEvent`.
-- **Target account for promotion:** `duoduobianpc@gmail.com`.
+- **Target account for promotion:** `admin@example.com`.
 
 ---
 
@@ -1264,7 +1264,7 @@ git commit -m "feat: analytics org switcher + org-scoped volunteer reliability f
 
 ### Task 10: Bootstrap — promote script + dev seed
 
-Give `duoduobianpc@gmail.com` the role, and seed a super admin for local dev.
+Give `admin@example.com` the role, and seed a super admin for local dev.
 
 **Files:**
 - Create: `scripts/promote-super-admin.ts`
@@ -1280,14 +1280,14 @@ Create `scripts/promote-super-admin.ts`:
 ```ts
 // Idempotently promote an account to super_admin (master admin). Usage:
 //   node --env-file=.env --import tsx scripts/promote-super-admin.ts [email]
-// Defaults to duoduobianpc@gmail.com. No-op if the account doesn't exist or is
+// Defaults to admin@example.com. No-op if the account doesn't exist or is
 // already super_admin.
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.argv[2] ?? "duoduobianpc@gmail.com";
+  const email = process.argv[2] ?? "admin@example.com";
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
     console.log(`No account for ${email} — nothing to promote.`);
@@ -1326,11 +1326,11 @@ In `prisma/seed.ts`, after users are created, upsert a dev master admin (real wo
 
 ```ts
   await prisma.user.upsert({
-    where: { email: "duoduobianpc@gmail.com" },
+    where: { email: "admin@example.com" },
     update: { role: "super_admin" },
     create: {
       name: "Master admin",
-      email: "duoduobianpc@gmail.com",
+      email: "admin@example.com",
       role: "super_admin",
       passwordHash, // reuse the seed's existing hash variable
     },
@@ -1363,7 +1363,7 @@ Prove the role works against the running app (guards, roster, delete, stats).
 
 Run: `npx prisma migrate dev` (applies `add_super_admin_role`).
 Run: `npm run db:promote-super-admin` (or re-seed with `npm run db:seed`).
-Expected: "Promoted duoduobianpc@gmail.com…" or "already a master admin".
+Expected: "Promoted admin@example.com…" or "already a master admin".
 
 - [ ] **Step 2: Full suite + typecheck + lint**
 
@@ -1373,7 +1373,7 @@ Run: `npx next lint` → no errors.
 
 - [ ] **Step 3: Drive the app (dev server)**
 
-Start the app, sign in as `duoduobianpc@gmail.com`, and confirm:
+Start the app, sign in as `admin@example.com`, and confirm:
 - Lands on `/admin/analytics`; the **org switcher** appears and scopes the org sections; "All orgs" shows global metrics.
 - `/admin/users` shows **all orgs + partners**, with the org filter + email search working and an org column.
 - Can promote a volunteer in another org to `org_admin` and back; can grant/revoke `super_admin`; cannot demote the last super admin or strip own access (error surfaces).
