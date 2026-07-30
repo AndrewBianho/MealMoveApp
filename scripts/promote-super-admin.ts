@@ -1,13 +1,20 @@
 // Idempotently promote an account to super_admin (master admin). Usage:
 //   node --env-file=.env --import tsx scripts/promote-super-admin.ts [email]
-// Defaults to duoduobianpc@gmail.com. No-op if the account doesn't exist or is
-// already super_admin.
+// Falls back to SUPER_ADMIN_EMAIL when no argument is given (kept out of source
+// so this public repo never names who holds global powers). No-op if the account
+// doesn't exist or is already super_admin.
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.argv[2] ?? "duoduobianpc@gmail.com";
+  const email = process.argv[2] ?? process.env.SUPER_ADMIN_EMAIL;
+  if (!email) {
+    console.log(
+      "No email given. Pass one as an argument, or set SUPER_ADMIN_EMAIL in .env.",
+    );
+    return;
+  }
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
     console.log(`No account for ${email} — nothing to promote.`);

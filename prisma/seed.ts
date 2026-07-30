@@ -33,18 +33,31 @@ async function main() {
   // create on every reseed; the upsert just makes reruns without a wipe safe
   // too. Same hashing convention (bcrypt, cost 10) as seedDemo's passwordHash,
   // computed here since that variable isn't exported/in scope for this file.
-  const masterAdminHash = await bcrypt.hash("MealMove1", 10);
-  await prisma.user.upsert({
-    where: { email: "duoduobianpc@gmail.com" },
-    update: { role: "super_admin" },
-    create: {
-      name: "Master admin",
-      email: "duoduobianpc@gmail.com",
-      role: "super_admin",
-      passwordHash: masterAdminHash,
-    },
-  });
-  console.log("Seeded local master admin: duoduobianpc@gmail.com (super_admin)");
+  //
+  // Identity and password come from the environment, never from source: this
+  // repo is public, so a hardcoded pair would publish both who holds global
+  // super_admin powers and the password the seed hands it. Unset either var and
+  // the bootstrap is simply skipped.
+  const masterAdminEmail = process.env.SUPER_ADMIN_EMAIL;
+  const masterAdminPassword = process.env.SUPER_ADMIN_PASSWORD;
+  if (masterAdminEmail && masterAdminPassword) {
+    const masterAdminHash = await bcrypt.hash(masterAdminPassword, 10);
+    await prisma.user.upsert({
+      where: { email: masterAdminEmail },
+      update: { role: "super_admin" },
+      create: {
+        name: "Master admin",
+        email: masterAdminEmail,
+        role: "super_admin",
+        passwordHash: masterAdminHash,
+      },
+    });
+    console.log(`Seeded local master admin: ${masterAdminEmail} (super_admin)`);
+  } else {
+    console.log(
+      "Skipped master admin: set SUPER_ADMIN_EMAIL + SUPER_ADMIN_PASSWORD in .env to seed one.",
+    );
+  }
 }
 
 main()
