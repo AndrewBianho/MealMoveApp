@@ -17,7 +17,7 @@ const config: Config = {
         mono: ["var(--font-mono)", "monospace"], // JetBrains Mono
       },
       // All color tokens resolve to CSS variables (RGB channels) defined in
-      // globals.css (:root = the "Arctic Blue" light theme). The channel form
+      // globals.css (:root = the "Soft Harvest" light theme). The channel form
       // keeps `/opacity` utilities working.
       colors: {
         rescued: {
@@ -92,10 +92,12 @@ const config: Config = {
         "3xl": "34px",
       },
       boxShadow: {
-        // Layered, cool-neutral elevation: a tight contact shadow + a soft
-        // diffuse one for a premium, tactile depth on the themed surfaces.
-        card: "0 1px 2px -1px rgba(18,26,44,0.12), 0 16px 36px -22px rgba(18,26,44,0.32)",
-        lift: "0 2px 6px -2px rgba(18,26,44,0.16), 0 26px 52px -22px rgba(18,26,44,0.42)",
+        // Layered, warm-neutral elevation: a tight contact shadow + a soft
+        // diffuse one for a premium, tactile depth on the themed surfaces. The
+        // shadow ink is a warm brown-black, matching the surface it falls on —
+        // a cool navy shadow on warm paper reads grey and slightly dirty.
+        card: "0 1px 2px -1px rgba(44,34,24,0.12), 0 16px 36px -22px rgba(44,34,24,0.32)",
+        lift: "0 2px 6px -2px rgba(44,34,24,0.16), 0 26px 52px -22px rgba(44,34,24,0.42)",
         glow: "0 10px 24px -12px rgba(95,126,80,0.85)",
       },
       keyframes: {
@@ -134,6 +136,14 @@ const config: Config = {
           from: { transform: "translateY(100%)" },
           to: { transform: "translateY(0)" },
         },
+        // The claim confirmation's check drawing itself in a single stroke
+        // (ClaimHoldPanel). Counts down from the path's ~20-unit dasharray;
+        // `both` leaves it drawn, so reduced motion simply shows a finished
+        // check instead of animating one.
+        "draw-check": {
+          from: { strokeDashoffset: "20" },
+          to: { strokeDashoffset: "0" },
+        },
         // Celebration leaves: drift down with a gentle sway and fade out.
         // Decorative only (RescueCelebration), gated behind motion-safe.
         "leaf-fall": {
@@ -154,6 +164,7 @@ const config: Config = {
         "slide-in-right": "slide-in-right 0.4s cubic-bezier(0.22,1,0.36,1) both",
         "slide-in-left": "slide-in-left 0.4s cubic-bezier(0.22,1,0.36,1) both",
         "sheet-up": "sheet-up 0.28s cubic-bezier(0.22,1,0.36,1) both",
+        "draw-check": "draw-check 0.45s cubic-bezier(0.22,1,0.36,1) 0.12s both",
         "leaf-fall": "leaf-fall 6s ease-in both",
       },
       // Semantic layering scale — sticky header < dropdown/menu < modal overlay

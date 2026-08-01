@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import { MetricCard, metricAccent } from "@/components/MetricCard";
+import { PersonalHarvest } from "@/components/PersonalHarvest";
 import { ReliabilityMeter } from "@/components/ReliabilityMeter";
 import { PickupSections } from "@/components/PickupSections";
 import { DropOffImpact } from "@/components/DropOffImpact";
@@ -100,7 +101,7 @@ export default async function ImpactPage() {
   const subtitle = restaurant
     ? `What ${restaurant.name} has helped rescue and move into the community.`
     : isVolunteer
-      ? "Your harvest so far, and the pickups behind it."
+      ? "The pickups behind your numbers."
       : isDropOff
         ? "What your location has received, and the donations behind it."
         : "Every number here is food that reached people instead of the bin.";
@@ -109,8 +110,14 @@ export default async function ImpactPage() {
   const foodMoved = stats.slice(0, 3);
   const operation = stats.slice(3);
 
+  // Width follows content (DESIGN.md), so this page caps at 5xl rather than the
+  // shared 1760px shell: nothing here exceeds 896px for any role — harvest panel
+  // and stat grids at max-w-4xl, past pickups at 780px, org-admin reliability at
+  // max-w-xl. Under 1760px that stranded ~680px of dead surface on one side at a
+  // 1600px viewport; capped, the same whitespace becomes symmetric margin. The
+  // feed does the same with max-w-[1200px] around its 1136px of content.
   return (
-    <main className="mx-auto max-w-[1760px] px-6 py-8">
+    <main className="mx-auto max-w-5xl px-6 py-8">
       <header className="mb-8 flex items-center gap-4">
         <Avatar name={user.name} src={user.imageUrl} size="lg" className="shadow-card" />
         <div>
@@ -132,26 +139,7 @@ export default async function ImpactPage() {
           {myImpact && (
             <div className="mb-10 max-w-4xl space-y-8">
               <section>
-                <h2 className="mb-3 font-mono text-[13px] text-neutral-700">
-                  Your harvest so far
-                </h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <MetricCard
-                    label="meals rescued"
-                    value={String(myImpact.mealsRescued)}
-                    accent={metricAccent("meals rescued")}
-                  />
-                  <MetricCard
-                    label="lbs saved"
-                    value={String(myImpact.lbsSaved)}
-                    accent={metricAccent("lbs saved")}
-                  />
-                  <MetricCard
-                    label="rescues completed"
-                    value={String(myImpact.pickupsCompleted)}
-                    accent={metricAccent("rescues completed")}
-                  />
-                </div>
+                <PersonalHarvest impact={myImpact} />
                 {myImpact.attempts > 0 && (
                   <div className="mt-4 max-w-sm rounded-xl border border-neutral-200/40 bg-card p-5">
                     <p className="mb-3 font-mono text-[13px] text-neutral-700">

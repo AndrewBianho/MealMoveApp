@@ -8,8 +8,9 @@ import {
 // real page, all as placeholder boxes, so the numbers land in place without a
 // layout shift.
 export default function Loading() {
+  // Cap matches page.tsx so the skeleton doesn't jump width on load.
   return (
-    <main className="mx-auto max-w-[1760px] px-6 py-8">
+    <main className="mx-auto max-w-5xl px-6 py-8">
       <LoadingStatus label="Loading impact numbers" />
       <header className="mb-8" aria-hidden="true">
         <SkeletonBlock className="h-10 w-72 max-w-full" />
