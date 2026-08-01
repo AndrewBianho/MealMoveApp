@@ -5,6 +5,11 @@ on:
   push:
     branches: [main, integration/all-features]
 
+# Least privilege: this workflow only reads the checkout. Explicit now that the
+# repo is public and forks can open PRs that run it.
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest

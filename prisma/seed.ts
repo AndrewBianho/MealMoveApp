@@ -7,7 +7,43 @@ import { seedDemo } from "./seedDemo";
 
 const prisma = new PrismaClient();
 
+// This script's first act is to empty every table, and `.env` normally points
+// DATABASE_URL at the *production* Supabase pooler — so a stray `npm run
+// db:seed` would wipe the live database. Refuse unless the target host is
+// local, or the caller has said out loud that it meant a remote one.
+function assertSafeTarget() {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error("DATABASE_URL is not set.");
+
+  let host: string;
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    throw new Error("DATABASE_URL is not a parseable URL.");
+  }
+
+  const isLocal =
+    host === "localhost" ||
+    host === "127.0.0.1" ||
+    host === "::1" ||
+    host.endsWith(".local");
+
+  if (isLocal || process.env.ALLOW_DESTRUCTIVE_SEED === "yes") return;
+
+  throw new Error(
+    `Refusing to wipe a non-local database.\n\n` +
+      `  DATABASE_URL host: ${host}\n\n` +
+      `This script deletes every row in every table. If that is genuinely what\n` +
+      `you want against this host, re-run with:\n\n` +
+      `  ALLOW_DESTRUCTIVE_SEED=yes npm run db:seed\n\n` +
+      `For a non-destructive refresh of just the demo data, use:\n` +
+      `  npm run db:demo:reset\n`,
+  );
+}
+
 async function main() {
+  assertSafeTarget();
+
   // Wipe in FK-safe order — children before parents.
   await prisma.message.deleteMany();
   await prisma.buddyInvite.deleteMany();
