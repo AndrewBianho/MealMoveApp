@@ -4,6 +4,7 @@ import { ListingCard } from "@/components/ListingCard";
 import { MetricCard } from "@/components/MetricCard";
 import { ReliabilityMeter } from "@/components/ReliabilityMeter";
 import { StatusBadge } from "@/components/StatusBadge";
+import { MapPlannerDemo } from "@/components/map/MapPlannerDemo";
 import { LISTINGS } from "@/lib/mock";
 import type { ListingStatus } from "@/lib/types";
 
@@ -167,6 +168,13 @@ export default function StyleGuidePage() {
             <ReliabilityMeter name="Dana K." pct={68} />
             <ReliabilityMeter name="Sam O." pct={41} />
           </div>
+        </Section>
+
+        <Section
+          title="Trip planner"
+          hint="The rescue map's itinerary and location search. Fixed slots — start, pickup, drop-off, end — filled by tapping pins on the real map; the ranked candidates hang off whichever slot is still empty. Type 'sun' in the field to see on-map locations rank above addresses."
+        >
+          <MapPlannerDemo />
         </Section>
       </div>
 

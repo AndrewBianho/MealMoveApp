@@ -1186,7 +1186,7 @@ The styleguide page is a server component, so it cannot pass callbacks to a
 client component. This one client wrapper holds the demo state for both new
 components.
 
-- [ ] **Step 1: Write the demo component**
+- [x] **Step 1: Write the demo component**
 
 Create `components/map/MapPlannerDemo.tsx`:
 
@@ -1274,7 +1274,7 @@ export function MapPlannerDemo() {
 }
 ```
 
-- [ ] **Step 2: Add the styleguide section**
+- [x] **Step 2: Add the styleguide section**
 
 In `app/styleguide/page.tsx`, add the import alongside the others:
 
@@ -1294,7 +1294,7 @@ list (after the last existing `</Section>`):
 </Section>
 ```
 
-- [ ] **Step 3: Verify in the browser**
+- [x] **Step 3: Verify in the browser**
 
 ```bash
 npm run typecheck && npm run lint
@@ -1311,7 +1311,7 @@ Then start the preview (`preview_start` with `{name: "dev"}`), open
 Address suggestions will NOT appear — the sandbox cannot reach `api.mapbox.com`.
 That is expected here; do not report it as a bug, and do not claim they work.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add components/map/MapPlannerDemo.tsx app/styleguide/page.tsx
