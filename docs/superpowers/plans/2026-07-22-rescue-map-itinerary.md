@@ -962,7 +962,7 @@ response can never land after a newer one."
   `suggestions: { slot: "pickup" | "dropOff"; items: { id: string; name: string; minutes?: number; miles: number; recommended: boolean }[] } | null`,
   `onPick(slot, id): void`, `onClearSlot(slot: SlotName): void`, `onClearTrip(): void`.
 
-- [ ] **Step 1: Write the implementation**
+- [x] **Step 1: Write the implementation**
 
 Create `components/map/TripItinerary.tsx`:
 
@@ -1153,12 +1153,12 @@ export function TripItinerary({
 }
 ```
 
-- [ ] **Step 2: Typecheck and lint**
+- [x] **Step 2: Typecheck and lint**
 
 Run: `npm run typecheck && npm run lint`
 Expected: typecheck silent; lint shows only the two known `ListingDetail.tsx` warnings
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add components/map/TripItinerary.tsx
