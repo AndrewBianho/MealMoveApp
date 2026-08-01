@@ -41,7 +41,7 @@ There is deliberately no `serializeTrip()`. A `TripPlan` is already a plain
 JSON-safe object, so callers use `JSON.stringify(plan)` directly rather than
 routing through an identity function.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/tripPlan.test.ts`:
 
@@ -148,12 +148,12 @@ test("hydrate returns an empty trip for corrupt input", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --require ./lib/stub-server-only.cjs --import tsx --test lib/tripPlan.test.ts`
 Expected: FAIL — `Cannot find module './tripPlan'`
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `lib/tripPlan.ts`:
 
@@ -271,12 +271,12 @@ export function hydrateTrip(
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node --require ./lib/stub-server-only.cjs --import tsx --test lib/tripPlan.test.ts`
 Expected: PASS, 12 tests
 
-- [ ] **Step 5: Typecheck and commit**
+- [x] **Step 5: Typecheck and commit**
 
 ```bash
 npm run typecheck
@@ -302,7 +302,7 @@ stale id can never render a row the user cannot act on."
 - Consumes: `Stop` from `lib/tripPlan.ts` (Task 1).
 - Produces: `Suggestion`, `SuggestionGroup`, `matchEntities()`, `mergeSuggestions()`, `rememberRecent()`, `SUGGESTION_LIMIT`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `lib/mapSuggestions.test.ts`:
 
@@ -393,12 +393,12 @@ test("rememberRecent keeps at most three", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `node --require ./lib/stub-server-only.cjs --import tsx --test lib/mapSuggestions.test.ts`
 Expected: FAIL — `Cannot find module './mapSuggestions'`
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Create `lib/mapSuggestions.ts`:
 
@@ -505,12 +505,12 @@ export function rememberRecent(list: Stop[], stop: Stop): Stop[] {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `node --require ./lib/stub-server-only.cjs --import tsx --test lib/mapSuggestions.test.ts`
 Expected: PASS, 9 tests
 
-- [ ] **Step 5: Run the whole suite, typecheck, commit**
+- [x] **Step 5: Run the whole suite, typecheck, commit**
 
 ```bash
 npm test
@@ -538,7 +538,7 @@ venue, since only the venue carries an id that can fill a trip slot."
 No unit test: this function is a network call with no branching logic worth
 isolating. Its callers are tested through `mergeSuggestions`.
 
-- [ ] **Step 1: Append the implementation**
+- [x] **Step 1: Append the implementation**
 
 Add to the end of `lib/geocode-client.ts`:
 
@@ -587,12 +587,12 @@ export async function geocodeSuggest(
 }
 ```
 
-- [ ] **Step 2: Typecheck**
+- [x] **Step 2: Typecheck**
 
 Run: `npm run typecheck`
 Expected: no output (success)
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add lib/geocode-client.ts
@@ -621,7 +621,7 @@ failed address lookup still leaves recent and on-map suggestions."
   `mm.dest` / `mm.destLabel` keys (see Task 8, Step 2 for the code — it lives in
   this file).
 
-- [ ] **Step 1: Write the implementation**
+- [x] **Step 1: Write the implementation**
 
 Create `components/map/useTripPlan.ts`:
 
@@ -710,12 +710,12 @@ export function useTripPlan({
 }
 ```
 
-- [ ] **Step 2: Typecheck and lint**
+- [x] **Step 2: Typecheck and lint**
 
 Run: `npm run typecheck && npm run lint`
 Expected: typecheck silent; lint shows only the two known `ListingDetail.tsx` warnings
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add components/map/useTripPlan.ts
