@@ -1802,18 +1802,18 @@ bottom to left so routes aren't framed underneath the column."
 
 **Interfaces:** none.
 
-- [ ] **Step 1: Fix the focus ring**
+- [x] **Step 1: Fix the focus ring**
 
 In `fieldCls` (`RescueMap.tsx:1143-1146`) change `focus-visible:ring-transit-400`
 to `focus-visible:ring-rescued-400`. Form inputs focus with the sage ring, and
 every other control in this file already does.
 
-- [ ] **Step 2: Fix the sentence-case labels**
+- [x] **Step 2: Fix the sentence-case labels**
 
 - The collapsed pill's text: `search` → `Search`.
 - The destination clear button's text: `clear` → `Clear`.
 
-- [ ] **Step 3: Remove the no-op span**
+- [x] **Step 3: Remove the no-op span**
 
 In the "Final destination" label, replace:
 
@@ -1829,7 +1829,7 @@ Final destination (optional)
 
 The span set the same color as its parent.
 
-- [ ] **Step 4: Verify**
+- [x] **Step 4: Verify**
 
 ```bash
 npm run typecheck && npm run lint
@@ -1839,7 +1839,7 @@ grep -n "ring-transit-400" components/RescueMap.tsx
 Expected: typecheck silent, lint shows only the known warnings, and the grep
 returns nothing.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add components/RescueMap.tsx

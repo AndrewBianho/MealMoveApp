@@ -1111,7 +1111,7 @@ export function RescueMap({
   const fieldCls =
     "w-full rounded-xl border border-neutral-900/10 bg-card px-3 py-1.5 text-sm " +
     "placeholder:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 " +
-    "focus-visible:ring-transit-400 focus-visible:ring-offset-1";
+    "focus-visible:ring-rescued-400 focus-visible:ring-offset-1";
 
 
   // The currently chosen route, for the trip summary line in the panel.
@@ -1254,7 +1254,7 @@ export function RescueMap({
               onClick={() => setStop("end", null)}
               className="-mx-1 -mb-2 mt-0.5 inline-flex items-center rounded px-1 py-2 font-mono text-[11px] text-clay-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
             >
-              clear
+              Clear
             </button>
           )}
         </div>
@@ -1305,7 +1305,7 @@ export function RescueMap({
                 <circle cx="11" cy="11" r="7" />
                 <path d="m21 21-4.3-4.3" />
               </svg>
-              search
+              Search
             </button>
           )}
         </div>
