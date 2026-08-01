@@ -1308,7 +1308,6 @@ export function RescueMap({
               Search
             </button>
           )}
-        </div>
         {/* Selection panel. Below lg it floats over the map as a bottom sheet
             (absolute, so the map never resizes and a click cannot reload it); at lg
             it becomes the second child of the overlay column, docked under the
@@ -1575,6 +1574,7 @@ export function RescueMap({
 
           </div>
         )}
+        </div>
       </div>
 
     </div>
