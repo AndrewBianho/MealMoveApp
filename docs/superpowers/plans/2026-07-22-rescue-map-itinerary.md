@@ -1337,7 +1337,7 @@ api.mapbox.com."
 This is the largest task. It replaces four `useState` pairs, the marker click
 handlers, and the panel's route-picker list.
 
-- [ ] **Step 1: Replace the absorbed state**
+- [x] **Step 1: Replace the absorbed state**
 
 Delete these four state declarations (`RescueMap.tsx:368-371`):
 
@@ -1386,7 +1386,7 @@ import { rememberRecent } from "@/lib/mapSuggestions";
 import type { Stop } from "@/lib/tripPlan";
 ```
 
-- [ ] **Step 2: Migrate the old storage keys, then delete their effects**
+- [x] **Step 2: Migrate the old storage keys, then delete their effects**
 
 Storage consolidates from four keys (`mm.myLoc`, `mm.myLabel`, `mm.dest`,
 `mm.destLabel`) to one (`mm.trip`). **Without a migration every existing user
@@ -1471,7 +1471,7 @@ useEffect(() => {
 }, []);
 ```
 
-- [ ] **Step 3: Make pin clicks fill trip slots**
+- [x] **Step 3: Make pin clicks fill trip slots**
 
 At `RescueMap.tsx:679` replace the restaurant click handler body with:
 
@@ -1500,7 +1500,7 @@ el.addEventListener("click", (ev) => {
 Selection still drives highlighting and which entity's details the panel shows;
 the trip slot is filled alongside it.
 
-- [ ] **Step 4: Derive the active route from the trip**
+- [x] **Step 4: Derive the active route from the trip**
 
 Replace the `activeRoute` state (`RescueMap.tsx:352`) with a derived value:
 
@@ -1516,7 +1516,7 @@ const activeRoute =
 Delete `setActiveRoute` and its call sites. `activeRouteRef` and `paintRoutes`
 keep working — they read the value, they don't set it.
 
-- [ ] **Step 5: Swap the route-picker list for the itinerary**
+- [x] **Step 5: Swap the route-picker list for the itinerary**
 
 Replace the panel's options list (`RescueMap.tsx:1402-1478`, the
 `panel.options.length > 1` hint through the closing of the `<ul>`) with:
@@ -1558,7 +1558,7 @@ Replace the panel's options list (`RescueMap.tsx:1402-1478`, the
 Keep the empty-state paragraph (`panel.options.length === 0`) and everything
 below the list — the trip summary line, the details disclosure, the links.
 
-- [ ] **Step 6: Swap both inputs for the combobox**
+- [x] **Step 6: Swap both inputs for the combobox**
 
 Replace the "Your location" input block (`RescueMap.tsx:1229-1265`) with:
 
@@ -1591,7 +1591,7 @@ Apply the same swap to the "Final destination" input (`RescueMap.tsx:1266-1299`)
 with `label="Final destination"`, `value={destInput}`, `onChange={setDestInput}`,
 and `onSelect` writing to the `"end"` slot. Keep the existing "Clear" button.
 
-- [ ] **Step 7: Verify**
+- [x] **Step 7: Verify**
 
 ```bash
 npm test && npm run typecheck && npm run lint
@@ -1603,7 +1603,7 @@ Expected: all tests pass, typecheck silent, lint shows only the two known
 Then in the browser at `http://localhost:3000/map`: confirm no console errors and
 no hydration warning. Map tiles will not render in this sandbox.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add components/RescueMap.tsx

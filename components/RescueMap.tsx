@@ -10,11 +10,15 @@ import type {
 import type { Feature, FeatureCollection } from "geojson";
 import Link from "next/link";
 import { rankDropOffs, rankRestaurantsForDropOff } from "@/lib/recommend";
-import { geocodeClient } from "@/lib/geocode-client";
 import { RAMP } from "@/lib/rampColors";
 import { formatTimeLeft } from "@/lib/time";
 import { MAP_STYLES, createModeToggle, createHomeControl, type MapMode } from "@/lib/mapStyles";
 import { cn } from "./cn";
+import { useTripPlan } from "./map/useTripPlan";
+import { TripItinerary } from "./map/TripItinerary";
+import { LocationSearchField } from "./map/LocationSearchField";
+import { rememberRecent } from "@/lib/mapSuggestions";
+import type { Stop } from "@/lib/tripPlan";
 import type { DropOffLocation, MapRestaurant } from "@/lib/types";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -68,9 +72,6 @@ function InfoChip({ tone, children }: { tone: ChipTone; children: ReactNode }) {
     </span>
   );
 }
-
-// Default "sensed" location — Malvern Prep — overridable by address.
-const MY_DEFAULT: [number, number] = [-75.51239, 40.02724];
 
 // Google-style teardrop pin drawn as a SINGLE svg path, so its white outline is
 // one continuous stroke of even thickness around the whole silhouette (head +
@@ -347,9 +348,6 @@ export function RescueMap({
 
   const [selected, setSelected] = useState<Selection>(null);
   const [panel, setPanel] = useState<Panel>(null);
-  // Which journey is the chosen (blue) route. Keyed by the varying waypoint's id
-  // (drop-off in rest mode, restaurant in drop mode). null = nothing drawn.
-  const [activeRoute, setActiveRoute] = useState<string | null>(null);
   // Layer visibility — let people declutter the map by hiding either marker type.
   const [showRest, setShowRest] = useState(true);
   // Drop-offs start hidden so the first view is calm and pickup-focused; selecting
@@ -365,10 +363,30 @@ export function RescueMap({
   // and repaints routes onto the freshly re-added sources.
   const [styleVersion, setStyleVersion] = useState(0);
 
-  const [myLoc, setMyLoc] = useState<[number, number]>(MY_DEFAULT);
-  const [myLabel, setMyLabel] = useState("Malvern Prep");
-  const [dest, setDest] = useState<[number, number] | null>(null);
-  const [destLabel, setDestLabel] = useState("");
+  const { plan, pickStop, setStop, clearAll } = useTripPlan({ restaurants, dropOffs });
+  const [recent, setRecent] = useState<Stop[]>([]);
+
+  // Aliases so the existing map/camera/marker code reads unchanged.
+  const myLoc = plan.start.center;
+  const myLabel = plan.start.label;
+  const dest = plan.end?.center ?? null;
+  const destLabel = plan.end?.label ?? "";
+
+  // Which journey is the chosen (blue) route, keyed by the varying waypoint's id
+  // (drop-off in rest mode, restaurant in drop mode). With fixed slots there is
+  // exactly one journey once both ends are filled, so the active route follows
+  // the trip rather than being independently selected. null = nothing drawn.
+  const activeRoute =
+    panel?.kind === "rest"
+      ? plan.dropOff?.kind === "drop"
+        ? plan.dropOff.id
+        : null
+      : panel?.kind === "drop"
+        ? plan.pickup?.kind === "rest"
+          ? plan.pickup.id
+          : null
+        : null;
+
   const [myInput, setMyInput] = useState("");
   const [destInput, setDestInput] = useState("");
   const [geoBusy, setGeoBusy] = useState<"me" | "dest" | null>(null);
@@ -424,59 +442,18 @@ export function RescueMap({
     }
   }, []);
 
-  // --- localStorage hydration + persistence --------------------------------
-  const hydrated = useRef(false);
+  // Trip persistence now lives in useTripPlan (one `mm.trip` key, with a one-time
+  // migration off the old four). All that's left here is the first-visit nudge.
+  const askedForLocation = useRef(false);
   useEffect(() => {
-    let hadSaved = false;
-    try {
-      const ml = localStorage.getItem("mm.myLoc");
-      if (ml) {
-        const p = JSON.parse(ml);
-        if (Array.isArray(p) && p.length === 2) {
-          setMyLoc([p[0], p[1]]);
-          setMyLabel(localStorage.getItem("mm.myLabel") || "Saved location");
-          hadSaved = true;
-        }
-      }
-      const d = localStorage.getItem("mm.dest");
-      if (d) {
-        const p = JSON.parse(d);
-        if (Array.isArray(p) && p.length === 2) {
-          setDest([p[0], p[1]]);
-          setDestLabel(localStorage.getItem("mm.destLabel") || "Saved destination");
-        }
-      }
-    } catch {
-      /* ignore corrupt storage */
+    if (askedForLocation.current) return;
+    askedForLocation.current = true;
+    // First visit (nothing saved at all) → quietly ask the device for its location.
+    if (!localStorage.getItem("mm.trip") && !localStorage.getItem("mm.myLoc")) {
+      detectLocation(true);
     }
-    hydrated.current = true;
-    // First visit (no saved spot) → quietly ask the device for its location.
-    if (!hadSaved) detectLocation(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => {
-    if (!hydrated.current) return;
-    try {
-      localStorage.setItem("mm.myLoc", JSON.stringify(myLoc));
-      localStorage.setItem("mm.myLabel", myLabel);
-    } catch {
-      /* ignore */
-    }
-  }, [myLoc, myLabel]);
-  useEffect(() => {
-    if (!hydrated.current) return;
-    try {
-      if (dest) {
-        localStorage.setItem("mm.dest", JSON.stringify(dest));
-        localStorage.setItem("mm.destLabel", destLabel);
-      } else {
-        localStorage.removeItem("mm.dest");
-        localStorage.removeItem("mm.destLabel");
-      }
-    } catch {
-      /* ignore */
-    }
-  }, [dest, destLabel]);
 
   // Hiding a layer also drops a selection of that kind, so the panel/route never
   // points at markers that are no longer on the map.
@@ -517,28 +494,6 @@ export function RescueMap({
     }
   }
 
-  async function onGeocode(which: "me" | "dest") {
-    const query = which === "me" ? myInput : destInput;
-    if (!query.trim()) return;
-    setGeoError(null);
-    setGeoBusy(which);
-    const hit = await geocodeClient(query);
-    setGeoBusy(null);
-    if (!hit) {
-      setGeoError(`Couldn't find "${query.trim()}".`);
-      return;
-    }
-    if (which === "me") {
-      setMyLoc(hit.center);
-      setMyLabel(hit.name);
-      setMyInput("");
-    } else {
-      setDest(hit.center);
-      setDestLabel(hit.name);
-      setDestInput("");
-    }
-    mapRef.current?.flyTo({ center: hit.center, zoom: 13 });
-  }
 
   // Use the device's GPS/location (needs HTTPS + permission). `auto` is the
   // silent first-load attempt: on failure we keep the default and stay quiet;
@@ -556,8 +511,7 @@ export function RescueMap({
       (pos) => {
         setGeoBusy(null);
         const c: [number, number] = [pos.coords.longitude, pos.coords.latitude];
-        setMyLoc(c);
-        setMyLabel("Your location");
+        setStop("start", { kind: "place", center: c, label: "Your location" });
         setMyInput("");
         // Only a deliberate "use my location" tap recenters the map. The silent
         // first-load fix stays camera-quiet: it can't reframe a consistent
@@ -681,6 +635,7 @@ export function RescueMap({
           setSelected((cur) =>
             cur?.kind === "rest" && cur.id === r.id ? null : { kind: "rest", id: r.id }
           );
+          pickStop({ kind: "rest", id: r.id, center: [r.lng, r.lat], label: r.name });
         });
         restMarkers.current.set(
           r.id,
@@ -707,6 +662,7 @@ export function RescueMap({
           setSelected((cur) =>
             cur?.kind === "drop" && cur.id === d.id ? null : { kind: "drop", id: d.id }
           );
+          pickStop({ kind: "drop", id: d.id, center: [d.lng, d.lat], label: d.name });
         });
         dropMarkers.current.set(
           d.id,
@@ -718,11 +674,6 @@ export function RescueMap({
       // it stays until "Show all" or re-clicking the selected pin, so a chosen
       // route (and its Open-in-Google-Maps link) survives a stray map click.
 
-      // Click any route (alternative or active) to make it the chosen route.
-      map.on("click", "route-hit", (e) => {
-        const id = e.features?.[0]?.properties?.id;
-        if (typeof id === "string") setActiveRoute(id);
-      });
       map.on("mouseenter", "route-hit", () => {
         map.getCanvas().style.cursor = "pointer";
       });
@@ -869,7 +820,6 @@ export function RescueMap({
       const keep = activeRouteRef.current && ids.includes(activeRouteRef.current);
       const next = keep ? activeRouteRef.current! : shortId;
       activeRouteRef.current = next;
-      setActiveRoute(next);
     };
 
     const apply = async () => {
@@ -887,7 +837,6 @@ export function RescueMap({
         });
         clearRoutes();
         activeRouteRef.current = null;
-        setActiveRoute(null);
         setPanel(null);
         return;
       }
@@ -923,7 +872,6 @@ export function RescueMap({
         if (top3.length === 0) {
           clearRoutes();
           activeRouteRef.current = null;
-          setActiveRoute(null);
           const nearMiss = ranked[0];
           setPanel({
             kind: "rest",
@@ -1027,7 +975,6 @@ export function RescueMap({
       if (top3.length === 0) {
         clearRoutes();
         activeRouteRef.current = null;
-        setActiveRoute(null);
         return;
       }
 
@@ -1145,10 +1092,6 @@ export function RescueMap({
     "placeholder:text-neutral-700 focus-visible:outline-none focus-visible:ring-2 " +
     "focus-visible:ring-transit-400 focus-visible:ring-offset-1";
 
-  const setBtnCls =
-    "shrink-0 rounded-xl bg-neutral-900 px-3 py-1.5 text-sm font-medium text-neutral-50 " +
-    "transition-colors hover:bg-neutral-800 focus-visible:outline-none focus-visible:ring-2 " +
-    "focus-visible:ring-rescued-400 focus-visible:ring-offset-1 disabled:opacity-40";
 
   // The currently chosen route, for the trip summary line in the panel.
   const activeOpt = panel?.options.find((o) => o.id === activeRoute) ?? null;
@@ -1227,26 +1170,26 @@ export function RescueMap({
           {/* Address inputs */}
           <div className="grid gap-2">
         <div>
-          <label className="mb-1 block font-mono text-[10px] text-neutral-700">
-            Your location
-          </label>
-          <div className="flex gap-2">
-            <input
-              className={fieldCls}
-              placeholder={myLabel}
-              value={myInput}
-              onChange={(e) => setMyInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && onGeocode("me")}
-            />
-            <button
-              type="button"
-              onClick={() => onGeocode("me")}
-              disabled={geoBusy === "me" || !myInput.trim()}
-              className={setBtnCls}
-            >
-              {geoBusy === "me" ? "…" : "Set"}
-            </button>
-          </div>
+          <LocationSearchField
+            label="Your location"
+            value={myInput}
+            onChange={setMyInput}
+            onSelect={(stop) => {
+              setStop("start", stop);
+              setRecent((r) => rememberRecent(r, stop));
+              setMyInput("");
+            }}
+            restaurants={restaurants}
+            dropOffs={dropOffs}
+            recent={recent.map((s, i) => ({
+              id: `recent-${i}`,
+              group: "recent" as const,
+              label: s.label,
+              stop: s,
+            }))}
+            placeholder={myLabel}
+            inputClassName={fieldCls}
+          />
           <button
             type="button"
             onClick={() => detectLocation(false)}
@@ -1264,38 +1207,35 @@ export function RescueMap({
           </button>
         </div>
         <div>
-          <label className="mb-1 block font-mono text-[10px] text-neutral-700">
-            Final destination <span className="text-neutral-700">(optional)</span>
-          </label>
-          <div className="flex gap-2">
-            <input
-              className={fieldCls}
-              placeholder={dest ? destLabel : "e.g. 123 Lancaster Ave"}
-              value={destInput}
-              onChange={(e) => setDestInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && onGeocode("dest")}
-            />
+          <LocationSearchField
+            label="Final destination (optional)"
+            value={destInput}
+            onChange={setDestInput}
+            onSelect={(stop) => {
+              setStop("end", stop);
+              setRecent((r) => rememberRecent(r, stop));
+              setDestInput("");
+            }}
+            restaurants={restaurants}
+            dropOffs={dropOffs}
+            recent={recent.map((s, i) => ({
+              id: `recent-${i}`,
+              group: "recent" as const,
+              label: s.label,
+              stop: s,
+            }))}
+            placeholder={dest ? destLabel : "e.g. 123 Lancaster Ave"}
+            inputClassName={fieldCls}
+          />
+          {dest && (
             <button
               type="button"
-              onClick={() => onGeocode("dest")}
-              disabled={geoBusy === "dest" || !destInput.trim()}
-              className={setBtnCls}
+              onClick={() => setStop("end", null)}
+              className="-mx-1 -mb-2 mt-0.5 inline-flex items-center rounded px-1 py-2 font-mono text-[11px] text-clay-800 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
             >
-              {geoBusy === "dest" ? "…" : "Set"}
+              clear
             </button>
-            {dest && (
-              <button
-                type="button"
-                onClick={() => {
-                  setDest(null);
-                  setDestLabel("");
-                }}
-                className="shrink-0 font-mono text-[11px] text-clay-800 hover:underline -my-1.5 py-1.5"
-              >
-                clear
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
       {geoError && <p className="font-mono text-[11px] text-failed-600">{geoError}</p>}
@@ -1399,83 +1339,46 @@ export function RescueMap({
               </button>
             </div>
 
-            {panel.options.length > 1 && (
-              <p className="mt-2 text-xs text-neutral-700">
-                {panel.kind === "rest"
-                  ? "Tap a route to choose which drop-off to deliver to."
-                  : "Tap a route to choose which restaurant to pick up from."}
-              </p>
-            )}
-
-            {panel.options.length === 0 ? (
+            {panel.options.length === 0 && (
               <p className="mt-3 rounded-xl border border-dashed border-neutral-900/15 px-3 py-3 text-center text-xs text-neutral-700">
                 {panel.kind === "rest"
                   ? "No drop-off can take this load right now."
                   : "No restaurant nearby has food for this drop-off."}
               </p>
-            ) : (
-              <ul className="mt-3 space-y-1.5">
-                {panel.options.map((o) => {
-                  const isActive = o.id === activeRoute;
-                  return (
-                    <li key={o.id}>
-                      <button
-                        type="button"
-                        onClick={() => setActiveRoute(o.id)}
-                        aria-pressed={isActive}
-                        className={cn(
-                          "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
-                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-route focus-visible:ring-offset-1",
-                          isActive
-                            ? "border-route bg-route/[0.07] ring-1 ring-route"
-                            : "border-neutral-900/10 hover:border-neutral-900/25 hover:bg-neutral-900/[0.02]"
-                        )}
-                      >
-                        {/* line swatch — same blue / grey as this route on the map */}
-                        <span
-                          className={cn(
-                            "h-1.5 w-6 shrink-0 rounded-full transition-colors",
-                            isActive ? "bg-route" : "bg-route-alt"
-                          )}
-                          aria-hidden="true"
-                        />
-                        <span className="flex min-w-0 flex-1 flex-col">
-                          <span
-                            className={cn(
-                              "truncate text-sm",
-                              isActive ? "font-semibold text-route" : "font-medium text-neutral-900"
-                            )}
-                          >
-                            {o.name}
-                          </span>
-                          {o.recommended && (
-                            <span className="mt-1 inline-flex w-fit items-center rounded-full bg-clay-50 px-1.5 py-0.5 font-mono text-[9px] text-clay-800">
-                              Fastest
-                            </span>
-                          )}
-                        </span>
-                        <span className="shrink-0 text-right">
-                          {o.minutes != null ? (
-                            <>
-                              <span className={cn("block font-mono text-sm font-bold tabular-nums", isActive ? "text-route" : "text-neutral-900")}>
-                                {o.minutes} min
-                              </span>
-                              <span className="block font-mono text-[11px] tabular-nums text-neutral-700">
-                                {o.miles.toFixed(1)} mi
-                              </span>
-                            </>
-                          ) : (
-                            <span className={cn("block font-mono text-sm font-bold tabular-nums", isActive ? "text-route" : "text-neutral-900")}>
-                              {o.miles.toFixed(1)} mi
-                            </span>
-                          )}
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
             )}
+
+            <div className="mt-3">
+              <TripItinerary
+                plan={plan}
+                suggestions={
+                  panel && panel.options.length > 0
+                    ? {
+                        slot: panel.kind === "rest" ? "dropOff" : "pickup",
+                        // RouteOption and SlotSuggestion are structurally
+                        // identical ({id, name, miles, minutes?, recommended}),
+                        // so this assigns without a cast — and tsc will flag it
+                        // if either side drifts.
+                        items: panel.options,
+                      }
+                    : null
+                }
+                onPick={(slot, id) => {
+                  const hit =
+                    slot === "pickup"
+                      ? restaurants.find((r) => r.id === id)
+                      : dropOffs.find((d) => d.id === id);
+                  if (!hit) return;
+                  pickStop({
+                    kind: slot === "pickup" ? "rest" : "drop",
+                    id: hit.id,
+                    center: [hit.lng, hit.lat],
+                    label: hit.name,
+                  });
+                }}
+                onClearSlot={(slot) => setStop(slot, null)}
+                onClearTrip={clearAll}
+              />
+            </div>
 
             {activeOpt && (
               <div className="mt-3 flex items-center gap-2 border-t border-neutral-900/10 pt-3">

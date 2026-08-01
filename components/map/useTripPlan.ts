@@ -15,6 +15,43 @@ import {
 
 const KEY = "mm.trip";
 
+// One-time migration off the pre-trip keys. Runs only when there's no mm.trip
+// yet, so it can never overwrite a newer trip, and clears the old keys so it
+// happens exactly once. Without this every existing user silently loses their
+// saved start location on first load and is dropped back to Malvern Prep.
+function migrateLegacy(): TripPlan | null {
+  try {
+    const ml = localStorage.getItem("mm.myLoc");
+    if (!ml) return null;
+    const c = JSON.parse(ml);
+    if (!Array.isArray(c) || c.length !== 2) return null;
+
+    let next = emptyTrip({
+      kind: "place",
+      center: [c[0], c[1]],
+      label: localStorage.getItem("mm.myLabel") || "Saved location",
+    });
+
+    const d = localStorage.getItem("mm.dest");
+    if (d) {
+      const dc = JSON.parse(d);
+      if (Array.isArray(dc) && dc.length === 2) {
+        next = setSlot(next, "end", {
+          kind: "place",
+          center: [dc[0], dc[1]],
+          label: localStorage.getItem("mm.destLabel") || "Saved destination",
+        });
+      }
+    }
+    for (const k of ["mm.myLoc", "mm.myLabel", "mm.dest", "mm.destLabel"]) {
+      localStorage.removeItem(k);
+    }
+    return next;
+  } catch {
+    return null;
+  }
+}
+
 interface Located {
   id: string;
   name: string;
@@ -49,7 +86,12 @@ export function useTripPlan({
     const dropIds = new Set(dropOffs.map((d) => d.id));
     try {
       const raw = localStorage.getItem(KEY);
-      if (raw) setPlan(hydrateTrip(raw, restIds, dropIds));
+      if (raw) {
+        setPlan(hydrateTrip(raw, restIds, dropIds));
+      } else {
+        const migrated = migrateLegacy();
+        if (migrated) setPlan(migrated);
+      }
     } catch {
       /* ignore corrupt storage */
     }
