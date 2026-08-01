@@ -15,6 +15,7 @@ import { formatTimeLeft } from "@/lib/time";
 import { MAP_STYLES, createModeToggle, createHomeControl, type MapMode } from "@/lib/mapStyles";
 import { cn } from "./cn";
 import { useTripPlan } from "./map/useTripPlan";
+import { useIsWide } from "./map/useIsWide";
 import { TripItinerary } from "./map/TripItinerary";
 import { LocationSearchField } from "./map/LocationSearchField";
 import { rememberRecent } from "@/lib/mapSuggestions";
@@ -189,16 +190,32 @@ function boundsOf(pts: [number, number][]): [[number, number], [number, number]]
 // stay, so the move is smooth and the route-draw animation is actually seen.
 // Padding is clamped well inside the canvas (mapbox throws "cannot fit within
 // canvas" if top+bottom ≥ height or left+right ≥ width).
-function fitToRoute(map: MapboxMap, pts: [number, number][]): void {
+// `dock` says where the controls sit, so the route is framed into the part of
+// the canvas they don't cover: a bottom sheet below lg, a left-hand column at
+// lg and above. Getting this wrong doesn't look like a layout bug — the route
+// just draws underneath the panel and reads as a broken camera.
+function fitToRoute(
+  map: MapboxMap,
+  pts: [number, number][],
+  dock: "bottom" | "left"
+): void {
   if (pts.length < 2) return;
   const canvas = map.getCanvas();
   const h = canvas.clientHeight;
   const w = canvas.clientWidth;
-  const bottom = Math.min(Math.round(h * 0.42) + 16, Math.floor(h * 0.5));
   const top = Math.min(56, Math.floor(h * 0.15));
-  const side = Math.min(48, Math.floor(w * 0.18));
+  const bottom =
+    dock === "bottom"
+      ? Math.min(Math.round(h * 0.42) + 16, Math.floor(h * 0.5))
+      : Math.min(56, Math.floor(h * 0.15));
+  // The column is w-[340px] at left-3, so clear 340 + 12 + 12.
+  const left =
+    dock === "left"
+      ? Math.min(364, Math.floor(w * 0.45))
+      : Math.min(48, Math.floor(w * 0.18));
+  const right = Math.min(48, Math.floor(w * 0.18));
   map.fitBounds(boundsOf(pts), {
-    padding: { top, bottom, left: side, right: side },
+    padding: { top, bottom, left, right },
     maxZoom: 14,
     linear: true,
     duration: 620,
@@ -362,6 +379,8 @@ export function RescueMap({
   // Bumped after a base-style swap finishes, so the line-drawing effect re-runs
   // and repaints routes onto the freshly re-added sources.
   const [styleVersion, setStyleVersion] = useState(0);
+  // Drives the docked column at lg (and the camera padding that goes with it).
+  const isWide = useIsWide();
 
   const { plan, pickStop, setStop, clearAll } = useTripPlan({ restaurants, dropOffs });
   const [recent, setRecent] = useState<Stop[]>([]);
@@ -936,8 +955,8 @@ export function RescueMap({
           ...top3.map((x) => [x.dropOff.lng, x.dropOff.lat] as [number, number]),
           ...(destRef.current ? [destRef.current] : []),
         ];
-        // Glide to frame every candidate journey above the docked bottom sheet.
-        fitToRoute(map, pts);
+        // Glide to frame every candidate journey clear of the docked controls.
+        fitToRoute(map, pts, isWide ? "left" : "bottom");
         return;
       }
 
@@ -1023,8 +1042,8 @@ export function RescueMap({
         ...top3.map((x) => [x.restaurant.lng, x.restaurant.lat] as [number, number]),
         ...(destRef.current ? [destRef.current] : []),
       ];
-      // Glide to frame every candidate journey above the docked bottom sheet.
-      fitToRoute(map, pts);
+      // Glide to frame every candidate journey clear of the docked controls.
+      fitToRoute(map, pts, isWide ? "left" : "bottom");
     };
 
     if (map.isStyleLoaded()) apply();
@@ -1032,7 +1051,7 @@ export function RescueMap({
     return () => {
       cancelled = true;
     };
-  }, [selected, showRest, showDrop, myLoc, dest, restaurants, dropOffs, styleVersion, paintRoutes]);
+  }, [selected, showRest, showDrop, myLoc, dest, restaurants, dropOffs, styleVersion, paintRoutes, isWide]);
 
   // Picking a different route (map click or panel row) only repaints — the
   // resolved geometries are already cached, so no refetch and no refit.
@@ -1069,10 +1088,12 @@ export function RescueMap({
   }, [panel]);
 
   // Auto-hide the search/controls card while a pin is selected (the docked panel
-  // needs the space); restore it when the selection clears.
+  // needs the space); restore it when the selection clears. At lg the legend and
+  // the panel share a column, so the legend stays put — hiding it is exactly
+  // what the docked layout is meant to avoid.
   useEffect(() => {
-    setSearchOpen(!selected);
-  }, [selected]);
+    setSearchOpen(isWide || !selected);
+  }, [selected, isWide]);
 
   if (!TOKEN) {
     return (
@@ -1147,11 +1168,11 @@ export function RescueMap({
 
         {/* Overlay is click-through (pointer-events-none) so map drag/zoom works in
             the gaps; the controls card re-enables events with pointer-events-auto. */}
-        <div className="pointer-events-none absolute inset-0 z-[1]">
+        <div className="pointer-events-none absolute inset-0 z-[1] lg:flex lg:flex-col lg:gap-3 lg:p-3">
           {searchOpen ? (
             // Controls (top-left): title + hide, address inputs, layer toggles,
             // map key. Scrolls internally if it outgrows a short viewport.
-            <div className="pointer-events-auto absolute left-3 top-3 flex max-h-[45%] w-[min(92vw,340px)] flex-col gap-3 overflow-y-auto rounded-2xl border border-neutral-900/10 bg-neutral-50/95 p-3.5 shadow-card backdrop-blur-sm md:max-h-[calc(100%_-_1.5rem)]">
+            <div className="pointer-events-auto absolute left-3 top-3 flex max-h-[45%] w-[min(92vw,340px)] flex-col gap-3 overflow-y-auto rounded-2xl border border-neutral-900/10 bg-neutral-50/95 p-3.5 shadow-card backdrop-blur-sm md:max-h-[calc(100%_-_1.5rem)] lg:static lg:max-h-none lg:w-[340px] lg:shrink-0 lg:overflow-visible">
           <div className="flex items-center justify-between gap-3">
             <h1 className="font-display text-lg font-semibold leading-none tracking-tight text-neutral-900">
               Rescue map
@@ -1288,16 +1309,16 @@ export function RescueMap({
             </button>
           )}
         </div>
-      </div>
-
-      {/* Selection panel — floats over the map as a bottom sheet (absolute, not a
-          flex sibling): the map keeps its size so a click never resizes/reloads it.
-          fitToRoute pads the camera by ~the sheet's height so the route stays fully
-          visible above it. Scrolls internally; persists until "Show all" / re-click. */}
+        {/* Selection panel. Below lg it floats over the map as a bottom sheet
+            (absolute, so the map never resizes and a click cannot reload it); at lg
+            it becomes the second child of the overlay column, docked under the
+            legend. fitToRoute's padding follows the same switch, so the route is
+            never framed underneath it. Scrolls internally; persists until
+            "Show all" / re-click. */}
       {panel && (
         <div
           ref={panelRef}
-          className="absolute inset-x-0 bottom-0 z-20 max-h-[45vh] overflow-y-auto rounded-t-2xl border-t border-neutral-900/10 bg-card px-4 py-3 shadow-[0_-6px_20px_rgba(51,52,44,0.12)] animate-fade-in"
+          className="pointer-events-auto absolute inset-x-0 bottom-0 z-20 max-h-[45vh] overflow-y-auto rounded-t-2xl border-t border-neutral-900/10 bg-card px-4 py-3 shadow-[0_-6px_20px_rgba(51,52,44,0.12)] animate-fade-in lg:static lg:inset-x-auto lg:bottom-auto lg:z-auto lg:min-h-0 lg:max-h-none lg:w-[340px] lg:flex-1 lg:rounded-2xl lg:border lg:border-neutral-900/10 lg:shadow-card"
         >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -1554,6 +1575,8 @@ export function RescueMap({
 
           </div>
         )}
+      </div>
+
     </div>
   );
 }

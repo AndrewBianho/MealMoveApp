@@ -1629,7 +1629,7 @@ three localStorage keys collapse into useTripPlan's single mm.trip."
 - Consumes: nothing new.
 - Produces: `useIsWide(): boolean` — true at ≥1024px, false during SSR and first client render.
 
-- [ ] **Step 1: Write the media-query hook**
+- [x] **Step 1: Write the media-query hook**
 
 Create `components/map/useIsWide.ts`:
 
@@ -1661,7 +1661,7 @@ export function useIsWide(): boolean {
 }
 ```
 
-- [ ] **Step 2: Make `fitToRoute` padding side-aware**
+- [x] **Step 2: Make `fitToRoute` padding side-aware**
 
 Replace `fitToRoute` (`RescueMap.tsx:191-205`) with:
 
@@ -1708,7 +1708,7 @@ grep -n "fitToRoute(" components/RescueMap.tsx
 Each becomes `fitToRoute(map, pts, isWide ? "left" : "bottom")`. Add `isWide` to
 the dependency array of every effect that calls it.
 
-- [ ] **Step 3: Add the hook and stop auto-hiding the legend at `lg`**
+- [x] **Step 3: Add the hook and stop auto-hiding the legend at `lg`**
 
 Add near the other hooks in the component body:
 
@@ -1725,7 +1725,7 @@ Find the effect that closes the controls card on selection (it calls
 if (!isWide) setSearchOpen(false);
 ```
 
-- [ ] **Step 4: Restructure the overlay into a column at `lg`**
+- [x] **Step 4: Restructure the overlay into a column at `lg`**
 
 Wrap the controls card and the panel in a shared column. Change the overlay
 container (`RescueMap.tsx:1207`) to:
@@ -1764,7 +1764,7 @@ The `lg:` overlay container is `lg:p-3`, so drop the cards' own `left-3 top-3`
 offsets at `lg` via `lg:static` (already above) — the container's padding supplies
 the inset.
 
-- [ ] **Step 5: Verify at both widths**
+- [x] **Step 5: Verify at both widths**
 
 ```bash
 npm run typecheck && npm run lint
@@ -1779,7 +1779,7 @@ In the browser at `http://localhost:3000/map`:
 
 Route framing cannot be verified — Directions requests fail in this sandbox.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add components/map/useIsWide.ts components/RescueMap.tsx
