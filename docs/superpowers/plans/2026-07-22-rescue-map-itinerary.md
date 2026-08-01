@@ -738,7 +738,7 @@ render and first client render agree."
 - Consumes: `Suggestion`, `matchEntities`, `mergeSuggestions`, `SUGGESTION_LIMIT` (Task 2); `geocodeSuggest` (Task 3); `Stop` (Task 1).
 - Produces: `<LocationSearchField label value onChange onSelect restaurants dropOffs recent placeholder inputClassName />`, where `onSelect(stop: Stop): void`.
 
-- [ ] **Step 1: Write the implementation**
+- [x] **Step 1: Write the implementation**
 
 Create `components/map/LocationSearchField.tsx`:
 
@@ -932,12 +932,12 @@ export function LocationSearchField({
 }
 ```
 
-- [ ] **Step 2: Typecheck and lint**
+- [x] **Step 2: Typecheck and lint**
 
 Run: `npm run typecheck && npm run lint`
 Expected: typecheck silent; lint shows only the two known `ListingDetail.tsx` warnings
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add components/map/LocationSearchField.tsx
