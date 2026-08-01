@@ -6,6 +6,7 @@ import { MetricCard } from "@/components/MetricCard";
 import { PersonalHarvest } from "@/components/PersonalHarvest";
 import { ReliabilityMeter } from "@/components/ReliabilityMeter";
 import { StatusBadge } from "@/components/StatusBadge";
+import { MapPlannerDemo } from "@/components/map/MapPlannerDemo";
 import { LISTINGS } from "@/lib/mock";
 import type { ListingStatus } from "@/lib/types";
 
@@ -232,6 +233,13 @@ export default function StyleGuidePage() {
               </div>
             ))}
           </div>
+        </Section>
+
+        <Section
+          title="Trip planner"
+          hint="The rescue map's itinerary and location search. Fixed slots — start, pickup, drop-off, end — filled by tapping pins on the real map; the ranked candidates hang off whichever slot is still empty. Type 'sun' in the field to see on-map locations rank above addresses."
+        >
+          <MapPlannerDemo />
         </Section>
       </div>
 
