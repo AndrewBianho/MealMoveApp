@@ -108,8 +108,12 @@ export default async function MemberDetailPage({
   const foodMoved = restaurantStats.slice(0, 3);
   const operation = restaurantStats.slice(3);
 
+  // Same reasoning as app/impact/page.tsx, which this page mirrors: every block
+  // here caps at max-w-4xl (896px) with its stat grids nested inside, so the
+  // shared 1760px shell stranded ~680px of dead surface on one side at a 1600px
+  // viewport. Capped so that whitespace becomes symmetric margin instead.
   return (
-    <main className="mx-auto max-w-[1760px] px-6 py-8">
+    <main className="mx-auto max-w-5xl px-6 py-8">
       <Link
         href="/admin/users"
         className="mb-6 inline-flex items-center gap-1 font-mono text-[13px] text-clay-800 underline-offset-2 hover:underline"

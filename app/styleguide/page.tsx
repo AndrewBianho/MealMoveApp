@@ -1,7 +1,9 @@
 import { Button } from "@/components/Button";
+import { ClaimHoldPanel } from "@/components/ClaimHoldPanel";
 import { cn } from "@/components/cn";
 import { ListingCard } from "@/components/ListingCard";
 import { MetricCard } from "@/components/MetricCard";
+import { PersonalHarvest } from "@/components/PersonalHarvest";
 import { ReliabilityMeter } from "@/components/ReliabilityMeter";
 import { StatusBadge } from "@/components/StatusBadge";
 import { LISTINGS } from "@/lib/mock";
@@ -24,6 +26,17 @@ const UNCLAIMABLE = LISTINGS.filter((l) => l.status !== "open");
 // reframes itself per audience.
 const AUDIENCE_DEMO = LISTINGS.find((l) => l.status === "claimed") ?? LISTINGS[0];
 
+// The claim hold across its bands. Minutes remaining out of the 15-minute
+// window, so each panel below shows a real countdown ticking in its own band.
+// The clock is read per render (not at module scope) or every panel would
+// decay to "lapsed" as the server process aged.
+const HOLD_STATES = [
+  { label: "calm · plenty of time", minutesLeft: 12 },
+  { label: "soon · under 5m", minutesLeft: 4 },
+  { label: "close · under 2m", minutesLeft: 1 },
+  { label: "lapsed", minutesLeft: 0 },
+];
+
 function Section({
   title,
   hint,
@@ -43,6 +56,7 @@ function Section({
 }
 
 export default function StyleGuidePage() {
+  const now = Date.now();
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">
       <header>
@@ -166,6 +180,57 @@ export default function StyleGuidePage() {
             <ReliabilityMeter name="Marcus L." pct={94} />
             <ReliabilityMeter name="Dana K." pct={68} />
             <ReliabilityMeter name="Sam O." pct={41} />
+          </div>
+        </Section>
+
+        <Section
+          title="Personal harvest"
+          hint="A volunteer's own numbers as one statement, not a row of equal metric cards. The app's one committed-colour surface. A first-timer gets the invitation instead of a drenched zero."
+        >
+          <div className="max-w-3xl space-y-4">
+            <PersonalHarvest
+              impact={{
+                mealsRescued: 284,
+                lbsSaved: 176,
+                pickupsCompleted: 12,
+                restaurantsHelped: 5,
+                hoursDriven: 9.5,
+                completionRate: 92,
+                attempts: 13,
+              }}
+            />
+            <PersonalHarvest
+              impact={{
+                mealsRescued: 0,
+                lbsSaved: 0,
+                pickupsCompleted: 0,
+                restaurantsHelped: 0,
+                hoursDriven: 0,
+                completionRate: 0,
+                attempts: 0,
+              }}
+            />
+          </div>
+        </Section>
+
+        <Section
+          title="Claim hold"
+          hint="The acknowledgment at claim, and the honest face of the 15-minute hold. Banded on the hold's own scale — sage most of the window, honey under 5m, tomato under 2m — with the literal countdown, not the hue, naming the urgency."
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            {HOLD_STATES.map((s) => (
+              <div key={s.label}>
+                <p className="mb-2 font-mono text-[11px] text-neutral-700">
+                  {s.label}
+                </p>
+                <ClaimHoldPanel
+                  holdUntil={now + s.minutesLeft * 60_000}
+                  claimedAt={now - (15 - s.minutesLeft) * 60_000}
+                  source="Sunrise Bakery"
+                  dropOff="St. Mark's Shelter"
+                />
+              </div>
+            ))}
           </div>
         </Section>
       </div>
