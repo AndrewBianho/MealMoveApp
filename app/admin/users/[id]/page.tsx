@@ -30,11 +30,12 @@ export const dynamic = "force-dynamic";
 // restaurant's donations + pickup accuracy, a drop-off's received-food stats.
 // Org admins have no personal rescue numbers, so their view points to the
 // chapter-wide analytics instead.
-export default async function MemberDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function MemberDetailPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   await requireRole("org_admin");
   const demo = await isDemo();
   const session = await auth();

@@ -10,11 +10,12 @@ import { isDemo } from "@/lib/mode";
 
 export const dynamic = "force-dynamic";
 
-export default async function DropOffDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function DropOffDetailPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   await requireUser();
   const demo = await isDemo();
   const detail = await getDropOffDetail(params.id);

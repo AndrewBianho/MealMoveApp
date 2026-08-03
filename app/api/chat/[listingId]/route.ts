@@ -69,10 +69,8 @@ async function loadContext(listingId: string) {
 }
 
 // Poll the thread. `?since=<ISO>` returns only newer messages for cheap updates.
-export async function GET(
-  req: Request,
-  { params }: { params: { listingId: string } }
-) {
+export async function GET(req: Request, props: { params: Promise<{ listingId: string }> }) {
+  const params = await props.params;
   const ctx = await loadContext(params.listingId);
   if ("error" in ctx) return ctx.error;
 
@@ -95,10 +93,8 @@ export async function GET(
   });
 }
 
-export async function POST(
-  req: Request,
-  { params }: { params: { listingId: string } }
-) {
+export async function POST(req: Request, props0: { params: Promise<{ listingId: string }> }) {
+  const params = await props0.params;
   const ctx = await loadContext(params.listingId);
   if ("error" in ctx) return ctx.error;
 

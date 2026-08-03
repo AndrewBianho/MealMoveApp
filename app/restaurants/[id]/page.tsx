@@ -12,11 +12,12 @@ import type { FoodCategory, MapRestaurant } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function RestaurantDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function RestaurantDetailPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   await requireUser();
   const demo = await isDemo();
   const detail = await getRestaurantDetail(params.id);

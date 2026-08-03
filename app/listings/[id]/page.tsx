@@ -14,11 +14,12 @@ import type { DropOffChoice } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function ListingDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function ListingDetailPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const viewer = await requireUser();
   const viewerId = viewer.id;
   const canClaim = !isAdmin(viewer.role);

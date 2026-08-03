@@ -85,7 +85,7 @@ export async function registerUser(input: {
 }): Promise<SignUpResult> {
   // Throttle sign-ups per IP — registration runs bcrypt, so it's a cheap DoS
   // and spam vector if left open. Fails open if the limiter is unavailable.
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const gate = await rateLimit(`register:${ip}`, LIMITS.register);
   if (!gate.ok) {
     return { ok: false, error: "Too many sign-up attempts. Please try again later." };
@@ -417,7 +417,7 @@ export async function createOrgAdminInvite(input: {
   const demo = await blockIfDemo();
   if (demo) return demo;
 
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const gate = await rateLimit(`org-admin-invite:${ip}`, LIMITS.orgAdminInvite);
   if (!gate.ok) {
     return { ok: false, error: "Too many invites just now. Please try again shortly." };
@@ -434,7 +434,7 @@ export async function createOrgAdminInvite(input: {
   );
   if (!resolved.ok) return resolved;
 
-  const origin = requestOrigin();
+  const origin = await requestOrigin();
   if (!origin) {
     return { ok: false, error: "Server misconfigured (APP_URL unset) — can't build a link." };
   }
@@ -486,7 +486,7 @@ export async function acceptOrgAdminInvite(input: {
   phone: string;
   password: string;
 }): Promise<SignUpResult> {
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const gate = await rateLimit(`register:${ip}`, LIMITS.register);
   if (!gate.ok) {
     return { ok: false, error: "Too many attempts. Please try again later." };
@@ -573,11 +573,11 @@ function hashToken(raw: string): string {
 // account takeover. In production an unset APP_URL returns null (we skip the
 // email rather than send an unsafe link); in dev we fall back to the request
 // host purely for local convenience, where the link is only logged, never sent.
-function requestOrigin(): string | null {
+async function requestOrigin(): Promise<string | null> {
   const env = process.env.APP_URL?.replace(/\/$/, "");
   if (env) return env;
   if (process.env.NODE_ENV === "production") return null;
-  const h = headers();
+  const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host");
   const proto = h.get("x-forwarded-proto") ?? "http";
   return host ? `${proto}://${host}` : "http://localhost:3000";
@@ -591,7 +591,7 @@ function requestOrigin(): string | null {
 export async function requestPasswordReset(
   emailInput: string
 ): Promise<{ ok: true }> {
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const gate = await rateLimit(`reset-req:${ip}`, LIMITS.passwordReset);
   if (!gate.ok) return { ok: true }; // stay silent even when throttled
 
@@ -612,7 +612,7 @@ export async function requestPasswordReset(
         },
       }),
     ]);
-    const origin = requestOrigin();
+    const origin = await requestOrigin();
     if (origin) {
       await sendPasswordResetEmail(email, `${origin}/reset-password?token=${raw}`);
     } else {
@@ -634,7 +634,7 @@ export async function resetPassword(
   token: string,
   newPassword: string
 ): Promise<SignUpResult> {
-  const ip = clientIp(headers());
+  const ip = clientIp(await headers());
   const gate = await rateLimit(`reset-do:${ip}`, LIMITS.passwordReset);
   if (!gate.ok) {
     return { ok: false, error: "Too many attempts. Please try again later." };
