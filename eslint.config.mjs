@@ -23,16 +23,25 @@ export default [
   ...typescript,
   {
     // eslint-config-next 16 turns on the React Compiler-era `react-hooks` rules
-    // as ERRORS. They flag 28 long-standing patterns here — 19 of them
-    // `set-state-in-effect` alone, across the map, listing detail, and the
-    // claim-hold clock. Fixing those is a real refactor of effect and ref
-    // handling, not part of a version upgrade, and the pre-push hook gates on
-    // lint errors, so leaving them fatal would block every push.
+    // as ERRORS. Of the 28 that flagged, the 7 that were genuine defects are
+    // fixed: a component declared inside render (state reset every pass), four
+    // render-phase ref writes (unsafe when React renders twice), and a variable
+    // mutated mid-render.
     //
-    // Held at `warn`: the debt stays visible and the gate stays where it was
-    // (zero errors) instead of the upgrade quietly raising the bar. Worth
-    // working down before any React Compiler adoption, which is what these
-    // rules exist to prepare for.
+    // The 19 that remain are `set-state-in-effect`, and they were each read
+    // rather than counted. They are the patterns React itself requires without
+    // the compiler: SSR mount guards (`setMounted(true)` before portaling),
+    // localStorage hydration, hydration-safe clocks, rAF/interval animations,
+    // and a debounced async lookup. None can be derived during render, and
+    // "fixing" them would break SSR safety or the animation. Two more
+    // (ListingFeed, RescueMap) sync derived state the user can also override by
+    // hand, which needs an effect or a key-reset — a behaviour change, not a
+    // lint fix.
+    //
+    // So this stays at `warn`: the signal is kept for whoever adopts React
+    // Compiler, without failing the pre-push hook over code that is correct
+    // today. `preserve-manual-memoization` is informational — the compiler
+    // simply declines to optimise that component.
     // Flat config needs the plugin declared in the same object as its rules.
     plugins: { "react-hooks": reactHooks },
     rules: {

@@ -6,6 +6,57 @@ import { OrgNotesPanel } from "@/components/OrgNotesPanel";
 
 export const dynamic = "force-dynamic";
 
+type Row = {
+  id: string;
+  name: string;
+  address: string | null;
+  primaryContact: string | null;
+  contactInfo: string | null;
+  lastContactAt: Date | null;
+  quirks: string | null;
+};
+
+const toValues = (r: Row) => ({
+  primaryContact: r.primaryContact ?? "",
+  contactInfo: r.contactInfo ?? "",
+  lastContactDate: toDateInputValue(r.lastContactAt),
+  quirks: r.quirks ?? "",
+});
+
+// Module scope, not nested in the page: a component declared during render gets
+// a new identity every pass, so React unmounts and remounts it and any state
+// inside (here, OrgNotesPanel's form) is thrown away.
+function Section({
+  title,
+  entity,
+  rows,
+}: {
+  title: string;
+  entity: "restaurant" | "drop_off";
+  rows: Row[];
+}) {
+    return (
+      <section className="mb-10">
+        <h2 className="mb-3 text-2xl font-semibold">
+          {title} <span className="font-mono text-sm text-neutral-700">{rows.length}</span>
+        </h2>
+        {rows.length === 0 ? (
+          <p className="text-sm text-neutral-700">None yet.</p>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {rows.map((r) => (
+              <div key={r.id} className="rounded-3xl bg-card p-6 shadow-card">
+                <h3 className="text-lg font-semibold">{r.name}</h3>
+                <p className="font-mono text-[12px] text-neutral-700">{r.address}</p>
+                <OrgNotesPanel entity={entity} id={r.id} initial={toValues(r)} />
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    );
+  }
+
 // Org-admin relationship-memory view: contacts & quirks for every restaurant and
 // drop-off — the human know-how that survives founder turnover. The /admin prefix
 // is org-admin-gated in auth.config, so this page is org-admin only. Not shown to
@@ -28,45 +79,6 @@ export default async function AdminPartnersPage() {
     prisma.restaurant.findMany({ where: { demo }, orderBy: { name: "asc" }, select: notesSelect }),
     prisma.dropOff.findMany({ where: { demo }, orderBy: { name: "asc" }, select: notesSelect }),
   ]);
-
-  type Row = (typeof restaurants)[number];
-  const toValues = (r: Row) => ({
-    primaryContact: r.primaryContact ?? "",
-    contactInfo: r.contactInfo ?? "",
-    lastContactDate: toDateInputValue(r.lastContactAt),
-    quirks: r.quirks ?? "",
-  });
-
-  function Section({
-    title,
-    entity,
-    rows,
-  }: {
-    title: string;
-    entity: "restaurant" | "drop_off";
-    rows: Row[];
-  }) {
-    return (
-      <section className="mb-10">
-        <h2 className="mb-3 text-2xl font-semibold">
-          {title} <span className="font-mono text-sm text-neutral-700">{rows.length}</span>
-        </h2>
-        {rows.length === 0 ? (
-          <p className="text-sm text-neutral-700">None yet.</p>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {rows.map((r) => (
-              <div key={r.id} className="rounded-3xl bg-card p-6 shadow-card">
-                <h3 className="text-lg font-semibold">{r.name}</h3>
-                <p className="font-mono text-[12px] text-neutral-700">{r.address}</p>
-                <OrgNotesPanel entity={entity} id={r.id} initial={toValues(r)} />
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-    );
-  }
 
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">

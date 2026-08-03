@@ -113,7 +113,12 @@ export function LocationSearchField({
   }
 
   const showList = open && items.length > 0;
-  let lastGroup: Suggestion["group"] | null = null;
+  // Group headers are resolved in one pass up front rather than by mutating a
+  // cursor inside the render loop — reassigning during render is exactly what
+  // breaks under React Compiler's memoization.
+  const headers = items.map((s, i) =>
+    i === 0 || s.group !== items[i - 1].group ? GROUP_LABEL[s.group] : null,
+  );
 
   return (
     <div className="relative">
@@ -148,8 +153,7 @@ export function LocationSearchField({
           className="absolute left-0 right-0 top-full z-dropdown mt-1 max-h-64 overflow-y-auto rounded-xl border border-neutral-900/10 bg-card py-1 shadow-lift animate-slide-down"
         >
           {items.map((s, i) => {
-            const header = s.group !== lastGroup ? GROUP_LABEL[s.group] : null;
-            lastGroup = s.group;
+            const header = headers[i];
             return (
               <li key={s.id}>
                 {header && (
