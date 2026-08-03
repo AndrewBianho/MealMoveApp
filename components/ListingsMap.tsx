@@ -225,7 +225,6 @@ export function ListingsMap({
   const mapRef = useRef<MapboxMap>();
   const [mode, setMode] = useState<MapMode>("satellite");
   const modeRef = useRef(mode);
-  modeRef.current = mode;
   // The tracer marker + its animation frame, and the resolved route geometry so
   // the line can be re-added after a base-style swap. Raw refs — the tracer is a
   // DOM marker and its rAF loop live outside React's render cycle.
@@ -247,14 +246,23 @@ export function ListingsMap({
     ? `${route.pickup[0]},${route.pickup[1]};${route.dropOff ? `${route.dropOff[0]},${route.dropOff[1]}` : ""}`
     : "";
   const routeRef = useRef(route);
-  routeRef.current = route;
   // Raw-DOM marker elements by drop-off id, so the selection halo can restyle
   // them without rebuilding the map.
   const dropElsRef = useRef<globalThis.Map<string, HTMLDivElement>>(new globalThis.Map());
   const selectedRef = useRef(selectedDropOffId);
-  selectedRef.current = selectedDropOffId;
   const onSelectRef = useRef(onSelectDropOff);
-  onSelectRef.current = onSelectDropOff;
+
+  // Mirror the latest props/state into refs so the build-once map effect and its
+  // DOM handlers read fresh values without re-subscribing. Assigned in a passive
+  // effect rather than during render: a render-phase write is unsafe when React
+  // renders twice (StrictMode / concurrent). Every reader is an async map event
+  // or a rAF callback, so landing one tick later is fine.
+  useEffect(() => {
+    modeRef.current = mode;
+    routeRef.current = route;
+    selectedRef.current = selectedDropOffId;
+    onSelectRef.current = onSelectDropOff;
+  });
 
   // Draw (or clear) the blue route line + its looping tracer on the live map.
   // Safe to call repeatedly: it tears down the previous route first, so

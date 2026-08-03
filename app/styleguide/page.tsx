@@ -57,6 +57,12 @@ function Section({
 }
 
 export default function StyleGuidePage() {
+  // Read per render on purpose — see HOLD_STATES above. Hoisting this to module
+  // scope to satisfy the purity rule would reintroduce the exact bug that
+  // comment documents: the panels decay to "lapsed" as the server process ages.
+  // This is a server component rendered per request, so there is no client
+  // re-render for the compiler to keep pure.
+  // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">
