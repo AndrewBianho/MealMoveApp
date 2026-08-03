@@ -1,14 +1,21 @@
-// Content-Security-Policy, shipped in REPORT-ONLY mode (SECURITY-AUDIT.md #3).
+// Content-Security-Policy, ENFORCING (SECURITY-AUDIT.md #3).
 //
-// Report-Only means browsers evaluate this and log violations to the console
-// without blocking anything, so it cannot break the app. That matters here: the
-// risky consumer is Mapbox GL, which needs blob: workers, blob:/data: images for
-// tiles, and inline styles for its controls — and a wrong guess in enforcing
-// mode kills the map silently for users while every automated check stays green.
+// Shipped report-only first, deliberately: the risky consumer is Mapbox GL,
+// which needs blob: workers, blob:/data: tile images and inline styles for its
+// controls, and a wrong guess here kills the map silently for users while every
+// automated check stays green. That pass earned its keep — it caught PostHog
+// serving its SDK from us-assets.i.posthog.com, a different host from the
+// us.i.posthog.com ingest endpoint the code names, which enforcing would have
+// broken on day one.
 //
-// To promote it: exercise /map, a listing detail with its side map, image
-// upload, and push opt-in, collect the console violations, fold them in, THEN
-// rename the header to `Content-Security-Policy`.
+// Promoted after a clean pass over /map, a listing detail with its side map,
+// image upload and push opt-in. One caveat kept for whoever reads this next:
+// the Firebase service worker runs in its own context, so its violations do NOT
+// appear in the page console. If push ever stops registering, suspect this
+// header first and check the SW console under Application -> Service workers.
+//
+// To roll back, rename the key below to `Content-Security-Policy-Report-Only`;
+// nothing else needs to change.
 //
 // Origins below are taken from the code, not guessed: mapbox-gl's own bundle
 // (api/events.mapbox.com), the Supabase Storage host in `images` beneath,
@@ -41,7 +48,7 @@ const csp = [
 // Baseline security headers (SECURITY-AUDIT.md → remaining #3). Applied to every
 // route.
 const securityHeaders = [
-  { key: "Content-Security-Policy-Report-Only", value: csp },
+  { key: "Content-Security-Policy", value: csp },
   // HTTPS only, one year. No `preload` — that submits the domain to the
   // browser-baked preload list, which is slow and painful to undo.
   {
