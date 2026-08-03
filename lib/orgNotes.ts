@@ -27,10 +27,19 @@ function clean(value: unknown, max: number): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-/** Parse a date-only input ("YYYY-MM-DD") to a Date, or null if absent/invalid. */
+/**
+ * Parse a date-only input ("YYYY-MM-DD") to a Date, or null if absent/invalid.
+ *
+ * Anchored at UTC midnight (note the trailing `Z`), because this is a CALENDAR
+ * date — the day the org last spoke to someone — not an instant. Without it the
+ * string parses at the *runtime's* midnight while `toDateInputValue` reads the
+ * value back in UTC, so anywhere at or east of UTC the date round-tripped a day
+ * early: London stored 23:00Z the previous day. Production runs UTC on Vercel
+ * and was correct by luck; local dev in Europe or Asia was not.
+ */
 export function parseContactDate(value: unknown): Date | null {
   if (typeof value !== "string" || value.trim() === "") return null;
-  const d = new Date(`${value.trim()}T00:00:00`);
+  const d = new Date(`${value.trim()}T00:00:00Z`);
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
@@ -44,7 +53,10 @@ export function cleanOrgNotes(input: OrgNotesInput): OrgNotes {
   };
 }
 
-/** "YYYY-MM-DD" for a stored date, for re-populating the date input. */
+/**
+ * "YYYY-MM-DD" for a stored date, for re-populating the date input. Reads in
+ * UTC, matching where parseContactDate anchors it — keep the two in step.
+ */
 export function toDateInputValue(date: Date | null | undefined): string {
   if (!date) return "";
   return date.toISOString().slice(0, 10);
