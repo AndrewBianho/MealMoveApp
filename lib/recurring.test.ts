@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { occurrencesWithin } from "./recurring";
+import { occurrencesWithin, orgDayDiff, orgWeekday } from "./recurring";
 
 // Schedules resolve in the org's timezone (America/New_York), not the
 // server's — the deployed cron runs in UTC, and server-local resolution made
@@ -46,4 +46,28 @@ test("deterministic: re-running with a later now inside the same day dedupes", (
   const a = occurrencesWithin(DAILY, 7, new Date("2026-07-06T15:00:00Z"))[0];
   const b = occurrencesWithin(DAILY, 7, new Date("2026-07-06T18:45:11Z"))[0];
   assert.equal(a.availableAt.getTime(), b.availableAt.getTime());
+});
+
+// --- org-timezone relative day labels -------------------------------------
+// Regression: RecurringPostManager's "next today/tomorrow …" label derived the
+// day with setHours(0,0,0,0) and getDay(), both RUNTIME-local. Vercel renders in
+// UTC and the browser renders in the viewer's zone, so the two produced
+// different text and React threw a hydration mismatch (#418) every evening.
+// These assert the org's calendar, so the answer cannot depend on where the
+// code runs: `TZ=Asia/Tokyo npx tsx --test lib/recurring.test.ts` must pass.
+
+test("orgDayDiff counts calendar days in the org timezone, not the runtime's", () => {
+  // 01:30 UTC on the 4th is still 21:30 EDT on the 3rd — the case that broke.
+  const evening = new Date("2026-08-04T01:30:00Z");
+  const nextMorning = new Date("2026-08-04T13:00:00Z"); // 09:00 EDT on the 4th
+  assert.equal(orgDayDiff(nextMorning, evening), 1, "should read as tomorrow");
+
+  const sameOrgDay = new Date("2026-08-03T22:00:00Z"); // 18:00 EDT on the 3rd
+  assert.equal(orgDayDiff(sameOrgDay, evening), 0, "should read as today");
+});
+
+test("orgWeekday reads the weekday from the org calendar", () => {
+  // 01:30 UTC Tue 4 Aug 2026 is Mon 3 Aug in New York.
+  assert.equal(orgWeekday(new Date("2026-08-04T01:30:00Z")), 1, "Monday");
+  assert.equal(orgWeekday(new Date("2026-08-04T13:00:00Z")), 2, "Tuesday");
 });

@@ -16,6 +16,8 @@ import {
   minutesToClock,
   occurrencesWithin,
   WEEKDAY_LABELS,
+  orgDayDiff,
+  orgWeekday,
 } from "@/lib/recurring";
 import type { RecurringPostView } from "@/lib/types";
 
@@ -60,12 +62,14 @@ function nextOccurrenceLabel(s: RecurringPostView): string | null {
     8
   )[0];
   if (!next) return null;
-  const days = Math.round(
-    (new Date(next.availableAt).setHours(0, 0, 0, 0) -
-      new Date().setHours(0, 0, 0, 0)) /
-      86_400_000
-  );
-  const day = days === 0 ? "today" : days === 1 ? "tomorrow" : WEEKDAY_LABELS[next.availableAt.getDay()];
+  // Counted on the org's calendar, not the runtime's. setHours(0,0,0,0) and
+  // getDay() read the RUNTIME's midnight and weekday, so this label used to say
+  // "today" on the server (UTC) and "tomorrow" in an Eastern browser every
+  // evening after 8pm — a React hydration mismatch, and simply the wrong day for
+  // anyone outside the org's zone.
+  const days = orgDayDiff(next.availableAt, new Date());
+  const day =
+    days === 0 ? "today" : days === 1 ? "tomorrow" : WEEKDAY_LABELS[orgWeekday(next.availableAt)];
   return `next ${day} ${minutesToClock(s.timeOfDay)}`;
 }
 

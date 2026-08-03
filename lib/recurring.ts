@@ -137,6 +137,29 @@ function wallClock(instant: Date): {
   return { y: get("year"), mo: get("month"), d: get("day"), h: get("hour") % 24, mi: get("minute") };
 }
 
+/**
+ * Calendar days from `from` to `to`, counted on the ORG's wall clock.
+ *
+ * Use this instead of `setHours(0,0,0,0)` for any "today / tomorrow" label.
+ * That built-in reads the RUNTIME's midnight, so the same instant produces a
+ * different answer on Vercel (UTC) than in the viewer's browser — which renders
+ * different text on each side and trips a React hydration mismatch, besides
+ * being wrong for anyone outside the org's zone.
+ */
+export function orgDayDiff(to: Date, from: Date): number {
+  const a = wallClock(to);
+  const b = wallClock(from);
+  return Math.round(
+    (Date.UTC(a.y, a.mo - 1, a.d) - Date.UTC(b.y, b.mo - 1, b.d)) / 86_400_000
+  );
+}
+
+/** Weekday (0-6) as the org's calendar reads it, not the runtime's. */
+export function orgWeekday(instant: Date): number {
+  const w = wallClock(instant);
+  return new Date(Date.UTC(w.y, w.mo - 1, w.d)).getUTCDay();
+}
+
 /** The instant at which the org's wall clock reads the given date and time. */
 function orgInstant(y: number, mo: number, d: number, h: number, mi: number): Date {
   // Start from the same wall time read as UTC, then correct by the zone's
