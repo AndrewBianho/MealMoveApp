@@ -22,7 +22,11 @@ const csp = [
   "object-src 'none'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  `script-src 'self' 'unsafe-inline' https://www.gstatic.com${
+  // PostHog serves its SDK chunks (config.js, surveys, web-vitals,
+  // dead-clicks-autocapture) from us-assets.i.posthog.com — a DIFFERENT host
+  // from the us.i.posthog.com ingest endpoint set as `api_host`. Report-only
+  // caught all four being blocked.
+  `script-src 'self' 'unsafe-inline' https://www.gstatic.com https://us-assets.i.posthog.com${
     process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'"
   }`,
   "style-src 'self' 'unsafe-inline'",
@@ -30,7 +34,7 @@ const csp = [
   "font-src 'self' data:",
   "worker-src 'self' blob:",
   "child-src 'self' blob:",
-  "connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://*.supabase.co https://us.i.posthog.com https://fcmregistrations.googleapis.com https://fcm.googleapis.com",
+  "connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://*.supabase.co https://us.i.posthog.com https://us-assets.i.posthog.com https://fcmregistrations.googleapis.com https://fcm.googleapis.com",
   "manifest-src 'self'",
 ].join("; ");
 
