@@ -1,27 +1,31 @@
 #!/bin/sh
 #
-# Blocks a push that would fail the Vercel build.
+# Blocks a push that would fail lint.
 #
-# Vercel runs `next build`, which runs ESLint as a hard gate. A lint ERROR there
-# fails the deploy — but because Vercel keeps serving the last good deployment,
-# the failure is invisible until you try to do something that needs a healthy
-# one (like assigning a domain). That is exactly how `useDemo` sat broken for
-# 21 hours.
+# History: this hook existed because Vercel ran `next build`, which ran ESLint as
+# a hard gate. A lint ERROR failed the deploy — but because Vercel keeps serving
+# the last good deployment, the failure stayed invisible until something needed a
+# healthy one (like assigning a domain). That is exactly how `useDemo` sat broken
+# for 21 hours.
 #
-# Lint is the gate here rather than a full build: it catches that class of
-# failure in seconds instead of minutes, so the hook stays worth keeping.
+# Next 16 changed the premise: `next lint` is gone and `next build` no longer
+# runs ESLint, so a lint error can no longer fail the deploy by itself. The hook
+# is kept anyway — it catches the same class of mistake in seconds, and it is now
+# the ONLY thing checking, since the build stopped doing it.
 #
 # Bypass for a genuine emergency:  git push --no-verify
 
 set -e
 
-echo "pre-push: running next lint…"
+echo "pre-push: running eslint…"
 
-if ! npx --no-install next lint; then
+# `npm run lint` is `eslint .` (flat config in eslint.config.mjs). ESLint exits
+# non-zero on errors only; warnings do not block, which is what keeps the React
+# Compiler rules held at `warn` in that config from failing every push.
+if ! npm run --silent lint; then
   echo
-  echo "pre-push: BLOCKED — lint failed."
-  echo "These are the same errors that will fail the Vercel build."
-  echo "Fix them, or push with --no-verify if you accept a failed deploy."
+  echo "pre-push: BLOCKED — lint errors."
+  echo "Fix them, or push with --no-verify if you accept the risk."
   exit 1
 fi
 
