@@ -8,11 +8,12 @@ export const dynamic = "force-dynamic";
 
 // Redeem an org-admin invite link. The raw token rides in the path; we look it
 // up by hash. A used, revoked, or unknown link all show the same calm dead-end.
-export default async function AdminInvitePage({
-  params,
-}: {
-  params: { token: string };
-}) {
+export default async function AdminInvitePage(
+  props: {
+    params: Promise<{ token: string }>;
+  }
+) {
+  const params = await props.params;
   const invite = await prisma.orgAdminInvite.findUnique({
     where: { tokenHash: hashToken(params.token) },
     select: {
