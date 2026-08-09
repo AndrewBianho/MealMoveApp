@@ -30,13 +30,21 @@ import { SafetyChecklist } from "./SafetyChecklist";
 import { ClaimHoldPanel } from "./ClaimHoldPanel";
 import { RescueAccuracySignal } from "./RescueAccuracySignal";
 import { startFailureReplay } from "@/lib/analytics/client";
-import { formatEventTime } from "@/lib/time";
 import { capitalize } from "@/lib/text";
 import type { SafetyAnswers } from "@/lib/safety";
 import type { RescueAccuracy } from "@/lib/accuracy";
 import { OpenNowBadge } from "./RetrievalHoursDisplay";
 import { DropOffNotices } from "./DropOffNotices";
 import { RescueCelebration } from "./RescueCelebration";
+import { RescueProgress } from "./RescueProgress";
+import { CELEBRATION_MS, StageAdvanced } from "./StageAdvanced";
+import {
+  RESCUE_STEPS,
+  isLiveOwnRescue,
+  nextStepOf,
+  stepCounterLabel,
+  type RescueStepIndex,
+} from "@/lib/rescueProgress";
 import { currentDayKey, formatDay, isOpenNow } from "@/lib/hours";
 import { formatTimeLeft } from "@/lib/time";
 import { milesBetween } from "@/lib/geo";
@@ -45,13 +53,8 @@ import type {
   DropOffChoice,
   DropOffNoticeView,
   Listing,
-  ListingStatus,
   VolunteerImpact,
 } from "@/lib/types";
-
-// The happy-path journey. expired / failed are terminal off-ramps and render
-// their own banner rather than a step.
-const JOURNEY: ListingStatus[] = ["open", "claimed", "in transit", "delivered"];
 
 // Lazy — keep Mapbox (and its CSS) out of the detail bundle on phones; the side
 // map only exists at lg+, mirroring the feed's wide side-by-side layout.
@@ -65,40 +68,6 @@ const ListingsMap = dynamic(
   }
 );
 import type { MapDropOffPin, LiveRoute } from "./ListingsMap";
-
-const STEP_LABEL: Record<string, string> = {
-  open: "Posted",
-  claimed: "Claimed",
-  "in transit": "In transit",
-  delivered: "Delivered",
-};
-
-// Progress fill spans dot-center to dot-center: the full span is 75% of the
-// row (12.5% inset each side), so each completed step adds a quarter — the
-// same geometry as PickupTimelineCard's timeline.
-const STEP_FILL: Record<number, string> = { 0: "w-0", 1: "w-1/4", 2: "w-2/4", 3: "w-3/4" };
-
-// Shared org-timezone formatter so the stepper matches the feed card exactly
-// (see formatEventTime — server vs. client zones otherwise diverged by hours).
-const stepStamp = formatEventTime;
-
-function StepCheck() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="9"
-      height="9"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={4}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
-}
 
 const TEMP_LABEL: Record<NonNullable<Listing["tempHandling"]>, string> = {
   hot: "hot",
@@ -181,6 +150,10 @@ export function ListingDetail({
   const [confirmTakeHome, setConfirmTakeHome] = useState(false);
   // Set when this volunteer completes the delivery; renders the celebration.
   const [celebration, setCelebration] = useState<VolunteerImpact | null>(null);
+  // The step a photo just carried this rescue into. Drives the mini
+  // celebration: the tracker draws that dot's check in, and a banner names the
+  // new stage and the next action. Cleared once the volunteer has seen it.
+  const [advancedTo, setAdvancedTo] = useState<RescueStepIndex | null>(null);
   // One-time notification prime, surfaced right after a fresh claim.
   const [primeOpen, setPrimeOpen] = useState(false);
   // Dismissible food-safety checklist answers, captured with the pickup proof.
@@ -254,6 +227,16 @@ export function ListingDetail({
     }
   }, [needsDropOff, listing?.id]);
 
+  // A celebration is a moment, not a state. Once it's been seen, settle back
+  // into the stage's normal panel (which carries the same route guidance
+  // without the congratulations) rather than leaving "nice one" on screen for
+  // the whole drive.
+  useEffect(() => {
+    if (advancedTo == null) return;
+    const t = setTimeout(() => setAdvancedTo(null), CELEBRATION_MS);
+    return () => clearTimeout(t);
+  }, [advancedTo]);
+
   if (!listing) {
     return (
       <div className="rounded-xl border border-dashed border-neutral-200 bg-card px-6 py-16 text-center">
@@ -272,11 +255,6 @@ export function ListingDetail({
   }
 
   const terminal = ["expired", "failed"].includes(listing.status);
-  // taken_home is a pause within the in-transit step (food in hand, delivery
-  // deferred to tomorrow), not its own journey stage — so the stepper still
-  // reads open → claimed → in transit → delivered.
-  const heldOvernight = listing.status === "taken home";
-  const currentStep = JOURNEY.indexOf(heldOvernight ? "in transit" : listing.status);
   const id = listing.id;
   const deliverByLabel = listing.deliverBy
     ? new Date(listing.deliverBy).toLocaleString([], {
@@ -285,13 +263,18 @@ export function ListingDetail({
         minute: "2-digit",
       })
     : null;
-  // Per-step timestamps for the lifecycle stepper (nulls stay blank).
-  const stepTimes = [
-    listing.postedAt,
-    listing.claimedAt,
-    listing.pickedUpAt,
-    listing.deliveredAt,
-  ];
+  // The step this rescue is working toward — the one the photo below completes.
+  // Named in the photo prompt and counted under the stepper, so "what stage am
+  // I on" and "what is this camera button for" have the same answer on screen.
+  const nextStep = nextStepOf(listing);
+  // Every photo prompt leads with the stage it unlocks, so the shutter button
+  // is never just "a photo" — it's the thing that moves the rescue forward.
+  const photoHint = (detail: string) =>
+    nextStep ? `Take the photo to move to “${nextStep.name}” — ${detail}` : detail;
+  // Only the volunteer actually carrying this rescue gets the step counter; a
+  // restaurant reading its own listing sees the bare timeline.
+  const working = isLiveOwnRescue(listing);
+  const stepCounter = working ? stepCounterLabel(listing) : null;
   // Whether the chosen drop-off is open right now — drives the closed pill,
   // the warning banner, and the in-transit guidance. null = no hours on file.
   const dropOffOpen = listing.dropOffHours ? isOpenNow(listing.dropOffHours) : null;
@@ -333,9 +316,13 @@ export function ListingDetail({
   }
   function onPickupPhoto(url: string | null) {
     if (!url) return;
+    // Read the step the photo is about to complete *before* the action lands —
+    // once the server revalidates, `listing` already reports the new stage and
+    // "what did we just advance into" is no longer derivable.
+    const reached = listing ? nextStepOf(listing)?.index ?? null : null;
     startTransition(async () => {
       await startDelivery(id, url, safety);
-      show("On your way — drive safe.");
+      setAdvancedTo(reached);
     });
   }
   function onDeliveryPhoto(url: string | null) {
@@ -498,91 +485,21 @@ export function ListingDetail({
       <div className="grid gap-6 lg:grid-cols-[minmax(0,472px)_minmax(0,1fr)]">
         <div className="space-y-6">
       {/* Lifecycle stepper — the pickup's whole story in one horizontal bar on
-          top of the panel: mono timestamps over dots over labels on four equal
-          columns, the sage fill running dot-center to dot-center
-          (PickupTimelineCard's timeline recipe). Terminal freezes in neutral. */}
-      <div
-        aria-label={`Pickup progress: ${listing.status}`}
-        className="rounded-2xl border border-neutral-200/40 bg-card px-3 pb-3 pt-4 sm:px-5"
-      >
-        <div className="flex">
-          {JOURNEY.map((step, i) => (
-            <div
-              key={step}
-              className={cn(
-                "min-h-[12px] flex-1 text-center font-mono text-[10.5px] font-bold tabular-nums",
-                !terminal && i <= currentStep ? "text-neutral-900" : "text-neutral-700"
-              )}
-            >
-              {i <= currentStep ? stepStamp(stepTimes[i]) : ""}
-            </div>
-          ))}
-        </div>
-        <div className="relative my-2 flex items-center">
-          <div
-            aria-hidden
-            className="absolute inset-x-[12.5%] top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-neutral-200"
-          />
-          <div
-            aria-hidden
-            className={cn(
-              "absolute left-[12.5%] top-1/2 h-[3px] -translate-y-1/2 rounded-full transition-[width] duration-300",
-              terminal ? "bg-neutral-300" : "bg-rescued-600",
-              STEP_FILL[Math.max(currentStep, 0)]
-            )}
-          />
-          {JOURNEY.map((step, i) => {
-            const done = !terminal && i <= currentStep;
-            const active =
-              !terminal && listing.status !== "delivered" && i === currentStep + 1;
-            return (
-              <div key={step} className="relative z-[1] flex flex-1 justify-center">
-                <span className="relative flex h-4 w-4 items-center justify-center">
-                  {active && (
-                    <span
-                      aria-hidden
-                      className="absolute -inset-1 rounded-full bg-rescued-400/25 motion-safe:animate-pulse"
-                    />
-                  )}
-                  <span
-                    className={cn(
-                      "relative flex h-4 w-4 items-center justify-center rounded-full border-2 text-white",
-                      done
-                        ? "border-rescued-600 bg-rescued-600"
-                        : terminal && i <= currentStep
-                          ? "border-neutral-400 bg-neutral-400"
-                          : active
-                            ? "border-rescued-400 bg-card"
-                            : "border-neutral-200 bg-card"
-                    )}
-                  >
-                    {i <= currentStep && <StepCheck />}
-                  </span>
-                </span>
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex">
-          {JOURNEY.map((step, i) => (
-            <div
-              key={step}
-              className={cn(
-                "flex-1 text-center text-[13px] font-semibold leading-tight",
-                !terminal && i <= currentStep
-                  ? "text-neutral-700"
-                  : !terminal && i === currentStep + 1
-                    ? "text-neutral-700"
-                    : "text-neutral-700"
-              )}
-            >
-              {STEP_LABEL[step]}
-            </div>
-          ))}
-        </div>
-        {heldOvernight && (
-          <p className="mt-2 text-center font-mono text-[13px] text-transit-800">
-            Held overnight{deliverByLabel ? ` · deliver by ${deliverByLabel}` : ""}
+          top of the panel. Shared with the feed's PickupTimelineCard
+          (RescueProgress) so a volunteer reads the same four milestones here as
+          they did on the card that brought them, and the step names line up
+          with the photo prompt below ("take the photo to move to Picked up"). */}
+      <div>
+        <RescueProgress
+          listing={listing}
+          variant="panel"
+          celebrateStep={advancedTo}
+        />
+        {stepCounter && (
+          <p className="mt-2 text-center font-mono text-[13px] text-neutral-700">
+            {/* One expression — see RescueAdvancePanel: JSX eats the leading
+                space of a text node that follows an expression. */}
+            {`${stepCounter} · you're here`}
           </p>
         )}
       </div>
@@ -982,7 +899,7 @@ export function ListingDetail({
                     <ImageUploadField
                       label="Pickup photo"
                       optional={false}
-                      hint="Snap the food as you leave — required to start delivery."
+                      hint={photoHint("snap the food as you leave.")}
                       aspect="aspect-[4/3]"
                       uploadKey={`pickup:${id}`}
                       onChange={onPickupPhoto}
@@ -997,22 +914,39 @@ export function ListingDetail({
               {listing.status === "in transit" &&
                 (listing.mine ? (
                   <>
-                    <div className="mb-4 flex gap-2.5 rounded-xl bg-rescued-50 px-4 py-3">
-                      <span aria-hidden className="mt-px text-rescued-800">
-                        <Car />
-                      </span>
-                      <div>
-                        <p className="text-[16px] font-semibold text-rescued-800">
-                          You&apos;re on the way
-                        </p>
-                        <p className="mt-0.5 text-[15px] leading-relaxed text-neutral-700">
-                          Head to {listing.dropOff ?? "the drop-off"} — follow
-                          the route on the map.
-                          {dropOffOpen === false &&
-                            " It's closed right now, so message ahead before you arrive."}
-                        </p>
+                    {advancedTo != null ? (
+                      // Just advanced — the celebration stands in for the
+                      // steady-state panel below for a few seconds.
+                      <StageAdvanced
+                        step={RESCUE_STEPS[advancedTo]}
+                        detail={
+                          `You're on the way to ${listing.dropOff ?? "the drop-off"}.` +
+                          // The closed-drop-off warning is guidance, not
+                          // decoration — it has to survive the celebration.
+                          (dropOffOpen === false
+                            ? " It's closed right now, so message ahead before you arrive."
+                            : "")
+                        }
+                        next="snap the delivery photo when you arrive."
+                      />
+                    ) : (
+                      <div className="mb-4 flex gap-2.5 rounded-xl bg-rescued-50 px-4 py-3">
+                        <span aria-hidden className="mt-px text-rescued-800">
+                          <Car />
+                        </span>
+                        <div>
+                          <p className="text-[16px] font-semibold text-rescued-800">
+                            You&apos;re on the way
+                          </p>
+                          <p className="mt-0.5 text-[15px] leading-relaxed text-neutral-700">
+                            Head to {listing.dropOff ?? "the drop-off"} — follow
+                            the route on the map.
+                            {dropOffOpen === false &&
+                              " It's closed right now, so message ahead before you arrive."}
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                    )}
                     <OpenInMapsButton
                       pickup={mapsPickup}
                       dropOff={mapsDropOff}
@@ -1021,7 +955,7 @@ export function ListingDetail({
                     <ImageUploadField
                       label="Delivery photo"
                       optional={false}
-                      hint="Snap the food at the drop-off — required to mark delivered."
+                      hint={photoHint("snap the food at the drop-off.")}
                       aspect="aspect-[4/3]"
                       uploadKey={`delivery:${id}`}
                       onChange={onDeliveryPhoto}
@@ -1113,7 +1047,9 @@ export function ListingDetail({
                     <ImageUploadField
                       label="Delivery photo"
                       optional={false}
-                      hint="When you drop it off tomorrow, snap the food — required to mark delivered."
+                      hint={photoHint(
+                        "snap the food when you drop it off tomorrow."
+                      )}
                       aspect="aspect-[4/3]"
                       uploadKey={`delivery:${id}`}
                       onChange={onDeliveryPhoto}
