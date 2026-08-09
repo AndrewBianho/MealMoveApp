@@ -101,7 +101,12 @@ export function PickupTimelineCard({
   return (
     <article
       className={cn(
-        "group flex animate-fade-up flex-row-reverse overflow-hidden rounded-3xl border border-neutral-200/70 bg-card shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift",
+        "group flex animate-fade-up overflow-hidden rounded-3xl border border-neutral-200/70 bg-card shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift",
+        // Side-by-side everywhere, except the advance card on a phone: a photo
+        // dropzone can't share 414px with a 40%-wide food photo (the tracker
+        // labels collide and the capture buttons burst their dashed box). There
+        // the photo becomes a banner and the body gets the full width.
+        advanceHere ? "flex-col sm:flex-row-reverse" : "flex-row-reverse",
         className
       )}
     >
@@ -111,7 +116,9 @@ export function PickupTimelineCard({
         aria-label={`View ${title}`}
         className={cn(
           "relative shrink-0 self-stretch overflow-hidden",
-          featured ? "w-32 sm:w-52 lg:w-[300px]" : "w-28 sm:w-44 lg:w-[212px]",
+          advanceHere && "h-36 w-full sm:h-auto",
+          featured ? "sm:w-52 lg:w-[300px]" : "sm:w-44 lg:w-[212px]",
+          !advanceHere && (featured ? "w-32" : "w-28"),
           isPlaceholder ? "bg-card" : "bg-neutral-100"
         )}
       >

@@ -497,7 +497,9 @@ export function ListingDetail({
         />
         {stepCounter && (
           <p className="mt-2 text-center font-mono text-[13px] text-neutral-700">
-            {stepCounter} · you&apos;re here
+            {/* One expression — see RescueAdvancePanel: JSX eats the leading
+                space of a text node that follows an expression. */}
+            {`${stepCounter} · you're here`}
           </p>
         )}
       </div>
