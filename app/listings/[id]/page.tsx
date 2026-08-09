@@ -8,7 +8,7 @@ import { findActiveClaimFor } from "@/lib/activeClaim";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/authz";
-import { isAdmin } from "@/lib/roles";
+import { canClaimPickups } from "@/lib/roles";
 import { isDemo } from "@/lib/mode";
 import type { DropOffChoice } from "@/lib/types";
 
@@ -22,7 +22,11 @@ export default async function ListingDetailPage(
   const params = await props.params;
   const viewer = await requireUser();
   const viewerId = viewer.id;
-  const canClaim = !isAdmin(viewer.role);
+  // A restaurant or drop-off account can legitimately open this page — it's
+  // their own listing / their inbound delivery — but the pickup flow (claim bar,
+  // drop-off picker, buddy invite, notification prime) is a volunteer surface.
+  // They read the listing; they don't work it.
+  const canClaim = canClaimPickups(viewer.role);
   const demo = await isDemo();
   const listing = await getListing(params.id, viewerId);
 

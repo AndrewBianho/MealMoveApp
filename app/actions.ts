@@ -38,7 +38,7 @@ import { cleanAudience, countAudience, resolveAudience } from "@/lib/segments";
 import { resetDemoWorld } from "@/prisma/seedDemo";
 import { materializeSchedules } from "@/lib/sweep";
 import { normalizeDaysOfWeek } from "@/lib/recurring";
-import { isAdmin, isSuperAdmin } from "@/lib/roles";
+import { canClaimPickups, isAdmin, isSuperAdmin } from "@/lib/roles";
 import { roleChangeError, deleteAccountError } from "@/lib/accountAdmin";
 import {
   mintToken,
@@ -695,10 +695,14 @@ function refreshViews(listingId?: string) {
 export async function claimListing(listingId: string, dropOffId?: string) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Not authenticated.");
-  // Claiming is a volunteer action. Admins (org + master) oversee the operation
-  // (stats, approvals, special posts) and never carry pickups, so they can't claim.
-  if (isAdmin(session.user.role)) {
-    throw new Error("Admins oversee rescues — claiming is for volunteers.");
+  // Claiming is a volunteer action, and only a volunteer's. Restaurants post the
+  // surplus, drop-offs receive it, and admins (org + master) oversee the
+  // operation — none of them carry pickups. The UI hides the claim flow from all
+  // of them, and this is the matching server-side gate: /listings/[id] is
+  // readable by any signed-in account, so the action must refuse on its own
+  // rather than trust that no button was rendered.
+  if (!canClaimPickups(session.user.role)) {
+    throw new Error("Claiming is for volunteer accounts.");
   }
   const volunteerId = session.user.id;
   let trackData: { expiresAt: Date; servings: number; dropOffId: string } | null = null;

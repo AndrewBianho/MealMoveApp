@@ -2,7 +2,7 @@ import { RescueMap } from "@/components/RescueMap";
 import { getMapData } from "@/lib/map";
 import { auth } from "@/auth";
 import { requireRole } from "@/lib/authz";
-import { isAdmin } from "@/lib/roles";
+import { canClaimPickups } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,9 @@ export default async function MapPage() {
     getMapData(),
     auth(),
   ]);
-  const canClaim = !isAdmin(session?.user?.role);
+  // Org admins read the map to oversee coverage; only volunteers get the
+  // "Claim pickup" CTA in the restaurant popup.
+  const canClaim = canClaimPickups(session?.user?.role);
 
   return (
     // Full-bleed: fill the viewport below the sticky header (and above the mobile

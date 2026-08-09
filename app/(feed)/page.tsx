@@ -11,7 +11,7 @@ import { getDataMode } from "@/lib/mode";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { requireRole } from "@/lib/authz";
-import { isAdmin } from "@/lib/roles";
+import { canClaimPickups, isAdmin } from "@/lib/roles";
 
 // Reads live data per request (and after revalidation from server actions).
 export const dynamic = "force-dynamic";
@@ -33,9 +33,11 @@ export default async function FeedPage() {
     viewerId && session?.user?.role === "volunteer"
       ? await unseenCount(viewerId, world)
       : 0;
-  // Org admins (the only non-claiming role) were redirected out above, so every
-  // viewer who reaches the feed can claim.
-  const canClaim = true;
+  // Derived from the role rather than hardcoded to `true`: the route guards
+  // above should leave only volunteers here, but the claim affordance answers to
+  // the same predicate everywhere, so a future guard change can't silently hand
+  // the feed's claim buttons to a non-volunteer.
+  const canClaim = canClaimPickups(session?.user?.role);
 
   // The viewer's rescue in flight, if any. One rescue at a time: while this is
   // live they can't claim another, so it leads the page — the next step lives
