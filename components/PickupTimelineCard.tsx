@@ -4,7 +4,8 @@ import { cn } from "./cn";
 import { MapPin, ArrowRight } from "./icons";
 import { StatusBadge } from "./StatusBadge";
 import { OpenInMapsButton } from "./OpenInMapsButton";
-import { formatEventTime } from "@/lib/time";
+import { RescueProgress } from "./RescueProgress";
+import { isTerminal } from "@/lib/rescueProgress";
 import type { Listing } from "@/lib/types";
 
 // The "My pickups" card — one pickup's full story told through a horizontal
@@ -14,34 +15,15 @@ import type { Listing } from "@/lib/types";
 // the confirm-gated inline advance became a single stage-labelled link to the
 // listing detail page — full details and the photo-gated advance both live
 // there, so the card never advances a claim (or forks the details) in place.
-
-const STEPS = ["Posted", "Claimed", "Picked up", "Delivered"] as const;
-
-// Progress fill spans dot-center to dot-center: full span is 75% of the row
-// (12.5% inset each side), so each completed step adds a quarter of the row.
-const FILL: Record<number, string> = { 0: "w-0", 1: "w-1/4", 2: "w-2/4", 3: "w-3/4" };
+//
+// The timeline itself is `RescueProgress`, shared with the listing detail page
+// so the arc a volunteer sees in the feed is the arc they see while working the
+// rescue. The step vocabulary lives in lib/rescueProgress.
 
 const DEFAULT_IMAGE = "/mealmovelogo.jpg";
 
-/** Furthest lifecycle step reached (0 posted · 1 claimed · 2 picked up · 3 delivered). */
-function progressOf(l: Listing): number {
-  switch (l.status) {
-    case "claimed":
-      return 1;
-    case "in transit":
-    case "taken home": // a pause within in-transit, not its own stage
-      return 2;
-    case "delivered":
-      return 3;
-    case "expired":
-    case "failed":
-      // Unhappy end — freeze at whatever was actually reached.
-      return l.deliveredAt ? 3 : l.pickedUpAt || l.photoAtPickupUrl ? 2 : l.claimedAt ? 1 : 0;
-    default:
-      return 0;
-  }
-}
-
+// The tick in the "Delivered — thank you" outcome chip. Sized by the caller,
+// unlike the fixed 9px checks inside the timeline's dots (RescueProgress).
 function Check({ className }: { className?: string }) {
   return (
     <svg
@@ -77,22 +59,11 @@ export function PickupTimelineCard({
 }) {
   const { id, title, source, servings, status, dropOff, imageUrl } = listing;
 
-  const progress = progressOf(listing);
-  const terminal = status === "expired" || status === "failed";
+  const terminal = isTerminal(status);
   const delivered = status === "delivered";
   const heldOvernight = status === "taken home";
   const img = imageUrl ?? DEFAULT_IMAGE;
   const isPlaceholder = !imageUrl;
-
-  const times = [listing.postedAt, listing.claimedAt, listing.pickedUpAt, listing.deliveredAt];
-
-  const deliverByLabel = listing.deliverBy
-    ? new Date(listing.deliverBy).toLocaleString([], {
-        weekday: "short",
-        hour: "numeric",
-        minute: "2-digit",
-      })
-    : null;
 
   // Destination line — verb tracks the stage; clay is the destination accent.
   const dest = dropOff ?? "the drop-off";
@@ -188,92 +159,7 @@ export function PickupTimelineCard({
           </p>
         )}
 
-        {/* Lifecycle timeline — times over dots over labels, all on the same
-            four equal columns; the fill runs dot-center to dot-center. */}
-        <div
-          aria-label={`Pickup progress: ${status}`}
-          className="mt-5 rounded-2xl border border-neutral-200/60 bg-neutral-50 px-2 pb-2 pt-3.5 sm:px-3.5"
-        >
-          <div className="flex">
-            {STEPS.map((name, i) => (
-              <div
-                key={name}
-                className={cn(
-                  "min-h-[12px] flex-1 text-center font-mono text-[10.5px] font-bold tabular-nums",
-                  i <= progress ? "text-neutral-900" : "text-neutral-700"
-                )}
-              >
-                {i <= progress ? formatEventTime(times[i]) : ""}
-              </div>
-            ))}
-          </div>
-
-          <div className="relative my-2 flex items-center">
-            <div
-              aria-hidden
-              className="absolute inset-x-[12.5%] top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-neutral-200"
-            />
-            <div
-              aria-hidden
-              className={cn(
-                "absolute left-[12.5%] top-1/2 h-[3px] -translate-y-1/2 rounded-full transition-[width] duration-300",
-                terminal ? "bg-neutral-300" : "bg-rescued-600",
-                FILL[progress]
-              )}
-            />
-            {STEPS.map((name, i) => {
-              const done = i <= progress;
-              const active = !terminal && !delivered && i === progress + 1;
-              return (
-                <div key={name} className="relative z-[1] flex flex-1 justify-center">
-                  <span className="relative flex h-4 w-4 items-center justify-center">
-                    {active && (
-                      <span
-                        aria-hidden
-                        className="absolute -inset-1 rounded-full bg-rescued-400/25 motion-safe:animate-pulse"
-                      />
-                    )}
-                    <span
-                      className={cn(
-                        "relative flex h-4 w-4 items-center justify-center rounded-full border-2 text-white",
-                        done
-                          ? terminal
-                            ? "border-neutral-400 bg-neutral-400"
-                            : "border-rescued-600 bg-rescued-600"
-                          : active
-                            ? "border-rescued-400 bg-card"
-                            : "border-neutral-200 bg-card"
-                      )}
-                    >
-                      {done && <Check />}
-                    </span>
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Labels share the four equal columns with the dots above. On a
-              narrow phone the columns get tight (the photo panel eats width),
-              so the label steps down a size and keeps a hair of side padding —
-              centered on its dot, but never touching its neighbour. */}
-          <div className="flex">
-            {STEPS.map((name) => (
-              <div
-                key={name}
-                className="flex-1 px-0.5 text-center text-[11px] font-semibold leading-tight text-neutral-700 sm:text-[13px]"
-              >
-                {name}
-              </div>
-            ))}
-          </div>
-
-          {heldOvernight && (
-            <p className="mt-2 text-center font-mono text-[13px] text-transit-800">
-              Held overnight{deliverByLabel ? ` · deliver by ${deliverByLabel}` : ""}
-            </p>
-          )}
-        </div>
+        <RescueProgress listing={listing} className="mt-5" />
 
         {/* Action: in-flight → one full-width link to the detail page, labelled
             by stage (the photo-gated advance lives there); ended → a quiet
