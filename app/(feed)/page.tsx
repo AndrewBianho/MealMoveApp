@@ -1,6 +1,5 @@
 import { ListingFeed } from "@/components/ListingFeed";
 import { ListingCard } from "@/components/ListingCard";
-import { CurrentRescue } from "@/components/CurrentRescue";
 import { FirstRescueTracker } from "@/components/FirstRescueTracker";
 import { UpdatesBanner } from "@/components/UpdatesBanner";
 import { redirect } from "next/navigation";
@@ -26,6 +25,20 @@ export default async function FeedPage() {
   if (isAdmin(session?.user?.role)) redirect("/admin/analytics");
   const viewerId = session?.user?.id;
   const listings = await getListings(viewerId);
+
+  // A rescue in flight takes the app over. One rescue at a time means someone
+  // already holding food can't claim anything here, so the browse feed is pure
+  // distraction — the listing they're working becomes the home screen until
+  // it's delivered, released, or swept. Redirecting to the real detail page
+  // (rather than rebuilding a slice of it here) means the takeover carries the
+  // whole job: photos, chat, buddy, route, take-it-home, release.
+  //
+  // Covers the buddy seat too: `mine` is true for both people on a claim.
+  // Checked before the rest of the page's queries — none of their results
+  // survive the redirect, so there's no reason to pay for them.
+  const current = listings.find((l) => l.mine && LIVE.includes(l.status));
+  if (current) redirect(`/listings/${current.id}`);
+
   const world = await getDataMode();
   // Match the Header: only volunteers get the updates banner/badge (restaurants
   // and drop-offs aren't the audience, and org admins are redirected above).
@@ -38,20 +51,6 @@ export default async function FeedPage() {
   // the same predicate everywhere, so a future guard change can't silently hand
   // the feed's claim buttons to a non-volunteer.
   const canClaim = canClaimPickups(session?.user?.role);
-
-  // The viewer's rescue in flight, if any. One rescue at a time: while this is
-  // live they can't claim another, so it leads the page — the next step lives
-  // here, not in the feed below.
-  let current = listings.find((l) => l.mine && LIVE.includes(l.status));
-  if (current) {
-    // "Picked up" time for the card's lifecycle timeline (see lib/listings).
-    const picked = await prisma.listingEvent.findFirst({
-      where: { listingId: current.id, type: "in_transit" },
-      orderBy: { at: "asc" },
-      select: { at: true },
-    });
-    if (picked) current = { ...current, pickedUpAt: picked.at.getTime() };
-  }
 
   // Pickups this volunteer has been invited to buddy — tap through to accept.
   const invites = viewerId
@@ -79,21 +78,16 @@ export default async function FeedPage() {
         <h1 className="font-display text-[36px] font-medium leading-[1.05] tracking-tight text-balance">
           Available pickups
         </h1>
+        {/* No "you've got one in flight" line any more — anyone who does never
+            reaches this page. */}
         <p className="mt-2 text-[16px] font-medium text-neutral-700">
-          {current
-            ? "You've got a rescue in flight — finish it to claim the next one."
-            : openNow > 0
-              ? `${openNow} surplus ${openNow === 1 ? "meal" : "meals"} near you, ready to rescue.`
-              : "No open pickups right now — new surplus posts throughout the evening."}
+          {openNow > 0
+            ? `${openNow} surplus ${openNow === 1 ? "meal" : "meals"} near you, ready to rescue.`
+            : "No open pickups right now — new surplus posts throughout the evening."}
         </p>
       </header>
 
       <UpdatesBanner unseen={updatesUnseen} />
-
-      {/* Always rendered, even with nothing in flight — CurrentRescue owns the
-          delivery celebration, which has to outlive the revalidation that
-          removes the delivered rescue from this slot. */}
-      <CurrentRescue listing={current ?? null} />
 
       {invited.length > 0 && (
         <section className="mb-8 lg:max-w-2xl">
