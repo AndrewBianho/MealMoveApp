@@ -68,9 +68,12 @@ const THEME_NAV: Slide = {
   art: "themenav",
 };
 
+// Admins oversee; they never claim. The walkthrough still *explains* the
+// volunteer pickup loop (they're running it), but it hands off to their own
+// console — sending them to the volunteer feed only bounced them back out.
 const SLIDES_BY_ROLE_ORG_ADMIN_DECK: Deck = {
-  home: "/",
-  cta: "Go to the feed",
+  home: "/admin/analytics",
+  cta: "Go to analytics",
   slides: [
     WELCOME(
       "You're running the chapter. Here's a tour of what your volunteers, restaurants, and drop-offs now have."
