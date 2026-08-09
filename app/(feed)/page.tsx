@@ -1,6 +1,6 @@
 import { ListingFeed } from "@/components/ListingFeed";
 import { ListingCard } from "@/components/ListingCard";
-import { PickupTimelineCard } from "@/components/PickupTimelineCard";
+import { CurrentRescue } from "@/components/CurrentRescue";
 import { FirstRescueTracker } from "@/components/FirstRescueTracker";
 import { UpdatesBanner } from "@/components/UpdatesBanner";
 import { redirect } from "next/navigation";
@@ -88,19 +88,10 @@ export default async function FeedPage() {
 
       <UpdatesBanner unseen={updatesUnseen} />
 
-      {current && (
-        <section className="mb-8 lg:max-w-3xl">
-          <div className="mb-3.5 flex items-center gap-2">
-            <h2 className="text-[16px] font-semibold text-neutral-800">
-              Your current rescue
-            </h2>
-            <span className="font-mono text-[13px] text-neutral-700">
-              One at a time
-            </span>
-          </div>
-          <PickupTimelineCard listing={current} priorityImage featured />
-        </section>
-      )}
+      {/* Always rendered, even with nothing in flight — CurrentRescue owns the
+          delivery celebration, which has to outlive the revalidation that
+          removes the delivered rescue from this slot. */}
+      <CurrentRescue listing={current ?? null} />
 
       {invited.length > 0 && (
         <section className="mb-8 lg:max-w-2xl">
