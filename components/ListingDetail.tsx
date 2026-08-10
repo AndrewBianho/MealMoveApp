@@ -437,12 +437,17 @@ export function ListingDetail({
         showClaimBar && "pb-20 md:pb-0"
       )}
     >
-      <Link
-        href="/"
-        className="-mx-1.5 mb-2 inline-block rounded px-1.5 py-2 text-[16px] text-neutral-700 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
-      >
-        ← Feed
-      </Link>
+      {/* No way back while you're carrying this one: the feed redirects
+          straight to this page (see app/(feed)/page.tsx), so the link would
+          promise a list and return you here. Everyone else keeps it. */}
+      {!working && (
+        <Link
+          href="/"
+          className="-mx-1.5 mb-2 inline-block rounded px-1.5 py-2 text-[16px] text-neutral-700 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+        >
+          ← Feed
+        </Link>
+      )}
 
       {primeOpen && (
         <div className="mb-4 animate-fade-in">
@@ -482,8 +487,14 @@ export function ListingDetail({
       {/* Handoff layout: a narrow action panel on the left — stepper, facts,
           phase content, and actions in one stack — with the map filling the
           rest of the viewport at lg+. */}
+      {/* min-w-0 on the column, not just the lg: tracks. A grid item's automatic
+          minimum size is its min-content, and this column's min-content is wide
+          (the hold panel's nowrap "source → drop-off" line), so on a phone the
+          single implicit track refused to shrink and the whole page scrolled
+          sideways — 521px of content in a 414px viewport. The lg: template
+          already guards with minmax(0,…); this is the same guard for mobile. */}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,472px)_minmax(0,1fr)]">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
       {/* Lifecycle stepper — the pickup's whole story in one horizontal bar on
           top of the panel. Shared with the feed's PickupTimelineCard
           (RescueProgress) so a volunteer reads the same four milestones here as
@@ -497,8 +508,9 @@ export function ListingDetail({
         />
         {stepCounter && (
           <p className="mt-2 text-center font-mono text-[13px] text-neutral-700">
-            {/* One expression — see RescueAdvancePanel: JSX eats the leading
-                space of a text node that follows an expression. */}
+            {/* One expression, not text-after-expression: JSX strips the
+                leading space off a text node that follows `{...}`, which ate
+                the gap and rendered "Step 4 of 4· you're here". */}
             {`${stepCounter} · you're here`}
           </p>
         )}
