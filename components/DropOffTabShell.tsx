@@ -7,18 +7,24 @@ import type { ReactNode } from "react";
 export function DropOffTabShell({
   title,
   subtitle,
+  badge,
   children,
 }: {
   title: string;
   subtitle?: string;
+  /** Sits beside the title — the location's open/closed state on the About tab. */
+  badge?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <main className="mx-auto max-w-[1760px] px-6 py-8">
       <header className="mb-8">
-        <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">
-          {title}
-        </h1>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">
+            {title}
+          </h1>
+          {badge}
+        </div>
         {subtitle && (
           <p className="mt-1 max-w-xl text-sm text-neutral-700">{subtitle}</p>
         )}

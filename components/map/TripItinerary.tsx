@@ -2,6 +2,8 @@
 
 import type { ReactNode } from "react";
 import { cn } from "@/components/cn";
+import { DropOffName } from "@/components/RetrievalHoursDisplay";
+import type { RetrievalHours } from "@/lib/hours";
 import type { SlotName, Stop, TripPlan } from "@/lib/tripPlan";
 
 export interface SlotSuggestion {
@@ -10,6 +12,8 @@ export interface SlotSuggestion {
   minutes?: number;
   miles: number;
   recommended: boolean;
+  /** Drop-off suggestions only — restaurants have no hours on file. */
+  retrievalHours?: RetrievalHours;
 }
 
 // `start` is structurally non-null, so it is rendered outside this list — it
@@ -161,8 +165,11 @@ export function TripItinerary({
                         className="flex w-full items-center gap-3 rounded-xl border border-neutral-900/10 px-3 py-2 text-left transition-colors hover:border-neutral-900/25 hover:bg-neutral-900/[0.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
                       >
                         <span className="flex min-w-0 flex-1 flex-col">
-                          <span className="truncate text-sm font-medium text-neutral-900">
-                            {s.name}
+                          <span className="text-sm font-medium text-neutral-900">
+                            <DropOffName
+                              name={<span className="truncate">{s.name}</span>}
+                              hours={s.retrievalHours}
+                            />
                           </span>
                           {s.recommended && (
                             <span className="mt-1 inline-flex w-fit items-center rounded-full bg-clay-50 px-1.5 py-0.5 font-mono text-[9px] text-clay-800">

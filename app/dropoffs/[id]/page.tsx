@@ -1,5 +1,5 @@
 import { ListingCard } from "@/components/ListingCard";
-import { RetrievalHoursDisplay } from "@/components/RetrievalHoursDisplay";
+import { OpenNowBadge, RetrievalHoursDisplay } from "@/components/RetrievalHoursDisplay";
 import { DetailHero } from "@/components/DetailHero";
 import { SectionHeading } from "@/components/SectionHeading";
 import { DetailEmpty, DetailNotFound } from "@/components/DetailEmpty";
@@ -27,6 +27,8 @@ export default async function DropOffDetailPage(
   }
 
   const { dropOff, listings } = detail;
+  // Parsed once — the hero badge and the weekly table below read the same value.
+  const hours = parseStoredHours(dropOff.retrievalHours);
   const incoming = listings.filter((l) =>
     ["claimed", "in transit"].includes(l.status)
   );
@@ -41,16 +43,22 @@ export default async function DropOffDetailPage(
         title={dropOff.name}
         address={dropOff.address}
         badge={
-          <span
-            className={
-              "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] " +
-              (dropOff.refrigerated
-                ? "bg-transit-50 text-transit-800"
-                : "bg-neutral-100 text-neutral-700")
-            }
-          >
-            {dropOff.refrigerated ? "❄ refrigerated" : "ambient"}
-          </span>
+          // Open/closed leads: "can I bring food here now" outranks how it's
+          // stored. The full weekly table still lives further down the page —
+          // this is the answer without the scroll.
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
+            {hours && <OpenNowBadge hours={hours} />}
+            <span
+              className={
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] " +
+                (dropOff.refrigerated
+                  ? "bg-transit-50 text-transit-800"
+                  : "bg-neutral-100 text-neutral-700")
+              }
+            >
+              {dropOff.refrigerated ? "❄ refrigerated" : "ambient"}
+            </span>
+          </div>
         }
         stats={[
           { label: "incoming", value: incoming.length },
@@ -74,7 +82,7 @@ export default async function DropOffDetailPage(
           <p className="mt-2 text-sm text-neutral-700">{dropOff.notes}</p>
         )}
         <div className="mt-4 border-t border-neutral-200/50 pt-4">
-          <RetrievalHoursDisplay hours={parseStoredHours(dropOff.retrievalHours)} />
+          <RetrievalHoursDisplay hours={hours} />
         </div>
       </section>
 

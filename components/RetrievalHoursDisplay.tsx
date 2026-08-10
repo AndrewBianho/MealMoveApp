@@ -30,6 +30,42 @@ export function OpenNowBadge({ hours }: { hours: RetrievalHours | null }) {
   );
 }
 
+/**
+ * A drop-off's name with its open/closed state attached. Wherever someone reads
+ * a destination they should also read whether it can take food right now — the
+ * two facts answer one question, so they travel together instead of being
+ * separated by a panel or a page.
+ *
+ * Renders the bare name when the location has no hours on file. `isOpenNow`
+ * treats "unknown" as `false`, so an unguarded badge would tell a volunteer a
+ * drop-off is *closed* when the truth is that nobody has filled its hours in —
+ * a claim worth withholding, especially now the badge appears app-wide.
+ *
+ * Wraps as a unit: the badge follows the name on the same line and drops
+ * beneath it when the column is too narrow, rather than splitting the name.
+ */
+export function DropOffName({
+  name,
+  hours,
+  className,
+}: {
+  name: React.ReactNode;
+  hours: RetrievalHours | null | undefined;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5",
+        className
+      )}
+    >
+      <span>{name}</span>
+      {hours && <OpenNowBadge hours={hours} />}
+    </span>
+  );
+}
+
 // Read-only weekly hours table + the open-now badge. Reused on the drop-off
 // console, the drop-off detail page, and (the badge) the listing detail.
 export function RetrievalHoursDisplay({ hours }: { hours: RetrievalHours | null }) {

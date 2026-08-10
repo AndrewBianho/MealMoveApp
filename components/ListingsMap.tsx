@@ -7,6 +7,7 @@ import type { Feature } from "geojson";
 import type { Listing } from "@/lib/types";
 import { cn } from "./cn";
 import { escapeHtml } from "@/lib/escapeHtml";
+import { isOpenNow, type RetrievalHours } from "@/lib/hours";
 import { RAMP } from "@/lib/rampColors";
 import { MAP_STYLES, createModeToggle, createHomeControl, type MapMode } from "@/lib/mapStyles";
 
@@ -140,6 +141,8 @@ export interface MapDropOffPin {
   name: string;
   lat: number;
   lng: number;
+  /** Drives the open/closed line in the pin's popup. Omit when unknown. */
+  retrievalHours?: RetrievalHours;
 }
 
 // Same urgency palette as the listing-card strip; hex mirrors the ramp tokens
@@ -462,9 +465,25 @@ export function ListingsMap({
         el.innerHTML = ICON_DROP;
         el.setAttribute("role", onSelectRef.current ? "button" : "img");
         el.setAttribute("aria-label", `Drop-off: ${d.name}`);
+        // Open/closed rides with the name here too. Raw DOM can't read Tailwind,
+        // but it can read the same CSS custom properties the ramp is defined
+        // with, so this stays in sync with the palette by construction.
+        const openNow = d.retrievalHours ? isOpenNow(d.retrievalHours) : null;
+        const openPill =
+          openNow == null
+            ? ""
+            : `<span style="display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:1px 7px;font-family:var(--font-mono),monospace;font-size:11px;background:rgb(var(${
+                openNow ? "--rescued-50" : "--n-100"
+              }));color:rgb(var(${openNow ? "--rescued-800" : "--n-700"}));">` +
+              `<span style="width:5px;height:5px;border-radius:999px;background:rgb(var(${
+                openNow ? "--rescued-600" : "--n-400"
+              }));"></span>${openNow ? "open now" : "closed"}</span>`;
         const popup = new mapboxgl.Popup({ offset: 16, closeButton: false }).setHTML(
           `<div style="font-family:var(--font-sans),system-ui,sans-serif;">
-            <div style="font-family:var(--font-display),Georgia,serif;font-size:15px;font-weight:600;color:rgb(var(--n-900));">${escapeHtml(d.name)}</div>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;">
+              <span style="font-family:var(--font-display),Georgia,serif;font-size:15px;font-weight:600;color:rgb(var(--n-900));">${escapeHtml(d.name)}</span>
+              ${openPill}
+            </div>
             <div style="color:rgb(var(--n-700));font-family:var(--font-mono),monospace;font-size:11px;letter-spacing:.02em;margin-top:2px;">Drop-off</div>
           </div>`
         );

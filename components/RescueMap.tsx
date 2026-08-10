@@ -14,6 +14,8 @@ import { RAMP } from "@/lib/rampColors";
 import { formatTimeLeft } from "@/lib/time";
 import { MAP_STYLES, createModeToggle, createHomeControl, type MapMode } from "@/lib/mapStyles";
 import { cn } from "./cn";
+import { DropOffName } from "./RetrievalHoursDisplay";
+import type { RetrievalHours } from "@/lib/hours";
 import { useTripPlan } from "./map/useTripPlan";
 import { useIsWide } from "./map/useIsWide";
 import { TripItinerary } from "./map/TripItinerary";
@@ -337,6 +339,9 @@ interface RouteOption {
   miles: number; // great-circle, shown immediately; replaced by drive distance
   minutes?: number; // full-journey drive time, filled when the route resolves
   recommended: boolean; // the shortest drive of the set
+  // Only set when the option is a drop-off — restaurants have no hours on file,
+  // so a pickup option never carries one.
+  retrievalHours?: RetrievalHours;
 }
 type Panel = { kind: "rest" | "drop"; name: string; options: RouteOption[] } | null;
 
@@ -896,7 +901,7 @@ export function RescueMap({
             kind: "rest",
             name: rest.name,
             options: nearMiss
-              ? [{ id: nearMiss.dropOff.id, name: `${nearMiss.dropOff.name} (${nearMiss.reason ?? "ineligible"})`, miles: nearMiss.miles, recommended: false }]
+              ? [{ id: nearMiss.dropOff.id, name: `${nearMiss.dropOff.name} (${nearMiss.reason ?? "ineligible"})`, miles: nearMiss.miles, recommended: false, retrievalHours: nearMiss.dropOff.retrievalHours }]
               : [],
           });
           return;
@@ -906,7 +911,7 @@ export function RescueMap({
         setPanel({
           kind: "rest",
           name: rest.name,
-          options: top3.map((x) => ({ id: x.dropOff.id, name: x.dropOff.name, miles: x.miles, recommended: false })),
+          options: top3.map((x) => ({ id: x.dropOff.id, name: x.dropOff.name, miles: x.miles, recommended: false, retrievalHours: x.dropOff.retrievalHours })),
         });
 
         // Fetch one full journey per candidate drop-off.
@@ -945,6 +950,7 @@ export function RescueMap({
             miles: routes[i]?.miles ?? x.miles,
             minutes: routes[i]?.minutes,
             recommended: i === shortIdx,
+            retrievalHours: x.dropOff.retrievalHours,
           })),
         });
 
@@ -1517,8 +1523,11 @@ export function RescueMap({
                           Drop-off
                         </span>
                       </div>
-                      <div className="mt-1.5 truncate font-display text-sm font-semibold text-neutral-900">
-                        {activeDrop?.name ?? "—"}
+                      <div className="mt-1.5 font-display text-sm font-semibold text-neutral-900">
+                        <DropOffName
+                          name={<span className="truncate">{activeDrop?.name ?? "—"}</span>}
+                          hours={activeDrop?.retrievalHours}
+                        />
                       </div>
                       {activeDrop && (
                         <>

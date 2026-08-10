@@ -7,6 +7,7 @@ import { MapPin, ArrowRight } from "./icons";
 import { StatusBadge } from "./StatusBadge";
 import { OpenInMapsButton } from "./OpenInMapsButton";
 import { RescueProgress } from "./RescueProgress";
+import { DropOffName } from "./RetrievalHoursDisplay";
 import { RescueAdvancePanel } from "./RescueAdvancePanel";
 import { isLiveOwnRescue, isTerminal } from "@/lib/rescueProgress";
 import type { Listing, VolunteerImpact } from "@/lib/types";
@@ -83,17 +84,22 @@ export function PickupTimelineCard({
 
   // Destination line — verb tracks the stage; clay is the destination accent.
   const dest = dropOff ?? "the drop-off";
-  const route = terminal
+  // Split from the name so the open/closed badge can sit against the
+  // destination itself rather than trailing a whole sentence.
+  const routeVerb = terminal
     ? dropOff
-      ? `Was headed to ${dropOff}`
+      ? "Was headed to"
       : null
     : delivered
-      ? `Delivered to ${dest}`
+      ? "Delivered to"
       : heldOvernight
-        ? `Held overnight — deliver to ${dest}`
+        ? "Held overnight — deliver to"
         : status === "in transit"
-          ? `On the way to ${dest}`
-          : `For ${dest}`;
+          ? "On the way to"
+          : "For";
+  // A finished or abandoned rescue doesn't care whether the drop-off happens to
+  // be open at this moment.
+  const showOpenState = !terminal && !delivered;
 
   const actionLabel =
     status === "claimed" ? "I've picked it up" : "Mark as delivered";
@@ -170,15 +176,18 @@ export function PickupTimelineCard({
           </span>
         </p>
 
-        {route && (
+        {routeVerb && (
           <p
             className={cn(
-              "mt-2.5 flex items-center gap-1.5 text-[15px] font-semibold",
+              "mt-2.5 flex items-start gap-1.5 text-[15px] font-semibold",
               terminal ? "text-neutral-700" : heldOvernight ? "text-transit-800" : "text-clay-800"
             )}
           >
-            <ArrowRight className="shrink-0 text-[1.05em]" />
-            {route}
+            <ArrowRight className="mt-1 shrink-0 text-[1.05em]" />
+            <DropOffName
+              name={`${routeVerb} ${dest}`}
+              hours={showOpenState ? listing.dropOffHours : undefined}
+            />
           </p>
         )}
 

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { ArrowRight } from "./icons";
 import { cn } from "./cn";
+import { DropOffName } from "./RetrievalHoursDisplay";
+import type { RetrievalHours } from "@/lib/hours";
 
 // The acknowledgment beat at the moment a volunteer commits — and the honest
 // face of the 15-minute hold behind it.
@@ -88,6 +90,7 @@ export function ClaimHoldPanel({
   claimedAt,
   source,
   dropOff,
+  dropOffHours,
   className,
 }: {
   /** Epoch ms of the auto-release deadline (Listing.holdUntil). */
@@ -96,6 +99,8 @@ export function ClaimHoldPanel({
   claimedAt?: number;
   source: string;
   dropOff?: string | null;
+  /** Drives the open/closed badge beside the destination. Omit when unknown. */
+  dropOffHours?: RetrievalHours;
   className?: string;
 }) {
   // Take the window from the claim itself rather than assuming 15 minutes, so
@@ -140,7 +145,10 @@ export function ClaimHoldPanel({
             <span aria-hidden className="shrink-0 text-clay-600">
               <ArrowRight />
             </span>
-            <span className="truncate">{dropOff ?? "drop-off"}</span>
+            <DropOffName
+              name={<span className="truncate">{dropOff ?? "drop-off"}</span>}
+              hours={dropOffHours}
+            />
           </p>
         </div>
       </div>
