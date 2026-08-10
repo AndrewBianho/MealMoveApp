@@ -5,6 +5,7 @@ import { Clock, MapPin, ArrowRight, Flame, Snowflake, Box } from "./icons";
 import { StatusBadge } from "./StatusBadge";
 import { NearbyVolunteers } from "./NearbyVolunteers";
 import { InfoRows } from "./InfoRows";
+import { DropOffName } from "./RetrievalHoursDisplay";
 import { formatTimeLeft } from "@/lib/time";
 import { capitalize } from "@/lib/text";
 import type { Listing } from "@/lib/types";
@@ -266,9 +267,14 @@ export function ListingCard({
         )}
 
         {dropOff && showRoute && (
-          <p className="mt-2 flex items-center gap-1.5 text-[15px] text-clay-800">
-            <ArrowRight className="text-clay-400" />
-            {dropOff}
+          <p className="mt-2 flex items-start gap-1.5 text-[15px] text-clay-800">
+            <ArrowRight className="mt-1 shrink-0 text-clay-400" />
+            {/* Spent listings drop the badge: whether the drop-off happens to be
+                open right now says nothing about a rescue that already ended. */}
+            <DropOffName
+              name={dropOff}
+              hours={SPENT.includes(status) ? undefined : listing.dropOffHours}
+            />
           </p>
         )}
 

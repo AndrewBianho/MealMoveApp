@@ -33,7 +33,7 @@ import { startFailureReplay } from "@/lib/analytics/client";
 import { capitalize } from "@/lib/text";
 import type { SafetyAnswers } from "@/lib/safety";
 import type { RescueAccuracy } from "@/lib/accuracy";
-import { OpenNowBadge } from "./RetrievalHoursDisplay";
+import { DropOffName, OpenNowBadge } from "./RetrievalHoursDisplay";
 import { DropOffNotices } from "./DropOffNotices";
 import { RescueCelebration } from "./RescueCelebration";
 import { RescueProgress } from "./RescueProgress";
@@ -178,10 +178,20 @@ export function ListingDetail({
   const mapListings = useMemo(() => (listing ? [listing] : []), [listing]);
   const mapDropOffs = useMemo<MapDropOffPin[]>(() => {
     if (needsDropOff) {
-      return dropOffChoices.map((d) => ({ id: d.id, name: d.name, lat: d.lat, lng: d.lng }));
+      return dropOffChoices.map((d) => ({
+        id: d.id,
+        name: d.name,
+        lat: d.lat,
+        lng: d.lng,
+        retrievalHours: d.retrievalHours,
+      }));
     }
-    return chosenDropOffPin ? [chosenDropOffPin] : [];
-  }, [needsDropOff, dropOffChoices, chosenDropOffPin]);
+    // The committed destination's hours already arrive parsed on the listing —
+    // no need to widen the page's query for the pin.
+    return chosenDropOffPin
+      ? [{ ...chosenDropOffPin, retrievalHours: listing?.dropOffHours }]
+      : [];
+  }, [needsDropOff, dropOffChoices, chosenDropOffPin, listing?.dropOffHours]);
   // Hand the map the journey to draw a blue route + tracer along. The map
   // prepends the volunteer's current location, so on a live listing it shows
   // "you → pickup" as soon as they're located, and extends to "→ drop-off" once
@@ -809,10 +819,18 @@ export function ListingDetail({
                                       : "border-neutral-200 bg-card hover:border-neutral-400/60"
                                   )}
                                 >
-                                  <span className="flex items-center justify-between gap-3">
-                                    <span className="text-[16px] font-medium text-neutral-900">
-                                      {d.name}
-                                    </span>
+                                  <span className="flex items-start justify-between gap-3">
+                                    {/* Open/closed rides with the name, not down
+                                        in the metadata row — it's the first
+                                        thing that rules a destination in or out. */}
+                                    <DropOffName
+                                      name={
+                                        <span className="text-[16px] font-medium text-neutral-900">
+                                          {d.name}
+                                        </span>
+                                      }
+                                      hours={d.retrievalHours}
+                                    />
                                     <span
                                       aria-hidden
                                       className={cn(
@@ -836,7 +854,8 @@ export function ListingDetail({
                                     )}
                                     {d.retrievalHours && (
                                       <>
-                                        <OpenNowBadge hours={d.retrievalHours} />
+                                        {/* Badge moved up beside the name; the
+                                            day's window stays here as detail. */}
                                         <span>
                                           today{" "}
                                           {formatDay(d.retrievalHours[currentDayKey()])}
@@ -899,6 +918,7 @@ export function ListingDetail({
                         claimedAt={listing.claimedAt}
                         source={listing.source}
                         dropOff={listing.dropOff}
+                        dropOffHours={listing.dropOffHours}
                         className="mb-4"
                       />
                     )}
@@ -1277,19 +1297,24 @@ export function ListingDetail({
                     aria-hidden
                     className="ml-1 block h-3.5 w-px border-l border-dashed border-neutral-300"
                   />
-                  <div className="flex items-center gap-2.5">
+                  <div className="flex items-start gap-2.5">
                     <span
                       aria-hidden
-                      className="h-[9px] w-[9px] shrink-0 rounded-full bg-neutral-900"
+                      className="mt-1.5 h-[9px] w-[9px] shrink-0 rounded-full bg-neutral-900"
                     />
-                    <span className="truncate text-[15px] font-semibold text-neutral-800">
-                      {listing.dropOff}
-                    </span>
-                    {dropOffOpen === false && (
-                      <span className="shrink-0 rounded-full bg-urgent-50 px-2 py-0.5 font-mono text-[14px] text-urgent-800">
-                        Closed
-                      </span>
-                    )}
+                    {/* Was a bespoke amber "Closed" pill that only appeared when
+                        shut — a second visual language for a fact the rest of
+                        the app states with OpenNowBadge, and silent about being
+                        open. Unified here; the alarm for a closed destination is
+                        carried by the warning banner above, not by this label. */}
+                    <DropOffName
+                      name={
+                        <span className="text-[15px] font-semibold text-neutral-800">
+                          {listing.dropOff}
+                        </span>
+                      }
+                      hours={listing.dropOffHours}
+                    />
                   </div>
                 </div>
               )}

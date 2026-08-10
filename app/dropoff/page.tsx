@@ -5,8 +5,10 @@ import { DropOffNoticeManager } from "@/components/DropOffNoticeManager";
 import { DropOffNotLinked, DropOffTabShell } from "@/components/DropOffTabShell";
 import { NeedLevelControl } from "@/components/NeedLevelControl";
 import { RetrievalHoursEditor } from "@/components/RetrievalHoursEditor";
+import { OpenNowBadge } from "@/components/RetrievalHoursDisplay";
 import { TeamPanel } from "@/components/TeamPanel";
 import { loadDropOffConsole } from "@/lib/dropoffConsole";
+import { parseStoredHours } from "@/lib/hours";
 
 export const dynamic = "force-dynamic";
 
@@ -49,9 +51,15 @@ export default async function DropoffPage() {
   if (isOrgAdmin) redirect("/admin/analytics");
   if (!own) return <DropOffNotLinked />;
 
+  const ownHours = parseStoredHours(own.retrievalHours);
+
   return (
     <DropOffTabShell
       title={own!.name}
+      // The same badge volunteers see against this location's name, shown to
+      // the people who set the hours — so "are we currently listed as open"
+      // is answered next to the name, not inferred from the editor below.
+      badge={ownHours ? <OpenNowBadge hours={ownHours} /> : null}
       subtitle="What you're in charge of — your opening times, your team, what you accept, and any notices for volunteers on their way."
     >
       <div className="grid items-start gap-4 md:grid-cols-2 lg:gap-6">
