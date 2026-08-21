@@ -12,12 +12,21 @@ import { SuccessPanel, BackToSignIn, CheckIcon } from "./AuthPanels";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Demo logins — one tap prefills the credentials for each role. Password is the
-// same across all four (the seeded demo world; see prisma/reset-demo.ts).
+// same across all five (the seeded demo world; see prisma/reset-demo.ts).
+//
+// The last entry is a second volunteer, not a fifth role. A rescue in flight
+// takes the whole app over (app/(feed)/page.tsx redirects to the listing), so
+// one volunteer account can't show both the browse feed and the in-flight
+// experience. The default "Volunteer" starts clean and lands on the feed; this
+// one is already mid-delivery and lands straight in the takeover. Its email is
+// derived by seedDemo from the claimedBy name in lib/mock.ts — keep the two in
+// step. `wide` spans the grid so a fifth button doesn't dangle in a 2-col row.
 const DEMO = [
   { role: "Volunteer", email: "you@campus.edu" },
   { role: "Restaurant", email: "saxbys@campus.edu" },
   { role: "Drop-off", email: "dropoff@campus.edu" },
   { role: "Org admin", email: "admin@campus.edu" },
+  { role: "Volunteer (mid-rescue)", email: "casey.w.@campus.edu", wide: true },
 ] as const;
 const DEMO_PASSWORD = "MealMove1";
 
@@ -197,6 +206,7 @@ export function LoginForm() {
               disabled={loading}
               className={cn(
                 "rounded-md border border-neutral-200 bg-neutral-50/60 px-3 py-2.5 text-[16px] font-medium text-neutral-800 transition-colors",
+                "wide" in d && d.wide && "col-span-2",
                 "hover:border-rescued-400 hover:bg-rescued-50 hover:text-rescued-800",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2",
                 "disabled:cursor-not-allowed disabled:opacity-60"

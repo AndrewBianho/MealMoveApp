@@ -155,7 +155,7 @@ export const LISTINGS: Listing[] = [
     weightLbs: 26,
     distance: "0.3 mi",
     status: "in transit",
-    claimedBy: "Robin Alvarez",
+    claimedBy: "Casey W.",
     dropOff: "St. Mark's Shelter",
     category: "prepared",
     perishable: true,
