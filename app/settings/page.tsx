@@ -55,7 +55,7 @@ export default async function SettingsPage() {
         <h2 className="text-lg font-medium">Walkthrough</h2>
         <div className="mt-4 flex flex-wrap gap-3">
           <ReplayWalkthroughButton />
-          <StartTourButton />
+          {mode === "demo" && viewer.role === "volunteer" && <StartTourButton />}
         </div>
       </section>
 
