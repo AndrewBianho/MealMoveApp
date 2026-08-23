@@ -59,13 +59,13 @@ const RELIABILITY: Slide = {
   art: "reliability",
 };
 
-const THEME_NAV: Slide = {
-  id: "themenav",
-  statusCode: "light · dark",
+const MOBILE_NAV: Slide = {
+  id: "mobilenav",
+  statusCode: "one thumb",
   tone: "transit",
   title: "Built for your phone",
-  body: "A bottom tab bar keeps everything one thumb away, and you can switch between light and dark whenever you like.",
-  art: "themenav",
+  body: "A bottom tab bar keeps everything one thumb away — claim a pickup, follow the route, and log the drop-off without reaching.",
+  art: "mobilenav",
 };
 
 // Admins oversee; they never claim. The walkthrough still *explains* the
@@ -98,9 +98,9 @@ const SLIDES_BY_ROLE_ORG_ADMIN_DECK: Deck = {
       body: "See who's showing up with calm bars and percentages. Encouraging, never a leaderboard.",
     },
     {
-      ...THEME_NAV,
+      ...MOBILE_NAV,
       title: "Works on every phone",
-      body: "Bottom-tab navigation and a light or dark theme, so the whole org can run it from a pocket.",
+      body: "Bottom-tab navigation the whole org can run from a pocket, on whatever they already carry.",
     },
   ],
 };
@@ -116,7 +116,7 @@ export const SLIDES_BY_ROLE: Record<Role, Deck> = {
       MAP_ROUTE,
       CLAIM,
       RELIABILITY,
-      THEME_NAV,
+      MOBILE_NAV,
     ],
   },
 
@@ -152,9 +152,9 @@ export const SLIDES_BY_ROLE: Record<Role, Deck> = {
         art: "team",
       },
       {
-        ...THEME_NAV,
+        ...MOBILE_NAV,
         title: "Built for the pass",
-        body: "Post from your phone between tickets. A bottom tab bar keeps it quick, in light or dark.",
+        body: "Post from your phone between tickets — a bottom tab bar keeps it to a few taps.",
       },
     ],
   },
@@ -183,9 +183,9 @@ export const SLIDES_BY_ROLE: Record<Role, Deck> = {
         art: "team",
       },
       {
-        ...THEME_NAV,
+        ...MOBILE_NAV,
         title: "Check it from anywhere",
-        body: "A bottom tab bar and light or dark mode make it easy to glance at incoming deliveries on your phone.",
+        body: "A bottom tab bar makes it easy to glance at incoming deliveries from your phone.",
       },
     ],
   },

@@ -16,7 +16,7 @@ export type ArtName =
   | "map"
   | "claim"
   | "reliability"
-  | "themenav"
+  | "mobilenav"
   | "team";
 
 function usePrefersReducedMotion() {
@@ -272,29 +272,22 @@ function ReliabilityArt() {
 }
 
 /* ── theme + mobile nav ───────────────────────────────────────────────── */
-function ThemeNavArt() {
+function MobileNavArt() {
   const reduce = usePrefersReducedMotion();
-  const [i, setI] = useState(0); // cycles theme segment + active tab
+  const [tab, setTab] = useState(0); // the active bottom tab travels the bar
   useEffect(() => {
     if (reduce) return;
-    const id = setInterval(() => setI((v) => (v + 1) % 3), 1600);
+    const id = setInterval(() => setTab((v) => (v + 1) % 3), 1600);
     return () => clearInterval(id);
   }, [reduce]);
-
-  const tab = i % 2 === 0 ? 0 : 2; // active bottom tab slides between ends
 
   return (
     <Panel className="bg-neutral-100">
       <div className="flex h-36 w-[5.5rem] flex-col rounded-[1.4rem] border-2 border-neutral-300/70 bg-card p-1.5 shadow-card">
-        {/* mini theme toggle — the active segment slides light → dark → system */}
-        <div className="relative mt-0.5 flex h-4 rounded-full bg-neutral-100 p-0.5">
-          <span
-            className="absolute top-0.5 h-3 w-[30%] rounded-full bg-neutral-900 transition-transform duration-300 ease-out"
-            style={{ transform: `translateX(${i * 100 + 4}%)` }}
-          />
-          {[0, 1, 2].map((s) => (
-            <span key={s} className="z-10 flex-1" />
-          ))}
+        {/* app header — wordmark and a nav dot, standing in for the real one */}
+        <div className="mt-0.5 flex h-4 items-center gap-1 rounded-md bg-neutral-100 px-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-neutral-300" />
+          <span className="h-1 w-6 rounded-full bg-neutral-200" />
         </div>
 
         <div className="mt-2 space-y-1.5 px-0.5">
@@ -377,8 +370,8 @@ export function WelcomeArt({ name }: { name: ArtName }) {
       return <ClaimArt />;
     case "reliability":
       return <ReliabilityArt />;
-    case "themenav":
-      return <ThemeNavArt />;
+    case "mobilenav":
+      return <MobileNavArt />;
     case "team":
       return <TeamArt />;
     default:
