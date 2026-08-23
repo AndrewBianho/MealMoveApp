@@ -91,6 +91,7 @@ export async function Header() {
             role={user.role}
             name={name}
             createdAt={createdAt}
+            offerTour={demo && user.role === "volunteer"}
           />
           <TourProvider enabled={demo && user.role === "volunteer"} />
         </>

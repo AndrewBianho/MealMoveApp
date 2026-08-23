@@ -2,6 +2,7 @@ import { DataModeToggle } from "@/components/DataModeToggle";
 import { NotificationsToggle } from "@/components/NotificationsToggle";
 import { QuietHoursControl } from "@/components/QuietHoursControl";
 import { ReplayWalkthroughButton } from "@/components/ReplayWalkthroughButton";
+import { StartTourButton } from "@/components/tour/StartTourButton";
 import { getDataMode } from "@/lib/mode";
 import { requireUser } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
@@ -52,8 +53,9 @@ export default async function SettingsPage() {
 
       <section className="mt-6 rounded-2xl border border-neutral-900/5 bg-card p-5 shadow-card">
         <h2 className="text-lg font-medium">Walkthrough</h2>
-        <div className="mt-4">
+        <div className="mt-4 flex flex-wrap gap-3">
           <ReplayWalkthroughButton />
+          <StartTourButton />
         </div>
       </section>
 

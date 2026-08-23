@@ -35,10 +35,12 @@ export function WelcomeIntro({
   role,
   name,
   createdAt,
+  offerTour = false,
 }: {
   role: Role;
   name: string;
   createdAt: number;
+  offerTour?: boolean;
 }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -100,7 +102,9 @@ export function WelcomeIntro({
     markSeen();
     setOpen(false);
     router.push(deck.home);
-  }, [markSeen, router, deck.home]);
+    // Demo volunteers roll straight from the intro into the tour.
+    if (offerTour) window.dispatchEvent(new Event("mm:open-tour"));
+  }, [markSeen, router, deck.home, offerTour]);
 
   const next = useCallback(() => {
     setDir(1);
@@ -224,7 +228,7 @@ export function WelcomeIntro({
 
           {onLast ? (
             <Button variant="primary" autoFocus onClick={finish}>
-              {deck.cta}
+              {offerTour ? "Start the tour" : deck.cta}
             </Button>
           ) : (
             <Button
