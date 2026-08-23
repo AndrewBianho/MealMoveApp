@@ -151,7 +151,7 @@ export const TOUR_STEPS: TourStep[] = [
     chapter: 3,
     route: "/listings/:id",
     anchor: "rescue-exits",
-    body: "Can't finish? Release it, or take it home overnight. Both are honest exits, and neither one is a flake.",
+    body: "Can't finish? Release it and it goes straight back to the feed — an honest exit, not a flake.",
     advance: "next",
   },
 
