@@ -5,6 +5,7 @@ import { getDataMode } from "@/lib/mode";
 import { unseenCount } from "@/lib/announcements";
 import { NavBar } from "./NavBar";
 import { WelcomeIntro } from "./WelcomeIntro";
+import { TourProvider } from "./tour/TourProvider";
 
 export async function Header() {
   const session = await auth();
@@ -85,11 +86,14 @@ export async function Header() {
       </header>
 
       {user && (
-        <WelcomeIntro
-          role={user.role}
-          name={name}
-          createdAt={createdAt}
-        />
+        <>
+          <WelcomeIntro
+            role={user.role}
+            name={name}
+            createdAt={createdAt}
+          />
+          <TourProvider enabled={demo && user.role === "volunteer"} />
+        </>
       )}
     </>
   );
