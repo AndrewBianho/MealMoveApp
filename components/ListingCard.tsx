@@ -131,6 +131,7 @@ export function ListingCard({
     </span>
   ) : (
     <span
+      data-tour="card-urgency"
       aria-label={spent ? "closed" : u.held ? u.word : `${u.word}, ${formatTimeLeft(minutesLeft, { long: true })} left`}
       className={cn("font-mono text-[14px] font-semibold", u.text)}
     >
@@ -177,7 +178,7 @@ export function ListingCard({
       </Link>
 
       {/* Body — one quiet stack: status · title · source · facts · action. */}
-      <div className="flex min-w-0 flex-1 flex-col justify-center p-6 sm:p-7">
+      <div data-tour="card-body" className="flex min-w-0 flex-1 flex-col justify-center p-6 sm:p-7">
         <div className="mb-2.5">{statusLine}</div>
 
         <h3 className="font-display text-[24px] font-medium leading-[1.18] tracking-tight text-balance sm:text-[27px]">
@@ -296,6 +297,7 @@ export function ListingCard({
             </span>
           ) : status === "open" && claimable ? (
             <Link
+              data-tour="card-open"
               href={`/listings/${id}`}
               className={cn(
                 "flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-5 py-2.5 text-[16px] font-bold text-neutral-50 shadow-card transition-all duration-200",

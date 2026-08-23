@@ -241,6 +241,12 @@ export function NavBar({
           <Link
             key={item.href}
             href={item.href}
+            data-tour={
+              item.href === "/" ? "nav-feed"
+              : item.href === "/map" ? "nav-map"
+              : item.href === "/impact" ? "nav-impact"
+              : undefined
+            }
             aria-current={isActive(item.href) ? "page" : undefined}
             className={cn(
               "rounded-full px-4 py-1.5 text-sm font-semibold transition duration-150",

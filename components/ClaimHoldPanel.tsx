@@ -125,6 +125,7 @@ export function ClaimHoldPanel({
 
   return (
     <div
+      data-tour="claim-hold"
       className={cn("animate-fade-up rounded-xl bg-rescued-50 px-4 py-4", className)}
     >
       <div className="flex items-start gap-3">

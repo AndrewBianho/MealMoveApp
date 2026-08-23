@@ -527,7 +527,7 @@ export function ListingDetail({
       </div>
 
         {/* Main */}
-        <div className="overflow-hidden rounded-2xl border border-neutral-200/40 bg-card">
+        <div data-tour="listing-summary" className="overflow-hidden rounded-2xl border border-neutral-200/40 bg-card">
           {/* Food photo — the appetizing anchor the detail page was missing; the
               Meal Move mark as a calm placeholder when a listing has no photo. */}
           <div
@@ -784,7 +784,7 @@ export function ListingDetail({
                 ) : canClaim ? (
                   <>
                     {needsDropOff && (
-                      <div id="dropoff-picker" className="mb-4">
+                      <div id="dropoff-picker" data-tour="dropoff-picker" className="mb-4">
                         <p className="mb-2.5 text-[15px] text-neutral-700">
                           First, pick where you&apos;ll take it — every rescue
                           starts with a destination.
@@ -891,6 +891,7 @@ export function ListingDetail({
                       </p>
                     )}
                     <Button
+                      data-tour="claim-button"
                       variant="claim"
                       className="w-full"
                       onClick={onClaim}
@@ -1134,7 +1135,7 @@ export function ListingDetail({
 
           {onClaimActive &&
             (listing.buddyName || pickerOpen || outgoingInvite) && (
-            <div className="rounded-2xl border border-neutral-200/40 bg-card p-5">
+            <div data-tour="buddy-invite" className="rounded-2xl border border-neutral-200/40 bg-card p-5">
               {listing.buddyName ? (
                 <>
                   <p className="mb-3 font-mono text-[13px] text-neutral-700">
@@ -1200,7 +1201,7 @@ export function ListingDetail({
           {listing.mine &&
             onClaimActive &&
             (canInviteBuddy || canCancel || confirmCancel) && (
-            <div className="border-t border-neutral-200/50 pt-4">
+            <div data-tour="rescue-exits" className="border-t border-neutral-200/50 pt-4">
               {confirmCancel ? (
                 <div className="animate-fade-in rounded-md bg-failed-50 px-4 py-3">
                   <p className="text-[16px] font-medium text-failed-800">

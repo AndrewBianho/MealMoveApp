@@ -77,3 +77,9 @@ test("exactly one step mutates demo data", () => {
   assert.equal(writes.length, 1);
   assert.equal(writes[0].id, "claim");
 });
+
+test("anchor names are lowercase kebab-case", () => {
+  for (const s of TOUR_STEPS) {
+    assert.match(s.anchor, /^[a-z][a-z0-9-]*$/, `${s.id} anchor "${s.anchor}"`);
+  }
+});
