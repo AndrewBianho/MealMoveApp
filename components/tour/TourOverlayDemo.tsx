@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TOUR_STEPS } from "@/lib/tour/steps";
 import { TourOverlay } from "./TourOverlay";
 
@@ -18,6 +18,13 @@ const RECT = {
 export function TourOverlayDemo() {
   const [state, setState] = useState<"click" | "next" | "fallback">("click");
   const step = state === "click" ? CLICK_STEP : NEXT_STEP;
+
+  // The overlay's position is measured from the live viewport, so it renders
+  // different style values on the server than on the client. Rendering it only
+  // after mount keeps that divergence out of hydration — the same reason
+  // TourProvider and WelcomeIntro both gate on a mounted flag.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
     <div>
@@ -42,12 +49,14 @@ export function TourOverlayDemo() {
       <p className="font-mono text-[11px] text-neutral-700">
         Renders full-screen — scroll up if the bubble is off view.
       </p>
-      <TourOverlay
-        step={step}
-        rect={state === "fallback" ? null : RECT}
-        onNext={() => {}}
-        onSkip={() => {}}
-      />
+      {mounted && (
+        <TourOverlay
+          step={step}
+          rect={state === "fallback" ? null : RECT}
+          onNext={() => {}}
+          onSkip={() => {}}
+        />
+      )}
     </div>
   );
 }
