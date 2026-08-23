@@ -1135,7 +1135,7 @@ export function ListingDetail({
 
           {onClaimActive &&
             (listing.buddyName || pickerOpen || outgoingInvite) && (
-            <div data-tour="buddy-invite" className="rounded-2xl border border-neutral-200/40 bg-card p-5">
+            <div className="rounded-2xl border border-neutral-200/40 bg-card p-5">
               {listing.buddyName ? (
                 <>
                   <p className="mb-3 font-mono text-[13px] text-neutral-700">
@@ -1237,6 +1237,7 @@ export function ListingDetail({
                 <div className="flex gap-2.5">
                   {canInviteBuddy && (
                     <Button
+                      data-tour="buddy-invite"
                       variant="secondary"
                       className="flex flex-1 items-center justify-center gap-2 px-4 py-2 text-[15px]"
                       onClick={() => setPickerOpen(true)}

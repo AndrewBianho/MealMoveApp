@@ -102,14 +102,6 @@ export const TOUR_STEPS: TourStep[] = [
     advance: "next",
   },
   {
-    id: "buddy",
-    chapter: 2,
-    route: "/listings/:id",
-    anchor: "buddy-invite",
-    body: "Bring a buddy. Either seat can carry the rescue, and both get credit for it.",
-    advance: "next",
-  },
-  {
     id: "destination",
     chapter: 2,
     route: "/listings/:id",
@@ -134,6 +126,14 @@ export const TOUR_STEPS: TourStep[] = [
     route: "/listings/:id",
     anchor: "claim-hold",
     body: "That countdown is real. Miss it and the pickup quietly returns to the feed — held for you, never held over you.",
+    advance: "next",
+  },
+  {
+    id: "buddy",
+    chapter: 3,
+    route: "/listings/:id",
+    anchor: "buddy-invite",
+    body: "Bring a buddy — invite someone to ride the second seat. Either of you can carry the rescue, and you both get credit for it.",
     advance: "next",
   },
   {
