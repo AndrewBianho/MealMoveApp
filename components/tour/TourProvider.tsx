@@ -9,6 +9,11 @@ import { TourOverlay } from "./TourOverlay";
 
 const KEY = "mm.tour";
 const FIND_TIMEOUT_MS = 4000;
+// After the fast rAF hunt gives up we keep looking, just slowly. A tour resumed
+// from storage lands on a cold page whose feed may still be streaming, and an
+// anchor that shows up late must still get its spotlight — otherwise the tour
+// sits on its fallback card forever with the real target visible behind it.
+const SLOW_RETRY_MS = 500;
 
 /**
  * Drives the demo tour: holds the step index, finds the current step's anchor,
@@ -83,6 +88,7 @@ export function TourProvider({ enabled }: { enabled: boolean }) {
     }
     let findRaf = 0;
     let tickRaf = 0;
+    let slowTimer = 0;
     let stop = false;
     let el: HTMLElement | null = null;
     const started = Date.now();
@@ -112,27 +118,44 @@ export function TourProvider({ enabled }: { enabled: boolean }) {
       return null;
     };
 
+    // Lock onto an anchor: centre it, measure it, and start tracking it.
+    const attach = (found: HTMLElement) => {
+      el = found;
+      // "auto", not "smooth": smooth scrolling is silently ignored in some
+      // environments (verified in the preview browser, with reduced-motion OFF
+      // and scroll-behavior already auto), which left the spotlight and its
+      // bubble stranded below the fold on any anchor past the first screen.
+      // Instant also means the rect we measure next is final, instead of
+      // settling over the scroll and dragging the spotlight a step behind.
+      found.scrollIntoView({ block: "center", behavior: "auto" });
+      measure();
+      window.addEventListener("scroll", onMove, true);
+      window.addEventListener("resize", onMove);
+    };
+
     const attempt = () => {
       if (stop) return;
-      el = findVisible();
-      if (el) {
-        // "auto", not "smooth": smooth scrolling is silently ignored in some
-        // environments (verified in the preview browser, with reduced-motion
-        // OFF and scroll-behavior already auto), which left the spotlight and
-        // its bubble stranded below the fold on any anchor past the first
-        // screen. Instant also means the rect we measure on the next line is
-        // final, instead of settling over the scroll and dragging the
-        // spotlight a step behind.
-        el.scrollIntoView({ block: "center", behavior: "auto" });
-        measure();
-        window.addEventListener("scroll", onMove, true);
-        window.addEventListener("resize", onMove);
+      const found = findVisible();
+      if (found) {
+        attach(found);
         return;
       }
       if (Date.now() - started < FIND_TIMEOUT_MS) {
         findRaf = requestAnimationFrame(attempt);
-      } else {
-        setRect(null); // anchor never appeared — the overlay docks its card
+        return;
+      }
+      // Dock the card so the viewer is never stuck without a way forward, but
+      // keep watching on a slow timer rather than giving up for good.
+      setRect(null);
+      if (!slowTimer) {
+        slowTimer = window.setInterval(() => {
+          if (stop) return;
+          const late = findVisible();
+          if (!late) return;
+          window.clearInterval(slowTimer);
+          slowTimer = 0;
+          attach(late);
+        }, SLOW_RETRY_MS);
       }
     };
     attempt();
@@ -141,6 +164,7 @@ export function TourProvider({ enabled }: { enabled: boolean }) {
       stop = true;
       cancelAnimationFrame(findRaf);
       cancelAnimationFrame(tickRaf);
+      if (slowTimer) window.clearInterval(slowTimer);
       window.removeEventListener("scroll", onMove, true);
       window.removeEventListener("resize", onMove);
     };
