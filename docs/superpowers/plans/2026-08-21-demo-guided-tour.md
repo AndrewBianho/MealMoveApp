@@ -23,7 +23,7 @@
 - **Motion:** any pulse goes behind `motion-safe:`. `globals.css` already disables animation under `prefers-reduced-motion`.
 - **Tests must live in `lib/`** — `package.json`'s test script globs only `lib/*.test.ts` and `lib/analytics/*.test.ts`. A test placed anywhere else silently never runs.
 - **Verification:** `npm test` (269 passing at plan time — do not regress), `npm run typecheck`, `npm run lint`. Lint currently emits 156 repo-wide warnings, 0 errors, from React Compiler rules adopted in PR #44 — pre-existing, not yours. Confirm your file adds none by counting before and after.
-- **The dev sandbox cannot reach `api.mapbox.com`.** `/map` renders controls but no tiles. Chapter 4's anchors can be verified; the map imagery cannot.
+- **Map imagery does not render in this sandbox — but NOT because Mapbox is unreachable.** Mapbox is reachable from this sandbox — the earlier claim that it was not was wrong. Verified: DNS and HTTPS to api.mapbox.com return 200, the token authenticates against the Styles API, lib/csp.ts allows the host in connect-src/img-src plus blob: workers, and both the page and a blob worker can fetch it. What actually fails is narrower and still unexplained: mapbox-gl initialises (canvas, controls and markers all render) but no request to api.mapbox.com is ever issued, so no tiles paint. Treat map imagery as unverified here, but do not record it as a network or egress restriction. Chapter 4's anchors can still be verified; its imagery cannot.
 
 ---
 
