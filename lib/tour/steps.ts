@@ -94,14 +94,6 @@ export const TOUR_STEPS: TourStep[] = [
     advance: "next",
   },
   {
-    id: "safety",
-    chapter: 2,
-    route: "/listings/:id",
-    anchor: "safety-checklist",
-    body: "The food-handling rules, before you're holding the food — not buried in a policy page.",
-    advance: "next",
-  },
-  {
     id: "destination",
     chapter: 2,
     route: "/listings/:id",
@@ -126,6 +118,14 @@ export const TOUR_STEPS: TourStep[] = [
     route: "/listings/:id",
     anchor: "claim-hold",
     body: "That countdown is real. Miss it and the pickup quietly returns to the feed — held for you, never held over you.",
+    advance: "next",
+  },
+  {
+    id: "safety",
+    chapter: 3,
+    route: "/listings/:id",
+    anchor: "safety-checklist",
+    body: "The food-handling rules, right where you'll need them — checked off before you carry anything.",
     advance: "next",
   },
   {

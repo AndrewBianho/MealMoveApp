@@ -8,7 +8,7 @@ import { matchesRoute } from "@/lib/tour/route";
 import { TourOverlay } from "./TourOverlay";
 
 const KEY = "mm.tour";
-const FIND_TIMEOUT_MS = 600;
+const FIND_TIMEOUT_MS = 4000;
 
 /**
  * Drives the demo tour: holds the step index, finds the current step's anchor,
@@ -100,10 +100,23 @@ export function TourProvider({ enabled }: { enabled: boolean }) {
       });
     };
 
+    // Prefer a visible match: the same data-tour anchor can exist in both the
+    // desktop nav and the mobile bottom bar at once, and the hidden one
+    // (display:none) still matches the selector but measures a zero-size rect.
+    const findVisible = (): HTMLElement | null => {
+      const candidates = document.querySelectorAll<HTMLElement>(`[data-tour="${step.anchor}"]`);
+      for (const candidate of candidates) {
+        const r = candidate.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) return candidate;
+      }
+      return null;
+    };
+
     const attempt = () => {
       if (stop) return;
-      el = document.querySelector<HTMLElement>(`[data-tour="${step.anchor}"]`);
+      el = findVisible();
       if (el) {
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
         measure();
         window.addEventListener("scroll", onMove, true);
         window.addEventListener("resize", onMove);

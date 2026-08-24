@@ -16,7 +16,7 @@ const RECT = {
 
 /** Styleguide harness: the overlay's three states, without running a tour. */
 export function TourOverlayDemo() {
-  const [state, setState] = useState<"click" | "next" | "fallback">("click");
+  const [state, setState] = useState<"off" | "click" | "next" | "fallback">("off");
   const step = state === "click" ? CLICK_STEP : NEXT_STEP;
 
   // The overlay's position is measured from the live viewport, so it renders
@@ -29,7 +29,7 @@ export function TourOverlayDemo() {
   return (
     <div>
       <div className="mb-3 flex flex-wrap gap-2">
-        {(["click", "next", "fallback"] as const).map((s) => (
+        {(["off", "click", "next", "fallback"] as const).map((s) => (
           <button
             key={s}
             type="button"
@@ -42,14 +42,14 @@ export function TourOverlayDemo() {
                 : "border-neutral-900/20 text-neutral-700 hover:text-neutral-900")
             }
           >
-            {s === "click" ? "Waits for a click" : s === "next" ? "Explains" : "Anchor missing"}
+            {s === "off" ? "Hidden" : s === "click" ? "Waits for a click" : s === "next" ? "Explains" : "Anchor missing"}
           </button>
         ))}
       </div>
       <p className="font-mono text-[11px] text-neutral-700">
         Renders full-screen — scroll up if the bubble is off view.
       </p>
-      {mounted && (
+      {mounted && state !== "off" && (
         <TourOverlay
           step={step}
           rect={state === "fallback" ? null : RECT}

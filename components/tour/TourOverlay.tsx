@@ -32,6 +32,10 @@ export function TourOverlay({
   const pos = positionOf(step);
   const counter = `Chapter ${pos.chapter} of ${pos.chapterOf} · Step ${pos.step} of ${pos.stepOf}`;
   const waiting = step.advance === "click";
+  // A click step with no anchor has nothing on screen to click, so the docked
+  // fallback must always fall through to Next rather than promising a click
+  // that can never land.
+  const canWaitForClick = waiting && rect !== null;
 
   // Pre-render safety: this component is a client component, but Next still
   // renders it on the server, where there is no window. The fallbacks only
@@ -44,7 +48,7 @@ export function TourOverlay({
       <p className="font-mono text-[11px] text-rescued-200">{counter}</p>
       <p className="mt-1 text-[14px] leading-relaxed text-neutral-50">{step.body}</p>
       <div className="mt-3 flex items-center gap-3">
-        {waiting ? (
+        {canWaitForClick ? (
           <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-rescued-200">
             <span
               aria-hidden
@@ -98,7 +102,7 @@ export function TourOverlay({
           heavier scrim fights that, especially on a projector. */}
       <div
         className={cn(
-          "absolute rounded-2xl shadow-[0_0_0_9999px_rgba(33,29,25,0.35)] transition-all duration-300",
+          "absolute rounded-2xl shadow-[0_0_0_9999px_rgb(var(--n-900)/0.35)] transition-all duration-300",
           waiting && "ring-2 ring-rescued-400"
         )}
         style={{ top, left, width, height }}

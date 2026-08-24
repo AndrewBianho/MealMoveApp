@@ -19,6 +19,9 @@ function toEnum(status: string): ListingStatus {
 // and the claimedBy on this persona's rescues in lib/mock.ts.
 const DEMO_VOLUNTEER = { name: "Robin Alvarez", email: "you@campus.edu" };
 
+// The second demo volunteer, mid-delivery — see lib/mock.ts and LoginForm's DEMO grid.
+const MID_RESCUE_VOLUNTEER = { name: "Casey W." };
+
 // Spread restaurants deterministically around Malvern Prep so the rescue map
 // shows realistic, spaced-out routes (not a single cluster). Place restaurant i
 // on a golden-angle spiral, radius cycling 1.5/3/4.5 mi, converting miles→deg.
@@ -400,9 +403,9 @@ export async function seedDemo(prisma: PrismaClient) {
           data: { listingId: listing.id, type: status, actorId, at },
         });
       }
-      // Seed the coordination thread on Robin's in-flight rescue so the chat
+      // Seed the coordination thread on Casey's in-flight rescue so the chat
       // shows a real back-and-forth (volunteer ↔ drop-off) out of the box.
-      if (inTransit && l.claimedBy === DEMO_VOLUNTEER.name) {
+      if (inTransit && l.claimedBy === MID_RESCUE_VOLUNTEER.name) {
         await prisma.message.create({
           data: {
             listingId: listing.id,

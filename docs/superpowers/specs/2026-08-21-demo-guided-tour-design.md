@@ -106,16 +106,17 @@ bubble reads `Chapter 3 of 5 · Step 2 of 4`.
 ### Chapter 2 — The listing (`/listings/:id`)
 6. Open one to see the whole job · **click**
 7. The food, the photo, the window it has to move in · *next*
-8. Safety checklist — the food-handling rules, before you're holding it · *next*
-9. Bring a buddy — invite someone to ride the second seat · *next*
-10. Destination first — pick where it's going before you commit to carrying it · *next*
+8. Destination first — pick where it's going before you commit to carrying it · *next*
 
 ### Chapter 3 — Claiming it (`/listings/:id`)
-11. Claim it — it's yours for fifteen minutes · **click, writes**
-12. That countdown is real: miss it and the pickup quietly returns to the feed · *next*
+9. Claim it — it's yours for fifteen minutes · **click, writes**
+10. That countdown is real: miss it and the pickup quietly returns to the feed · *next*
+11. Safety checklist — the food-handling rules, right where you'll need them,
+    checked off before you carry anything · *next*
+12. Bring a buddy — invite someone to ride the second seat · *next*
 13. Try going back to the feed — the app hands itself to the rescue · **click**
-14. Can't finish? Release it, or take it home — both are honest exits, neither is
-    a flake · *next*
+14. Can't finish? Release it and it goes straight back to the feed — an honest
+    exit, not a flake · *next*
 
 ### Chapter 4 — Planning the run (`/map`)
 15. Open the rescue map · **click**
@@ -123,16 +124,16 @@ bubble reads `Chapter 3 of 5 · Step 2 of 4`.
 17. Tap a pin to drop it into the trip · **click**
 18. The trip fills in: start → pickup → drop-off, with drive time per leg · *next*
 
-### Chapter 5 — Standing and impact (`/impact`, `/updates`)
-19. Your harvest — what you've moved, counted in meals · **click**
-20. Reliability as a bar, never a grade — no red flags on people · *next*
-21. Updates from the chapter — how the org keeps everyone in step · *next*
+### Chapter 5 — Standing and impact (`/impact`)
+19. Last stop — what all of this adds up to · **click**
+20. Your harvest — what you've moved, counted in meals · *next*
+21. Reliability as a bar, never a grade — no red flags on people · *next*
 
-**Step 11 is the only write.** One listing is consumed per full run, which keeps
+**Step 9 is the only write.** One listing is consumed per full run, which keeps
 `npm run db:demo:reset` cheap rather than mandatory.
 
 **Step 14 explains rather than demonstrates.** Clicking Release would undo step
-11's claim and strand chapters 3–5.
+9's claim and strand chapters 3–5.
 
 **Step 13 is the trap.** Clicking Home while holding a claim redirects *back to
 the listing* (`app/(feed)/page.tsx` hands the app to the rescue in flight). So

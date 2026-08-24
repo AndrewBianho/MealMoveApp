@@ -315,6 +315,12 @@ export function NavBar({
             <Link
               key={item.href}
               href={item.href}
+              data-tour={
+                item.href === "/" ? "nav-feed"
+                : item.href === "/map" ? "nav-map"
+                : item.href === "/impact" ? "nav-impact"
+                : undefined
+              }
               aria-current={active ? "page" : undefined}
               className="flex flex-1 flex-col items-center gap-1 py-1.5 focus:outline-none focus-visible:bg-card"
             >
