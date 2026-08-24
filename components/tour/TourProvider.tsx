@@ -116,7 +116,14 @@ export function TourProvider({ enabled }: { enabled: boolean }) {
       if (stop) return;
       el = findVisible();
       if (el) {
-        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        // "auto", not "smooth": smooth scrolling is silently ignored in some
+        // environments (verified in the preview browser, with reduced-motion
+        // OFF and scroll-behavior already auto), which left the spotlight and
+        // its bubble stranded below the fold on any anchor past the first
+        // screen. Instant also means the rect we measure on the next line is
+        // final, instead of settling over the scroll and dragging the
+        // spotlight a step behind.
+        el.scrollIntoView({ block: "center", behavior: "auto" });
         measure();
         window.addEventListener("scroll", onMove, true);
         window.addEventListener("resize", onMove);
