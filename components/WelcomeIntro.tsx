@@ -72,7 +72,10 @@ export function WelcomeIntro({
     }
   }, [mounted, createdAt]);
 
-  // Replay entry point (e.g. the "Replay welcome" nav item).
+  // Replay entry point. Nothing dispatches mm:open-intro any more — the nav's
+  // "Replay welcome" item became "Replay tour" and Settings' replay button was
+  // removed — so the deck currently only ever opens by itself, once, for a new
+  // account. Kept as the seam to hang a replay control back on.
   useEffect(() => {
     const onOpen = () => {
       setStep(0);

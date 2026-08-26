@@ -80,7 +80,13 @@ export async function Header() {
           )}
 
           {user && (
-            <NavBar role={user.role} name={name} image={image} unseen={updatesUnseen} />
+            <NavBar
+              role={user.role}
+              name={name}
+              image={image}
+              unseen={updatesUnseen}
+              offerTour={demo && user.role === "volunteer"}
+            />
           )}
         </div>
       </header>

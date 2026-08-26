@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useStartTour } from "./tour/useStartTour";
 import { signOut } from "next-auth/react";
 import { Avatar } from "./Avatar";
 import { cn } from "./cn";
@@ -185,13 +186,17 @@ export function NavBar({
   name,
   image = null,
   unseen = 0,
+  offerTour = false,
 }: {
   role: Role;
   name: string;
   image?: string | null;
   unseen?: number;
+  /** Demo volunteers only — matches TourProvider's `enabled`. */
+  offerTour?: boolean;
 }) {
   const pathname = usePathname();
+  const startTour = useStartTour();
   const [open, setOpen] = useState(false);
   // Portal target only exists after mount; the bar/sheet are portaled to <body>.
   const [mounted, setMounted] = useState(false);
@@ -426,19 +431,21 @@ export function NavBar({
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                window.dispatchEvent(new Event("mm:open-intro"));
-              }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-neutral-100"
-            >
-              <span className="text-neutral-700">
-                <TabIcon icon="replay" />
-              </span>
-              Replay welcome
-            </button>
+            {offerTour && (
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  startTour();
+                }}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-neutral-100"
+              >
+                <span className="text-neutral-700">
+                  <TabIcon icon="replay" />
+                </span>
+                Replay tour
+              </button>
+            )}
 
             <button
               onClick={onSignOut}
