@@ -6,6 +6,7 @@ import {
   positionOf,
   stepsInChapter,
 } from "./tour/steps";
+import { matchesRoute } from "./tour/route";
 
 test("there are five chapters, numbered 1..5 in order", () => {
   assert.equal(CHAPTERS.length, 5);
@@ -112,4 +113,27 @@ test("the tour opens on a route that can be navigated to directly", () => {
     !TOUR_STEPS[0].route.includes(":"),
     `first step route ${TOUR_STEPS[0].route} has a parameter and cannot be pushed`
   );
+});
+
+test("a start that gets redirected off the feed still has a step to land on", () => {
+  // Starting the tour pushes step 0's route ("/"), but a volunteer holding a
+  // live rescue is redirected to their listing — and the tour's own claim step
+  // puts them there. TourProvider falls back to the first step matching where
+  // it actually landed, so that fallback must find something.
+  assert.ok(!matchesRoute(TOUR_STEPS[0].route, "/listings/abc"), "premise: / is not the listing route");
+  const landed = TOUR_STEPS.findIndex((s) => matchesRoute(s.route, "/listings/abc"));
+  assert.ok(landed >= 0, "a redirected start has nowhere to resume");
+  // And it should land at the top of the listing chapter, not halfway through
+  // claiming something the viewer is already holding.
+  assert.equal(TOUR_STEPS[landed].chapter, 2);
+  assert.equal(TOUR_STEPS[landed].id, "listing-detail");
+});
+
+test("every step's route is one the fallback can match", () => {
+  // The fallback scans for a step matching the live pathname. A route pattern
+  // no real pathname can produce would be invisible to it.
+  for (const s of TOUR_STEPS) {
+    const sample = s.route.replace(/:[^/]+/g, "abc");
+    assert.ok(matchesRoute(s.route, sample), `${s.id} route ${s.route} matches nothing`);
+  }
 });

@@ -14,6 +14,11 @@ const FIND_TIMEOUT_MS = 4000;
 // anchor that shows up late must still get its spotlight — otherwise the tour
 // sits on its fallback card forever with the real target visible behind it.
 const SLOW_RETRY_MS = 500;
+// How long to let a requested start's navigation land before concluding the app
+// sent us somewhere else. Generous on purpose: guessing early costs the viewer
+// the opening chapter, and the feed is force-dynamic, so the push is a server
+// round trip rather than an instant client swap.
+const START_SETTLE_MS = 1200;
 
 /**
  * Drives the demo tour: holds the step index, finds the current step's anchor,
@@ -32,6 +37,7 @@ export function TourProvider({ enabled }: { enabled: boolean }) {
   const [mounted, setMounted] = useState(false);
   const [i, setI] = useState<number | null>(null);
   const [rect, setRect] = useState<DOMRect | null>(null);
+  const [starting, setStarting] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
@@ -50,10 +56,42 @@ export function TourProvider({ enabled }: { enabled: boolean }) {
   }, [enabled]);
 
   useEffect(() => {
-    const open = () => setI(0);
+    const open = () => {
+      setI(null);
+      setStarting(true);
+    };
     window.addEventListener("mm:open-tour", open);
     return () => window.removeEventListener("mm:open-tour", open);
   }, []);
+
+  // Resolve a requested start against the page the viewer actually lands on.
+  //
+  // useStartTour pushes step 0's route, but arriving there is not guaranteed:
+  // a volunteer holding a live rescue is redirected off the feed to their
+  // listing (app/(feed)/page.tsx), and the tour's own claim step is what puts
+  // them in that state. Insisting on step 0 there renders nothing at all, while
+  // still persisting a step that ambushes them later — so start at the first
+  // step matching wherever we ended up instead. The tour is route-aware by
+  // design; beginning at the chapter that describes the screen in front of you
+  // is coherent, and it is always visible.
+  useEffect(() => {
+    if (!starting) return;
+    // Already where step 0 wants us: settle on the next tick. Otherwise give the
+    // navigation time to land before concluding we were redirected. Either way
+    // the timer restarts on every pathname change, so this waits for the route
+    // to stop moving rather than racing the first value it sees.
+    const arrived = matchesRoute(TOUR_STEPS[0].route, pathname);
+    const settle = window.setTimeout(
+      () => {
+        const landed =
+          arrived ? 0 : TOUR_STEPS.findIndex((s) => matchesRoute(s.route, pathname));
+        setI(landed === -1 ? 0 : landed);
+        setStarting(false);
+      },
+      arrived ? 0 : START_SETTLE_MS
+    );
+    return () => window.clearTimeout(settle);
+  }, [starting, pathname]);
 
   useEffect(() => {
     try {
