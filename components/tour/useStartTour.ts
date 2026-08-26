@@ -3,7 +3,6 @@
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { TOUR_STEPS } from "@/lib/tour/steps";
-import { releaseRescueForTour } from "@/app/actions";
 
 /**
  * Starts the demo tour from anywhere. TourProvider is mounted globally in the
@@ -21,21 +20,8 @@ import { releaseRescueForTour } from "@/app/actions";
  */
 export function useStartTour() {
   const router = useRouter();
-  return useCallback(async () => {
-    // Hand back the rescue a previous run left in flight. Without this the tour
-    // reaches its claim step and finds no claim button at all — ListingDetail
-    // shows "One rescue at a time" instead, because the viewer is still holding
-    // the food the tour last told them to take. Best-effort: a failure here must
-    // never leave the viewer pressing a dead button.
-    try {
-      await releaseRescueForTour();
-    } catch {
-      /* ignore — starting the tour matters more than a tidy world */
-    }
-    // ?tour=1 asks the feed not to bounce us to a rescue in flight. Belt and
-    // braces with the release above: if that failed, this still reaches
-    // chapter 1 rather than redirecting into the listing.
-    router.push(`${TOUR_STEPS[0].route}?tour=1`);
+  return useCallback(() => {
+    router.push(TOUR_STEPS[0].route);
     window.dispatchEvent(new Event("mm:open-tour"));
   }, [router]);
 }

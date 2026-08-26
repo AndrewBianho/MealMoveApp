@@ -3,6 +3,7 @@ import { NotificationsToggle } from "@/components/NotificationsToggle";
 import { QuietHoursControl } from "@/components/QuietHoursControl";
 import { StartTourButton } from "@/components/tour/StartTourButton";
 import { getDataMode } from "@/lib/mode";
+import { hasRescueInFlight } from "@/lib/tour/gate";
 import { requireUser } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
 
@@ -13,6 +14,10 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage() {
   const viewer = await requireUser();
   const mode = await getDataMode();
+  const holdsRescue =
+    mode === "demo" && viewer.role === "volunteer"
+      ? await hasRescueInFlight(viewer.id)
+      : false;
 
   const me = await prisma.user.findUnique({
     where: { id: viewer.id },
@@ -56,9 +61,17 @@ export default async function SettingsPage() {
       {mode === "demo" && viewer.role === "volunteer" && (
         <section className="mt-6 rounded-2xl border border-neutral-900/5 bg-card p-5 shadow-card">
           <h2 className="text-lg font-medium">Walkthrough</h2>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <StartTourButton />
-          </div>
+          {holdsRescue ? (
+            <p className="mt-2 text-[15px] text-neutral-700">
+              The tour starts by claiming a pickup, and you can only carry one
+              rescue at a time. Deliver or release the one you&apos;re on to take
+              the tour again.
+            </p>
+          ) : (
+            <div className="mt-4 flex flex-wrap gap-3">
+              <StartTourButton />
+            </div>
+          )}
         </section>
       )}
 

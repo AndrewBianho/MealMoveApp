@@ -17,11 +17,7 @@ export const dynamic = "force-dynamic";
 
 const LIVE = ["claimed", "in transit", "taken home"];
 
-export default async function FeedPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ tour?: string }>;
-}) {
+export default async function FeedPage() {
   await requireRole("volunteer", "org_admin");
   const session = await auth();
   // Org admins oversee rather than claim — the available-pickups feed isn't
@@ -41,19 +37,9 @@ export default async function FeedPage({
   // Checked before the rest of the page's queries — none of their results
   // survive the redirect, so there's no reason to pay for them.
   const current = listings.find((l) => l.mine && LIVE.includes(l.status));
+  if (current) redirect(`/listings/${current.id}`);
 
-  // …except when the demo tour is opening. The tour's own claim step leaves the
-  // viewer holding a rescue, so anyone replaying it is redirected off the feed
-  // before chapter 1 can start — the takeover wins and the tour never appears.
-  // `?tour=1` asks the feed to stand down for that one navigation.
-  //
-  // Demo world only, and it deliberately does not disable the takeover itself:
-  // the nav's Home link carries no param, so chapter 3's takeover step still
-  // demonstrates the real behaviour.
   const world = await getDataMode();
-  const openingTour = world === "demo" && (await searchParams)?.tour === "1";
-  if (current && !openingTour) redirect(`/listings/${current.id}`);
-
   // Match the Header: only volunteers get the updates banner/badge (restaurants
   // and drop-offs aren't the audience, and org admins are redirected above).
   const updatesUnseen =

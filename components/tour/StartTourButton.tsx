@@ -1,29 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/Button";
 import { useStartTour } from "./useStartTour";
 
-// Starts the demo tour from Settings. Rendered only for demo volunteers, since
-// TourProvider is enabled on the same condition.
-//
-// The pending label is not decoration: starting now releases the rescue a
-// previous run left in flight before it navigates, so there is a real round trip
-// between the click and anything moving. On a projector a button that looks
-// dead for half a second reads as a broken demo.
+// Starts the demo tour from Settings. Rendered only when the viewer is a demo
+// volunteer AND is not carrying a rescue — see lib/tour/gate for why the second
+// half matters. See useStartTour for why the route push precedes the dispatch.
 export function StartTourButton() {
   const startTour = useStartTour();
-  const [starting, setStarting] = useState(false);
   return (
-    <Button
-      variant="secondary"
-      disabled={starting}
-      onClick={() => {
-        setStarting(true);
-        void startTour().finally(() => setStarting(false));
-      }}
-    >
-      {starting ? "Starting…" : "Take the tour"}
+    <Button variant="secondary" onClick={startTour}>
+      Take the tour
     </Button>
   );
 }

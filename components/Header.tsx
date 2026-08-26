@@ -6,12 +6,20 @@ import { unseenCount } from "@/lib/announcements";
 import { NavBar } from "./NavBar";
 import { WelcomeIntro } from "./WelcomeIntro";
 import { TourProvider } from "./tour/TourProvider";
+import { hasRescueInFlight } from "@/lib/tour/gate";
 
 export async function Header() {
   const session = await auth();
   const user = session?.user;
   const dataMode = user ? await getDataMode() : "real";
   const demo = dataMode === "demo";
+  // The tour is a demo-volunteer feature; `enabled` below stays on that alone.
+  const tourAudience = demo && user?.role === "volunteer";
+  // Offering it is stricter: the tour claims a pickup, and you can only carry
+  // one at a time, so someone mid-rescue would hit a step with no button. See
+  // lib/tour/gate — this must never reach TourProvider's `enabled`, which has
+  // to stay true through the tour's own claim step.
+  const offerTour = tourAudience && user ? !(await hasRescueInFlight(user.id)) : false;
   const updatesUnseen =
     user?.role === "volunteer" ? await unseenCount(user.id, dataMode) : 0;
 
@@ -85,7 +93,7 @@ export async function Header() {
               name={name}
               image={image}
               unseen={updatesUnseen}
-              offerTour={demo && user.role === "volunteer"}
+              offerTour={offerTour}
             />
           )}
         </div>
@@ -97,9 +105,9 @@ export async function Header() {
             role={user.role}
             name={name}
             createdAt={createdAt}
-            offerTour={demo && user.role === "volunteer"}
+            offerTour={offerTour}
           />
-          <TourProvider enabled={demo && user.role === "volunteer"} />
+          <TourProvider enabled={tourAudience} />
         </>
       )}
     </>
