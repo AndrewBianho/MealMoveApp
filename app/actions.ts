@@ -1469,6 +1469,43 @@ export async function resetDemoOnLogout(): Promise<{ reset: boolean }> {
 }
 
 /**
+ * Release the demo volunteer's rescue in flight so the tour can run again.
+ *
+ * The tour's claim step leaves the viewer holding food, and nothing later in the
+ * script releases or delivers it. A second run therefore meets an account that
+ * cannot claim: ListingDetail swaps the claim button for "One rescue at a time",
+ * and the feed's takeover redirect fires before chapter 1 can start.
+ *
+ * Releasing is the precise undo. A sole volunteer's release deletes the pickup,
+ * reopens the listing, and drops the drop-off choice — exactly the state
+ * chapters 2 and 3 expect to find. Cheaper and far less destructive than
+ * reseeding the whole world (resetDemoOnLogout): that is seconds of work and
+ * would throw away everything else the viewer had explored.
+ *
+ * Demo world only, checked twice — the account's mode and the listing's own demo
+ * flag. A real account's rescue is never touched.
+ */
+export async function releaseRescueForTour(): Promise<{ released: number }> {
+  if (!(await isDemo())) return { released: 0 };
+  const userId = await currentUserId();
+  // `deliveredAt: null` is the DB-level "still in flight": it covers claimed, in
+  // transit, and taken home without restating the feed's derived status list.
+  const inFlight = await prisma.pickup.findMany({
+    where: {
+      deliveredAt: null,
+      OR: [{ volunteerId: userId }, { buddyId: userId }],
+      listing: { demo: true },
+    },
+    select: { listingId: true },
+  });
+  for (const p of inFlight) {
+    await releaseClaimFor(prisma, userId, p.listingId);
+    refreshViews(p.listingId);
+  }
+  return { released: inFlight.length };
+}
+
+/**
  * Set (or clear) a restaurant's default image — shown on a listing card when
  * the listing has no food photo of its own. Restaurant members and org admins
  * only, and a restaurant member can only edit their own restaurant.
