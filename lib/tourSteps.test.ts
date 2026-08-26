@@ -103,3 +103,13 @@ test("click steps point at one control, not a container that wraps prose", () =>
   assert.ok(!clickAnchors.includes("dropoff-picker"));
   assert.ok(clickAnchors.includes("dropoff-choices"));
 });
+
+test("the tour opens on a route that can be navigated to directly", () => {
+  // StartTourButton pushes TOUR_STEPS[0].route before dispatching, because the
+  // provider renders nothing until the pathname matches. A ":id" in the first
+  // step's route would make that push navigate to a literal ":id" segment.
+  assert.ok(
+    !TOUR_STEPS[0].route.includes(":"),
+    `first step route ${TOUR_STEPS[0].route} has a parameter and cannot be pushed`
+  );
+});

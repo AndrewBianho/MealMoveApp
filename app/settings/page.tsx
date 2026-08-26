@@ -1,7 +1,6 @@
 import { DataModeToggle } from "@/components/DataModeToggle";
 import { NotificationsToggle } from "@/components/NotificationsToggle";
 import { QuietHoursControl } from "@/components/QuietHoursControl";
-import { ReplayWalkthroughButton } from "@/components/ReplayWalkthroughButton";
 import { StartTourButton } from "@/components/tour/StartTourButton";
 import { getDataMode } from "@/lib/mode";
 import { requireUser } from "@/lib/authz";
@@ -51,13 +50,17 @@ export default async function SettingsPage() {
         </div>
       </section>
 
-      <section className="mt-6 rounded-2xl border border-neutral-900/5 bg-card p-5 shadow-card">
-        <h2 className="text-lg font-medium">Walkthrough</h2>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <ReplayWalkthroughButton />
-          {mode === "demo" && viewer.role === "volunteer" && <StartTourButton />}
-        </div>
-      </section>
+      {/* Gated whole, not per-button. "Take the tour" is the section's only
+          control now, so gating just the button would leave the heading sitting
+          over an empty box for everyone who isn't a demo volunteer. */}
+      {mode === "demo" && viewer.role === "volunteer" && (
+        <section className="mt-6 rounded-2xl border border-neutral-900/5 bg-card p-5 shadow-card">
+          <h2 className="text-lg font-medium">Walkthrough</h2>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <StartTourButton />
+          </div>
+        </section>
+      )}
 
       <section className="mt-6 rounded-2xl border border-neutral-900/5 bg-card p-5 shadow-card">
         <h2 className="text-lg font-medium">Data</h2>
