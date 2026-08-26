@@ -14,11 +14,11 @@ const FIND_TIMEOUT_MS = 4000;
 // anchor that shows up late must still get its spotlight — otherwise the tour
 // sits on its fallback card forever with the real target visible behind it.
 const SLOW_RETRY_MS = 500;
-// How long to let a requested start's navigation land before concluding the app
-// sent us somewhere else. Generous on purpose: guessing early costs the viewer
-// the opening chapter, and the feed is force-dynamic, so the push is a server
-// round trip rather than an instant client swap.
-const START_SETTLE_MS = 1200;
+// How long the route must hold still before a requested start commits to a step.
+// A debounce, not a guess: router.push updates the URL optimistically, so the
+// pathname can read as the destination for a moment and change again when the
+// server responds.
+const START_SETTLE_MS = 500;
 
 /**
  * Drives the demo tour: holds the step index, finds the current step's anchor,
@@ -76,20 +76,23 @@ export function TourProvider({ enabled }: { enabled: boolean }) {
   // is coherent, and it is always visible.
   useEffect(() => {
     if (!starting) return;
-    // Already where step 0 wants us: settle on the next tick. Otherwise give the
-    // navigation time to land before concluding we were redirected. Either way
-    // the timer restarts on every pathname change, so this waits for the route
-    // to stop moving rather than racing the first value it sees.
-    const arrived = matchesRoute(TOUR_STEPS[0].route, pathname);
-    const settle = window.setTimeout(
-      () => {
-        const landed =
-          arrived ? 0 : TOUR_STEPS.findIndex((s) => matchesRoute(s.route, pathname));
-        setI(landed === -1 ? 0 : landed);
-        setStarting(false);
-      },
-      arrived ? 0 : START_SETTLE_MS
-    );
+    // Never resolve on the first pathname seen. router.push sets the URL before
+    // the server answers, so it reads as step 0's route for a moment even when
+    // the app is about to redirect elsewhere — committing there locked the tour
+    // to a step it was immediately navigated away from, and it rendered
+    // nothing. The timer restarts on every pathname change, so this waits for
+    // the route to stop moving.
+    const settle = window.setTimeout(() => {
+      const landed = matchesRoute(TOUR_STEPS[0].route, pathname)
+        ? 0
+        : TOUR_STEPS.findIndex((s) => matchesRoute(s.route, pathname));
+      // Nowhere the tour recognises — the navigation hasn't landed yet (Settings
+      // hosts no step). Keep waiting rather than committing to a fallback; the
+      // effect re-runs on the next pathname change.
+      if (landed === -1) return;
+      setI(landed);
+      setStarting(false);
+    }, START_SETTLE_MS);
     return () => window.clearTimeout(settle);
   }, [starting, pathname]);
 

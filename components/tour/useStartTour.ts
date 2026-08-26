@@ -21,7 +21,10 @@ import { TOUR_STEPS } from "@/lib/tour/steps";
 export function useStartTour() {
   const router = useRouter();
   return useCallback(() => {
-    router.push(TOUR_STEPS[0].route);
+    // ?tour=1 asks the feed not to bounce us to a rescue in flight. Without it
+    // a viewer holding the claim the tour told them to make never reaches
+    // chapter 1 — the takeover redirect wins and the tour renders nothing.
+    router.push(`${TOUR_STEPS[0].route}?tour=1`);
     window.dispatchEvent(new Event("mm:open-tour"));
   }, [router]);
 }
