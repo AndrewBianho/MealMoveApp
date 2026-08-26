@@ -36,17 +36,35 @@ export function TourOverlay({
   const pos = positionOf(step);
   const counter = `Chapter ${pos.chapter} of ${pos.chapterOf} · Step ${pos.step} of ${pos.stepOf}`;
   const waiting = step.advance === "click";
-  // A click step with no anchor has nothing on screen to click, so the docked
-  // fallback must always fall through to Next rather than promising a click
-  // that can never land.
-  const canWaitForClick = waiting && rect !== null;
+  // The anchor isn't on screen: an empty feed, a listing that expired mid-tour,
+  // an unexpected redirect, or a step whose control the app is refusing to show.
+  //
+  // Offering Next here was wrong. It let the viewer walk the rest of the script
+  // — narrating a claim they never made, a hold that never started, a buddy on
+  // nothing — each step as absent as the last, all the way to the end. The tour
+  // has lost the app; pressing on only compounds it. Say so, and offer the exit.
+  // The provider keeps hunting for the anchor on a slow retry, so a step that is
+  // merely late repairs itself and this state disappears on its own.
+  const lost = rect === null;
 
   const Bubble = (
     <>
       <p className="font-mono text-[11px] text-rescued-200">{counter}</p>
-      <p className="mt-1 text-[14px] leading-relaxed text-neutral-50">{step.body}</p>
+      <p className="mt-1 text-[14px] leading-relaxed text-neutral-50">
+        {lost
+          ? "This step points at something that isn't on this screen, so the tour can't carry on from here."
+          : step.body}
+      </p>
       <div className="mt-3 flex items-center gap-3">
-        {canWaitForClick ? (
+        {lost ? (
+          <button
+            type="button"
+            onClick={onSkip}
+            className="rounded-full bg-rescued-600 px-3.5 py-1.5 text-[12px] font-semibold text-neutral-50 transition-colors hover:bg-rescued-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900"
+          >
+            End tour
+          </button>
+        ) : waiting ? (
           <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-rescued-200">
             <span
               aria-hidden
@@ -64,13 +82,15 @@ export function TourOverlay({
           </button>
         )}
         <span className="flex-1" />
-        <button
-          type="button"
-          onClick={onSkip}
-          className="rounded-sm font-mono text-[11px] text-rescued-200 transition-colors hover:text-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
-        >
-          Skip tour
-        </button>
+        {!lost && (
+          <button
+            type="button"
+            onClick={onSkip}
+            className="rounded-sm font-mono text-[11px] text-rescued-200 transition-colors hover:text-neutral-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+          >
+            Skip tour
+          </button>
+        )}
       </div>
     </>
   );
