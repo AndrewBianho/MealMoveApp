@@ -6,7 +6,11 @@ import { positionOf, type TourStep } from "@/lib/tour/steps";
 const PAD = 6; // breathing room between the target and the cutout edge
 
 /**
- * The spotlight itself, plus the bubble that explains the step.
+ * The spotlight, plus the docked card that narrates the step.
+ *
+ * The two have separate jobs and separate places: the spotlight says *where* and
+ * moves every step, the card says *what* and never moves. Splitting them is what
+ * lets the card be a fixed dock instead of a tooltip chasing an anchor around.
  *
  * Two visual registers, because the tour has two kinds of step and a viewer
  * needs to know which one they're in: a step that waits for a real click puts a
@@ -14,9 +18,9 @@ const PAD = 6; // breathing room between the target and the cutout edge
  * explains leads with Next.
  *
  * A null rect means the anchor isn't on screen — an empty feed, a listing that
- * expired mid-tour, an unexpected redirect. Rather than positioning a bubble
- * over nothing, the same copy renders in a docked card. Every failure mode
- * collapses into this one path.
+ * expired mid-tour, an unexpected redirect. That state needs no layout of its
+ * own: the card is already where it always is, so the tour simply loses its
+ * spotlight and keeps talking. Every failure mode collapses into that.
  */
 export function TourOverlay({
   step,
@@ -36,12 +40,6 @@ export function TourOverlay({
   // fallback must always fall through to Next rather than promising a click
   // that can never land.
   const canWaitForClick = waiting && rect !== null;
-
-  // Pre-render safety: this component is a client component, but Next still
-  // renders it on the server, where there is no window. The fallbacks only
-  // affect that one pre-hydration frame.
-  const vw = typeof window === "undefined" ? 1024 : window.innerWidth;
-  const vh = typeof window === "undefined" ? 768 : window.innerHeight;
 
   const Bubble = (
     <>
@@ -77,45 +75,91 @@ export function TourOverlay({
     </>
   );
 
-  // No anchor on screen — dock the same words to the bottom of the viewport.
-  if (!rect) {
-    return (
-      <div className="pointer-events-none fixed inset-0 z-modal">
-        <div className="pointer-events-auto absolute inset-x-3 bottom-3 mx-auto max-w-md rounded-2xl bg-neutral-900 px-4 py-3 shadow-lift animate-fade-up sm:inset-x-auto sm:right-4 sm:w-[22rem]">
-          {Bubble}
-        </div>
-      </div>
-    );
-  }
+  // One dock, every step. Only the spotlight moves; the narration stays where
+  // the viewer last read it.
+  //
+  // This replaces a card that floated beside the anchor. That version guessed
+  // its own height in two places that disagreed (190px to test for room, 176px
+  // to place itself), and the bodies it holds run 30 to 148 characters — two to
+  // six lines. When the anchor sat near the top of the viewport the card pinned
+  // itself over the spotlight, and because it is pointer-events-auto and paints
+  // last, it swallowed the click a click step was waiting for. The tour
+  // deadlocked. A fixed dock cannot do that.
+  //
+  // It also reads better in the room this was built for: on a projector, a card
+  // that jumps each step makes every viewer re-find the narration before they
+  // can read it. Docked, the eye learns one path — spotlight for where, this
+  // corner for what.
+  const Card = (
+    <div
+      className={cn(
+        "pointer-events-auto fixed z-modal rounded-2xl bg-neutral-900 px-4 py-3 shadow-lift animate-fade-up",
+        // Clear of the mobile bottom nav (NavBar's bar is fixed, md:hidden, and
+        // about 4rem tall). The takeover step spotlights that bar — docking over
+        // it would hide the one thing the step asks you to click.
+        "inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))]",
+        "md:inset-x-auto md:bottom-4 md:right-4 md:w-[22rem]"
+      )}
+    >
+      {Bubble}
+    </div>
+  );
+
+  // No anchor on screen. The card is already where it always is, so the
+  // fallback is just the tour minus its spotlight — no second layout to
+  // maintain, and no visual jolt when a step loses its anchor.
+  if (!rect) return Card;
 
   const top = rect.top - PAD;
   const left = rect.left - PAD;
   const width = rect.width + PAD * 2;
   const height = rect.height + PAD * 2;
-  // Below the target when there's room, otherwise above it.
-  const below = top + height + 190 < vh;
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-modal">
-      {/* The cutout: a transparent box whose enormous spread shadow dims
-          everything around it. 35% — the demo exists to show the app, and a
-          heavier scrim fights that, especially on a projector. */}
-      <div
-        className={cn(
-          "absolute rounded-2xl shadow-[0_0_0_9999px_rgb(var(--n-900)/0.35)] transition-all duration-300",
-          waiting && "ring-2 ring-rescued-400"
-        )}
-        style={{ top, left, width, height }}
-      />
-      <div
-        className="pointer-events-auto absolute w-[min(92vw,20rem)] rounded-2xl bg-neutral-900 px-4 py-3 shadow-lift animate-fade-up"
-        style={{
-          left: Math.min(Math.max(8, left), vw - 332),
-          ...(below ? { top: top + height + 12 } : { top: Math.max(8, top - 176) }),
-        }}
-      >
-        {Bubble}
+    <>
+      <div className="pointer-events-none fixed inset-0 z-modal">
+        {/* The cutout: a transparent box whose enormous spread shadow dims
+            everything around it. 35% — the demo exists to show the app, and a
+            heavier scrim fights that, especially on a projector.
+
+            No transition on position. The box-shadow trick means this element
+            IS the spotlight, so any transition on top/left animates the hole
+            itself: when a step attaches it scrolls the anchor into view, the
+            rect changes, and the spotlight spends 300ms sliding to catch up
+            while the viewer watches it lag behind the thing it is pointing at.
+            Snapping is correct. */}
+        <div
+          className={cn(
+            "absolute rounded-2xl shadow-[0_0_0_9999px_rgb(var(--n-900)/0.35)]",
+            waiting && "ring-2 ring-rescued-400"
+          )}
+          style={{ top, left, width, height }}
+        />
+        {/* Click blockers. The scrim above is drawn by a box-shadow, and a
+            shadow catches nothing — every dimmed pixel stayed clickable, so a
+            viewer could wander off mid-tour into a part of the app the tour
+            isn't on. These four rects tile the region around the hole and
+            swallow the clicks. They don't block scrolling: a wheel over a fixed
+            overlay still chains up to the document, which is the point — the
+            page stays explorable, it just isn't operable. */}
+        <div
+          className="pointer-events-auto absolute inset-x-0 top-0"
+          style={{ height: Math.max(0, top) }}
+        />
+        <div
+          className="pointer-events-auto absolute inset-x-0 bottom-0"
+          style={{ top: top + height }}
+        />
+        <div
+          className="pointer-events-auto absolute left-0"
+          style={{ top, height, width: Math.max(0, left) }}
+        />
+        <div
+          className="pointer-events-auto absolute right-0"
+          style={{ top, height, left: left + width }}
+        />
       </div>
-    </div>
+      {Card}
+    </>
   );
 }

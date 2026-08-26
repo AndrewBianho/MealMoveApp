@@ -106,6 +106,16 @@ export function TourProvider({ enabled }: { enabled: boolean }) {
       });
     };
 
+    // A resize can push the anchor off-screen — rotating a phone, or the
+    // keyboard opening over a short viewport. Re-centre rather than just
+    // re-measuring, or the spotlight faithfully tracks something the viewer
+    // can no longer see.
+    const onResize = () => {
+      if (stop || !el) return;
+      el.scrollIntoView({ block: "center", behavior: "auto" });
+      measure();
+    };
+
     // Prefer a visible match: the same data-tour anchor can exist in both the
     // desktop nav and the mobile bottom bar at once, and the hidden one
     // (display:none) still matches the selector but measures a zero-size rect.
@@ -130,7 +140,7 @@ export function TourProvider({ enabled }: { enabled: boolean }) {
       found.scrollIntoView({ block: "center", behavior: "auto" });
       measure();
       window.addEventListener("scroll", onMove, true);
-      window.addEventListener("resize", onMove);
+      window.addEventListener("resize", onResize);
     };
 
     const attempt = () => {
@@ -166,7 +176,7 @@ export function TourProvider({ enabled }: { enabled: boolean }) {
       cancelAnimationFrame(tickRaf);
       if (slowTimer) window.clearInterval(slowTimer);
       window.removeEventListener("scroll", onMove, true);
-      window.removeEventListener("resize", onMove);
+      window.removeEventListener("resize", onResize);
     };
   }, [step, onRoute, pathname]);
 

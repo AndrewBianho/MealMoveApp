@@ -47,14 +47,19 @@ export function TourOverlayDemo() {
         ))}
       </div>
       <p className="font-mono text-[11px] text-neutral-700">
-        Renders full-screen — scroll up if the bubble is off view.
+        Renders full-screen, with the card docked bottom-right. The dimmed area
+        swallows clicks, so use the card to dismiss it.
       </p>
       {mounted && state !== "off" && (
         <TourOverlay
           step={step}
           rect={state === "fallback" ? null : RECT}
-          onNext={() => {}}
-          onSkip={() => {}}
+          // Both dismiss. In a real tour these advance and abort, but here the
+          // bubble is the only live control on the page: the overlay's blocker
+          // rects cover the toggles above, so a no-op handler would strand the
+          // styleguide with no way back to "off".
+          onNext={() => setState("off")}
+          onSkip={() => setState("off")}
         />
       )}
     </div>
