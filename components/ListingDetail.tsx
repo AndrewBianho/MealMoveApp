@@ -795,7 +795,7 @@ export function ListingDetail({
                             back soon.
                           </p>
                         ) : (
-                          <div className="space-y-2">
+                          <div data-tour="dropoff-choices" className="space-y-2">
                             {dropOffChoices.map((d) => {
                               const sel = chosenDropOff === d.id;
                               return (

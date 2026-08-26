@@ -101,6 +101,16 @@ export const TOUR_STEPS: TourStep[] = [
     body: "Destination first — you pick where it's going before you commit to carrying it, so nobody drives off without a door to knock on.",
     advance: "next",
   },
+  {
+    id: "pick-dropoff",
+    chapter: 2,
+    route: "/listings/:id",
+    // The choices themselves, not the whole picker: a click step must spotlight
+    // the thing to click, and "dropoff-picker" wraps the explanatory copy too.
+    anchor: "dropoff-choices",
+    body: "Pick one. Claiming stays disabled until this rescue has somewhere to go — so the tour can't move on until you choose.",
+    advance: "click",
+  },
 
   // — Chapter 3: claiming —
   {

@@ -83,3 +83,23 @@ test("anchor names are lowercase kebab-case", () => {
     assert.match(s.anchor, /^[a-z][a-z0-9-]*$/, `${s.id} anchor "${s.anchor}"`);
   }
 });
+
+test("the tour picks a drop-off before it offers the claim", () => {
+  const pick = TOUR_STEPS.findIndex((s) => s.id === "pick-dropoff");
+  const claim = TOUR_STEPS.findIndex((s) => s.id === "claim");
+  assert.ok(pick >= 0, "pick-dropoff step missing");
+  assert.ok(pick < claim, "the drop-off must be chosen before the claim step");
+  // ListingDetail's `claimReady` disables the claim button until a drop-off is
+  // chosen. If this step advanced on "next" the tour would walk the viewer onto
+  // a dead button and sit there waiting for a click that cannot land.
+  assert.equal(TOUR_STEPS[pick].advance, "click");
+});
+
+test("click steps point at one control, not a container that wraps prose", () => {
+  // A spotlight on a click step is an instruction: the lit area is what to
+  // click. "dropoff-picker" wraps explanatory copy as well as the buttons, so
+  // the click step uses the tighter "dropoff-choices" anchor instead.
+  const clickAnchors = TOUR_STEPS.filter((s) => s.advance === "click").map((s) => s.anchor);
+  assert.ok(!clickAnchors.includes("dropoff-picker"));
+  assert.ok(clickAnchors.includes("dropoff-choices"));
+});
