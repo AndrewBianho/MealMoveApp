@@ -6,11 +6,11 @@ import { StartTourButton } from "./StartTourButton";
  * The tour's entry point, with its gate and — when the gate is closed — the
  * reason why.
  *
- * Shared by Settings and Profile rather than written twice: the gate is a rule
- * about the tour, not about either page, and a second hand-rolled copy is how
- * one surface ends up offering a tour that cannot run. Renders nothing at all
- * for anyone who isn't a demo volunteer, so a caller can drop it in
- * unconditionally.
+ * Settings is the only caller today, but the gate is a rule about the tour
+ * rather than about that page, so it lives here: a second hand-rolled copy is
+ * how another surface would end up offering a tour that cannot run. Renders
+ * nothing at all for anyone who isn't a demo volunteer, so a caller can drop it
+ * in unconditionally.
  *
  * getDataMode is request-cached, so asking again here costs a page that already
  * called it nothing.

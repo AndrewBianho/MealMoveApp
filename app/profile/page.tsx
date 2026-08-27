@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ProfileForm } from "@/components/ProfileForm";
-import { WalkthroughSection } from "@/components/tour/WalkthroughSection";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -56,8 +55,6 @@ export default async function ProfilePage() {
           organizationName={user.organization?.name ?? null}
         />
       </section>
-
-      <WalkthroughSection userId={userId} role={user.role} />
 
       <p className="mt-4 text-[14px] text-neutral-700">
         Looking for your rescues and impact?{" "}
