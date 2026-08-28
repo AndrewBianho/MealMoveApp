@@ -1469,6 +1469,29 @@ export async function resetDemoOnLogout(): Promise<{ reset: boolean }> {
 }
 
 /**
+ * Rebuild the demo world so the tour has something to run on.
+ *
+ * A fresh demo world holds only four claimable pickups — the other fifteen
+ * listings are seeded into claimed/in transit/delivered/expired/failed to
+ * showcase the rest of the lifecycle. Chapter 3 consumes one per run and never
+ * puts it back, so a few runs in one sitting leave the feed empty and the tour
+ * with no card to open. The hourly cron eventually restores it; this makes the
+ * next run work now.
+ *
+ * Safe here specifically because the tour's entry points are gated on the
+ * viewer carrying nothing (lib/tour/gate). The reseed deletes every demo
+ * pickup, so if it could run mid-rescue it would silently destroy one — the
+ * gate is what makes that unreachable.
+ */
+export async function resetDemoForTour(): Promise<{ reset: boolean }> {
+  if (!(await isDemo())) return { reset: false };
+  await resetDemoWorld(prisma);
+  refreshViews();
+  revalidatePath("/map");
+  return { reset: true };
+}
+
+/**
  * Set (or clear) a restaurant's default image — shown on a listing card when
  * the listing has no food photo of its own. Restaurant members and org admins
  * only, and a restaurant member can only edit their own restaurant.

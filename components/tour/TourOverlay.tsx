@@ -95,8 +95,27 @@ export function TourOverlay({
     </>
   );
 
-  // One dock, every step. Only the spotlight moves; the narration stays where
-  // the viewer last read it.
+  // Does the spotlight land where the card sits?
+  //
+  // The card is pointer-events-auto and paints last, so a click target underneath
+  // it is not merely hidden — the card swallows the click and a click step waits
+  // forever. When that happens the card moves to the top instead.
+  //
+  // A zone test, not a measurement of the card. Measuring it and feeding that back
+  // into its own placement makes the flip its own input: flipped, it no longer
+  // collides, so it flips back, and the two trade places on every resize. The card
+  // runs roughly 120–190px tall over a 76px inset, so the bottom third of the
+  // viewport is the region it can occupy.
+  //
+  // An anchor taller than the viewport (the map canvas) is excluded: it collides
+  // wherever the card goes, so moving buys nothing and costs the stability that
+  // makes a fixed dock worth having.
+  const vh = typeof window === "undefined" ? 768 : window.innerHeight;
+  const spansViewport = rect !== null && rect.top - PAD < vh / 3;
+  const blocked = rect !== null && rect.bottom + PAD > (vh * 2) / 3 && !spansViewport;
+
+  // One dock, every step — top or bottom, and only the collision above moves it.
+  // Otherwise the spotlight moves and the narration stays where it was last read.
   //
   // This replaces a card that floated beside the anchor. That version guessed
   // its own height in two places that disagreed (190px to test for room, 176px
@@ -114,20 +133,24 @@ export function TourOverlay({
     <div
       className={cn(
         "pointer-events-auto fixed z-modal rounded-2xl bg-neutral-900 px-4 py-3 shadow-lift animate-fade-up",
-        // Clear of the mobile bottom nav (NavBar's bar is fixed, md:hidden, and
-        // about 4rem tall). The takeover step spotlights that bar — docking over
-        // it would hide the one thing the step asks you to click.
-        "inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))]",
-        "md:inset-x-auto md:bottom-4 md:right-4 md:w-[22rem]"
+        "inset-x-3 md:inset-x-auto md:right-4 md:w-[22rem]",
+        blocked
+          ? "top-3 md:top-4"
+          // The bottom inset clears the mobile bottom nav (NavBar's bar is fixed,
+          // md:hidden, and about 4rem tall). The takeover step spotlights that
+          // bar — docking over it would hide the one thing the step asks you to
+          // click.
+          : "bottom-[calc(4.75rem+env(safe-area-inset-bottom))] md:bottom-4"
       )}
     >
       {Bubble}
     </div>
   );
 
-  // No anchor on screen. The card is already where it always is, so the
-  // fallback is just the tour minus its spotlight — no second layout to
-  // maintain, and no visual jolt when a step loses its anchor.
+  // No anchor on screen. With no spotlight there is nothing to collide with, so
+  // the card docks at the bottom and the fallback is just the tour minus its
+  // spotlight — no second layout to maintain, and no jolt when a step loses its
+  // anchor.
   if (!rect) return Card;
 
   const top = rect.top - PAD;

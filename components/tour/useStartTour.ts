@@ -3,6 +3,7 @@
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { TOUR_STEPS } from "@/lib/tour/steps";
+import { resetDemoForTour } from "@/app/actions";
 
 /**
  * Starts the demo tour from anywhere. TourProvider is mounted globally in the
@@ -20,7 +21,16 @@ import { TOUR_STEPS } from "@/lib/tour/steps";
  */
 export function useStartTour() {
   const router = useRouter();
-  return useCallback(() => {
+  return useCallback(async () => {
+    // Rebuild the demo world first. Only four of its listings are claimable, and
+    // every previous run consumed one, so without this the tour eventually opens
+    // on an empty feed with no card to click. Best-effort: a failure here should
+    // still leave the viewer with a tour, even a thin one.
+    try {
+      await resetDemoForTour();
+    } catch {
+      /* ignore — a stale world still demos better than a dead button */
+    }
     router.push(TOUR_STEPS[0].route);
     window.dispatchEvent(new Event("mm:open-tour"));
   }, [router]);
