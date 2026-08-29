@@ -24,6 +24,7 @@ export default async function ProfilePage() {
       phone: true,
       imageUrl: true,
       role: true,
+      demo: true,
       organization: { select: { name: true } },
     },
   });
@@ -46,6 +47,7 @@ export default async function ProfilePage() {
 
       <section className="rounded-2xl border border-neutral-900/5 bg-card p-6 shadow-card">
         <ProfileForm
+          demo={user.demo}
           initial={{
             name: user.name,
             email: user.email,

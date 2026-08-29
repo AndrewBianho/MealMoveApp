@@ -175,6 +175,10 @@ export async function seedDemo(prisma: PrismaClient) {
         dataMode: "demo",
         demo: true,
         organizationId,
+        // Demo logins are shared, so anything a visitor typed into the profile
+        // is someone else's data by the next session. Scrub it on every reseed.
+        phone: null,
+        imageUrl: null,
         ...geo,
       },
       create: {
@@ -197,6 +201,8 @@ export async function seedDemo(prisma: PrismaClient) {
     update: {
       passwordHash,
       role: "restaurant",
+      phone: null,
+      imageUrl: null,
       restaurantId: restaurantId.get(RESTAURANT),
       dataMode: "demo",
       demo: true,
@@ -220,6 +226,8 @@ export async function seedDemo(prisma: PrismaClient) {
     update: {
       passwordHash,
       role: "drop_off",
+      phone: null,
+      imageUrl: null,
       dropOffId: demoDropOffId,
       dataMode: "demo",
       demo: true,
@@ -239,6 +247,8 @@ export async function seedDemo(prisma: PrismaClient) {
     update: {
       passwordHash,
       role: "org_admin",
+      phone: null,
+      imageUrl: null,
       dataMode: "demo",
       demo: true,
       organizationId: orgForEmail("admin@campus.edu"),

@@ -33,16 +33,20 @@ export function AvatarUploadField({
   value,
   name,
   onChange,
+  disabled = false,
 }: {
   value: string | null;
   /** Fallback initials when there's no photo. */
   name: string;
   onChange: (url: string | null) => void;
+  /** Shared demo accounts keep their seeded identity — see ProfileForm. */
+  disabled?: boolean;
 }) {
   const [preview, setPreview] = useState<string | null>(value);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const locked = busy || disabled;
 
   async function upload(file: File) {
     setBusy(true);
@@ -103,7 +107,7 @@ export function AvatarUploadField({
           <button
             type="button"
             onClick={() => fileInput.current?.click()}
-            disabled={busy}
+            disabled={locked}
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-[15px] font-bold transition-all disabled:opacity-50",
               "bg-gradient-to-b from-rescued-400 to-rescued-600 text-white shadow-glow hover:-translate-y-0.5 hover:shadow-lift",
@@ -116,7 +120,7 @@ export function AvatarUploadField({
             <button
               type="button"
               onClick={clear}
-              disabled={busy}
+              disabled={locked}
               className="inline-flex items-center gap-1 rounded-full px-2.5 py-2 text-[15px] font-semibold text-neutral-700 transition-colors hover:text-neutral-900 disabled:opacity-50"
             >
               <X /> Remove
