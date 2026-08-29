@@ -22,6 +22,13 @@ const DEMO_VOLUNTEER = { name: "Robin Alvarez", email: "you@campus.edu" };
 // The second demo volunteer, mid-delivery — see lib/mock.ts and LoginForm's DEMO grid.
 const MID_RESCUE_VOLUNTEER = { name: "Casey W." };
 
+// Demo contact numbers come from 555-0100–555-0199, the block reserved for
+// fiction, so a visitor reading one can tell at a glance it is not somebody's
+// real line. A blank field invited the opposite: the first person to fill it in
+// left their own number sitting on a shared login. Area code matches the
+// restaurant contact note further down.
+const demoPhone = (n: number) => `(215) 555-01${String(n % 100).padStart(2, "0")}`;
+
 // Spread restaurants deterministically around Malvern Prep so the rescue map
 // shows realistic, spaced-out routes (not a single cluster). Place restaurant i
 // on a golden-angle spiral, radius cycling 1.5/3/4.5 mi, converting miles→deg.
@@ -176,8 +183,10 @@ export async function seedDemo(prisma: PrismaClient) {
         demo: true,
         organizationId,
         // Demo logins are shared, so anything a visitor typed into the profile
-        // is someone else's data by the next session. Scrub it on every reseed.
-        phone: null,
+        // is someone else's data by the next session. Overwrite it on every
+        // reseed rather than merely clearing it — an obviously fake number reads
+        // as part of the sample world, where an empty field reads as a prompt.
+        phone: demoPhone(i),
         imageUrl: null,
         ...geo,
       },
@@ -189,6 +198,7 @@ export async function seedDemo(prisma: PrismaClient) {
         dataMode: "demo",
         demo: true,
         organizationId,
+        phone: demoPhone(i),
         ...geo,
       },
     });
@@ -201,7 +211,7 @@ export async function seedDemo(prisma: PrismaClient) {
     update: {
       passwordHash,
       role: "restaurant",
-      phone: null,
+      phone: demoPhone(70),
       imageUrl: null,
       restaurantId: restaurantId.get(RESTAURANT),
       dataMode: "demo",
@@ -210,6 +220,7 @@ export async function seedDemo(prisma: PrismaClient) {
     create: {
       name: "Saxbys manager",
       email: "saxbys@campus.edu",
+      phone: demoPhone(70),
       role: "restaurant",
       passwordHash,
       restaurantId: restaurantId.get(RESTAURANT),
@@ -218,15 +229,16 @@ export async function seedDemo(prisma: PrismaClient) {
     },
   });
   // A per-location drop-off account. Linked to St. Mark's Shelter — the
-  // destination of Robin's in-flight rescue — so the seeded three-way chat and
-  // the drop-off console both showcase a location speaking for itself.
+  // destination of Casey's in-flight rescue (Robin's went to the Community
+  // Fridge and is already delivered) — so the seeded three-way chat and the
+  // drop-off console both showcase a location speaking for itself.
   const demoDropOffId = dropOffId.get("St. Mark's Shelter") ?? null;
   const dropOffAdmin = await prisma.user.upsert({
     where: { email: "dropoff@campus.edu" },
     update: {
       passwordHash,
       role: "drop_off",
-      phone: null,
+      phone: demoPhone(80),
       imageUrl: null,
       dropOffId: demoDropOffId,
       dataMode: "demo",
@@ -235,6 +247,7 @@ export async function seedDemo(prisma: PrismaClient) {
     create: {
       name: "St. Mark's Shelter",
       email: "dropoff@campus.edu",
+      phone: demoPhone(80),
       role: "drop_off",
       dropOffId: demoDropOffId,
       passwordHash,
@@ -247,7 +260,7 @@ export async function seedDemo(prisma: PrismaClient) {
     update: {
       passwordHash,
       role: "org_admin",
-      phone: null,
+      phone: demoPhone(90),
       imageUrl: null,
       dataMode: "demo",
       demo: true,
@@ -256,6 +269,7 @@ export async function seedDemo(prisma: PrismaClient) {
     create: {
       name: "Org admin",
       email: "admin@campus.edu",
+      phone: demoPhone(90),
       role: "org_admin",
       passwordHash,
       dataMode: "demo",
