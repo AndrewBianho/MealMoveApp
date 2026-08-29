@@ -1,6 +1,5 @@
 import { DataModeToggle } from "@/components/DataModeToggle";
 import { NotificationsToggle } from "@/components/NotificationsToggle";
-import { QuietHoursControl } from "@/components/QuietHoursControl";
 import { WalkthroughSection } from "@/components/tour/WalkthroughSection";
 import { getDataMode } from "@/lib/mode";
 import { requireUser } from "@/lib/authz";
@@ -18,8 +17,6 @@ export default async function SettingsPage() {
     where: { id: viewer.id },
     select: {
       notificationsEnabled: true,
-      quietHoursStart: true,
-      quietHoursEnd: true,
       demo: true,
     },
   });
@@ -35,18 +32,11 @@ export default async function SettingsPage() {
 
       <section className="rounded-2xl border border-neutral-900/5 bg-card p-5 shadow-card">
         <h2 className="text-lg font-medium">Notifications</h2>
+        <p className="mt-1 text-sm text-neutral-700">
+          Pickup alerts sent to your email/phone.
+        </p>
         <div className="mt-4">
           <NotificationsToggle initialEnabled={me?.notificationsEnabled ?? false} />
-        </div>
-      </section>
-
-      <section className="mt-6 rounded-2xl border border-neutral-900/5 bg-card p-5 shadow-card">
-        <h2 className="text-lg font-medium">Quiet hours</h2>
-        <div className="mt-4">
-          <QuietHoursControl
-            initialStart={me?.quietHoursStart ?? null}
-            initialEnd={me?.quietHoursEnd ?? null}
-          />
         </div>
       </section>
 

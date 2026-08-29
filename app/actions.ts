@@ -950,35 +950,6 @@ export async function recordRescueAccuracy(
 }
 
 /**
- * Save the caller's quiet-hours window (local hours 0–23). Pass both null to
- * clear it. A personal notification preference — not chapter data — so it's
- * available in demo too. Validated server-side so a tampered payload can't
- * persist garbage.
- */
-export async function setQuietHours(
-  start: number | null,
-  end: number | null
-): Promise<SignUpResult> {
-  const userId = await currentUserId();
-  const valid = (h: number | null) =>
-    h === null || (Number.isInteger(h) && h >= 0 && h <= 23);
-  if (!valid(start) || !valid(end)) {
-    return { ok: false, error: "Pick an hour between 0 and 23." };
-  }
-  // Both-or-neither: a half-set window is meaningless, so clear it.
-  const both = start !== null && end !== null;
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      quietHoursStart: both ? start : null,
-      quietHoursEnd: both ? end : null,
-    },
-  });
-  revalidatePath("/settings");
-  return { ok: true };
-}
-
-/**
  * Update the signed-in account's own profile (name, phone, photo). Email is the
  * login identifier and organization is the fixed chapter, so neither is editable
  * here. The image URL is trusted the same way listing photos are — it only
@@ -1476,7 +1447,8 @@ export async function resetDemoOnLogout(): Promise<{ reset: boolean }> {
  * showcase the rest of the lifecycle. Chapter 3 consumes one per run and never
  * puts it back, so a few runs in one sitting leave the feed empty and the tour
  * with no card to open. The hourly cron eventually restores it; this makes the
- * next run work now.
+ * next run work now — but only when the feed is genuinely empty, so a start on a
+ * stocked world costs one count instead of a full rebuild.
  *
  * Safe here specifically because the tour's entry points are gated on the
  * viewer carrying nothing (lib/tour/gate). The reseed deletes every demo
@@ -1485,6 +1457,18 @@ export async function resetDemoOnLogout(): Promise<{ reset: boolean }> {
  */
 export async function resetDemoForTour(): Promise<{ reset: boolean }> {
   if (!(await isDemo())) return { reset: false };
+  // Only pay for it when the world is actually spent. Reseeding is seconds of
+  // work and it ran on every start, so the common case — a world that still has
+  // pickups — sat waiting on a rebuild it did not need. One indexed count is
+  // cheap enough to ask first.
+  const claimable = await prisma.foodListing.count({
+    where: {
+      demo: true,
+      status: "open",
+      OR: [{ availableAt: null }, { availableAt: { lte: new Date() } }],
+    },
+  });
+  if (claimable > 0) return { reset: false };
   await resetDemoWorld(prisma);
   refreshViews();
   revalidatePath("/map");
