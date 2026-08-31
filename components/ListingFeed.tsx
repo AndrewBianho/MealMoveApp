@@ -542,13 +542,13 @@ export function ListingFeed({
   const listSections = (
     <div className="space-y-9">
       {claimable.length > 0 && (
-        <section data-tour="feed-claimable">
+        <section>
           <SectionHeader title="Available to claim" count={claimable.length} />
           <ListingStack listings={claimable} claimable={canClaim} lead />
         </section>
       )}
       {comingUp.length > 0 && (
-        <section data-tour="feed-scheduled">
+        <section>
           <SectionHeader title="Coming up" count={comingUpScheduleCount} />
           <p className="-mt-2 mb-3.5 text-[16px] text-neutral-700">
             Scheduled pickups you can plan around — each opens to claim at its

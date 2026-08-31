@@ -1,6 +1,5 @@
 import { DataModeToggle } from "@/components/DataModeToggle";
 import { NotificationsToggle } from "@/components/NotificationsToggle";
-import { WalkthroughSection } from "@/components/tour/WalkthroughSection";
 import { getDataMode } from "@/lib/mode";
 import { requireUser } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
@@ -39,8 +38,6 @@ export default async function SettingsPage() {
           <NotificationsToggle initialEnabled={me?.notificationsEnabled ?? false} />
         </div>
       </section>
-
-      <WalkthroughSection userId={viewer.id} role={viewer.role} />
 
       <section className="mt-6 rounded-2xl border border-neutral-900/5 bg-card p-5 shadow-card">
         <h2 className="text-lg font-medium">Data</h2>

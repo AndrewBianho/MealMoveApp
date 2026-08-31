@@ -74,7 +74,7 @@ export default async function FeedPage() {
 
   return (
     <main className="mx-auto max-w-[720px] px-6 py-10 sm:px-8 lg:max-w-[1200px]">
-      <header data-tour="feed-heading" className="mb-7 lg:max-w-2xl">
+      <header className="mb-7 lg:max-w-2xl">
         <h1 className="font-display text-[36px] font-medium leading-[1.05] tracking-tight text-balance">
           Available pickups
         </h1>

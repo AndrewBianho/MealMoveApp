@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useStartTour } from "./tour/useStartTour";
 import { signOut } from "next-auth/react";
 import { Avatar } from "./Avatar";
 import { cn } from "./cn";
@@ -186,17 +185,13 @@ export function NavBar({
   name,
   image = null,
   unseen = 0,
-  offerTour = false,
 }: {
   role: Role;
   name: string;
   image?: string | null;
   unseen?: number;
-  /** Demo volunteers only — matches TourProvider's `enabled`. */
-  offerTour?: boolean;
 }) {
   const pathname = usePathname();
-  const startTour = useStartTour();
   const [open, setOpen] = useState(false);
   // Portal target only exists after mount; the bar/sheet are portaled to <body>.
   const [mounted, setMounted] = useState(false);
@@ -246,12 +241,6 @@ export function NavBar({
           <Link
             key={item.href}
             href={item.href}
-            data-tour={
-              item.href === "/" ? "nav-feed"
-              : item.href === "/map" ? "nav-map"
-              : item.href === "/impact" ? "nav-impact"
-              : undefined
-            }
             aria-current={isActive(item.href) ? "page" : undefined}
             className={cn(
               "rounded-full px-4 py-1.5 text-sm font-semibold transition duration-150",
@@ -320,12 +309,6 @@ export function NavBar({
             <Link
               key={item.href}
               href={item.href}
-              data-tour={
-                item.href === "/" ? "nav-feed"
-                : item.href === "/map" ? "nav-map"
-                : item.href === "/impact" ? "nav-impact"
-                : undefined
-              }
               aria-current={active ? "page" : undefined}
               className="flex flex-1 flex-col items-center gap-1 py-1.5 focus:outline-none focus-visible:bg-card"
             >
@@ -430,24 +413,6 @@ export function NavBar({
                 }
               )}
             </div>
-
-            {offerTour && (
-              <button
-                type="button"
-                onClick={() => {
-                  // Sheet closes first, so the release round trip happens behind
-                  // it rather than under a button that looks stuck.
-                  setOpen(false);
-                  void startTour();
-                }}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-neutral-100"
-              >
-                <span className="text-neutral-700">
-                  <TabIcon icon="replay" />
-                </span>
-                Replay tour
-              </button>
-            )}
 
             <button
               onClick={onSignOut}

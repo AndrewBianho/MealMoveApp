@@ -7,7 +7,6 @@ import { PersonalHarvest } from "@/components/PersonalHarvest";
 import { ReliabilityMeter } from "@/components/ReliabilityMeter";
 import { StatusBadge } from "@/components/StatusBadge";
 import { MapPlannerDemo } from "@/components/map/MapPlannerDemo";
-import { TourOverlayDemo } from "@/components/tour/TourOverlayDemo";
 import { LISTINGS } from "@/lib/mock";
 import type { ListingStatus } from "@/lib/types";
 
@@ -249,12 +248,6 @@ export default function StyleGuidePage() {
           <MapPlannerDemo />
         </Section>
 
-        <Section
-          title="Demo tour"
-          hint="The spotlight overlay's three states. A step that waits for a real click rings its target in sage and says so; a step that only explains leads with Next; and when the anchor isn't on screen the same words dock to a card so the tour can't strand."
-        >
-          <TourOverlayDemo />
-        </Section>
       </div>
 
       <p className="mt-12 font-mono text-[11px] text-neutral-700">

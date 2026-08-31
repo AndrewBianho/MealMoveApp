@@ -1170,7 +1170,7 @@ export function RescueMap({
       <div className="relative min-h-0 flex-1">
         {/* Sized with h/w-full (not inset-0): mapbox-gl.css forces the map element
             to position:relative, on which inset offsets wouldn't size it. */}
-        <div ref={container} data-tour="map-canvas" className="mm-map-shell h-full w-full" />
+        <div ref={container} className="mm-map-shell h-full w-full" />
 
         {/* Overlay is click-through (pointer-events-none) so map drag/zoom works in
             the gaps; the controls card re-enables events with pointer-events-auto. */}
@@ -1196,7 +1196,7 @@ export function RescueMap({
           </div>
           {/* Address inputs */}
           <div className="grid gap-2">
-        <div data-tour="map-search">
+        <div>
           <LocationSearchField
             label="Your location"
             value={myInput}
@@ -1373,7 +1373,7 @@ export function RescueMap({
               </p>
             )}
 
-            <div data-tour="map-trip" className="mt-3">
+            <div className="mt-3">
               <TripItinerary
                 plan={plan}
                 suggestions={

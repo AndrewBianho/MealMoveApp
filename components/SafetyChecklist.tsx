@@ -27,7 +27,7 @@ export function SafetyChecklist({
   const confirmed = SAFETY_QUESTIONS.filter((q) => answers[q.key]).length;
 
   return (
-    <div data-tour="safety-checklist" className="mb-3 animate-fade-in rounded-xl border border-neutral-200/60 bg-card p-4">
+    <div className="mb-3 animate-fade-in rounded-xl border border-neutral-200/60 bg-card p-4">
       <div className="mb-2 flex items-start justify-between gap-2">
         <div>
           <p className="text-[16px] font-semibold">

@@ -30,7 +30,7 @@ export function PersonalHarvest({ impact }: { impact: VolunteerImpact }) {
   const started = impact.pickupsCompleted > 0;
 
   return (
-    <div data-tour="personal-harvest" className="relative overflow-hidden rounded-3xl bg-rescued-800 px-6 py-7 shadow-card sm:px-8 sm:py-9">
+    <div className="relative overflow-hidden rounded-3xl bg-rescued-800 px-6 py-7 shadow-card sm:px-8 sm:py-9">
       {/* A soft warm bloom in the corner, so the panel has depth rather than
           reading as a flat block of colour. */}
       <div
