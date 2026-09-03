@@ -1,5 +1,8 @@
 # Demo Guided Tour Implementation Plan
 
+> **Superseded:** this plan was implemented and then removed in full on 2026-09-03
+> (`3a908ba`). It is kept as history — do not execute it.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A spotlight walkthrough that points at real UI, tells a demo viewer what to click, and waits for them to click it — 5 chapters, 21 steps, volunteer only.

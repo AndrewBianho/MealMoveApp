@@ -1,7 +1,8 @@
 # Demo guided tour: a spotlight walkthrough of the volunteer journey
 
 **Date:** 2026-08-21
-**Status:** approved design, not yet implemented
+**Status:** built, then removed on 2026-09-03 (`3a908ba`). Kept as a record of
+the design and of what driving it taught us; nothing here describes shipped code.
 **Branch:** `demo-guided-personas`
 
 ## Problem
