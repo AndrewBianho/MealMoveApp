@@ -273,8 +273,11 @@ No other restructuring of `RescueMap.tsx` is in scope.
 **Browser:** the `lg` docked layout and the sheet fallback below it; combobox
 keyboard nav and focus return; legend remaining visible with a panel open.
 
-**Cannot be verified in this environment.** The dev sandbox cannot reach
-`api.mapbox.com` — no request to it appears in the network log, so tiles, geocoding,
+**Cannot be verified in this environment — but not because Mapbox is blocked.**
+Later testing disproved that: api.mapbox.com resolves and returns 200, the token
+authenticates against the Styles API, and the CSP allows the host. What is true is
+that no request to
+`api.mapbox.com` appears in the network log, so tiles, geocoding,
 and Directions all fail locally. That means **address suggestions and route leg
 times must be verified on a preview deploy**, and any claim that they work locally
 would be false. The three-source design partly mitigates this: recent and location

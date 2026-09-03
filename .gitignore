@@ -41,3 +41,6 @@ next-env.d.ts
 certificates
 # Internal security audit — kept local, not published with the public repo.
 docs/SECURITY-AUDIT.md
+
+# Brainstorm mockups and SDD scratch — session artifacts, not source.
+.superpowers/

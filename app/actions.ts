@@ -950,35 +950,6 @@ export async function recordRescueAccuracy(
 }
 
 /**
- * Save the caller's quiet-hours window (local hours 0–23). Pass both null to
- * clear it. A personal notification preference — not chapter data — so it's
- * available in demo too. Validated server-side so a tampered payload can't
- * persist garbage.
- */
-export async function setQuietHours(
-  start: number | null,
-  end: number | null
-): Promise<SignUpResult> {
-  const userId = await currentUserId();
-  const valid = (h: number | null) =>
-    h === null || (Number.isInteger(h) && h >= 0 && h <= 23);
-  if (!valid(start) || !valid(end)) {
-    return { ok: false, error: "Pick an hour between 0 and 23." };
-  }
-  // Both-or-neither: a half-set window is meaningless, so clear it.
-  const both = start !== null && end !== null;
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      quietHoursStart: both ? start : null,
-      quietHoursEnd: both ? end : null,
-    },
-  });
-  revalidatePath("/settings");
-  return { ok: true };
-}
-
-/**
  * Update the signed-in account's own profile (name, phone, photo). Email is the
  * login identifier and organization is the fixed chapter, so neither is editable
  * here. The image URL is trusted the same way listing photos are — it only

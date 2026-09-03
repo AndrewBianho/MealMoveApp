@@ -415,20 +415,6 @@ export function NavBar({
             </div>
 
             <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                window.dispatchEvent(new Event("mm:open-intro"));
-              }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-neutral-700 transition-colors hover:bg-neutral-100"
-            >
-              <span className="text-neutral-700">
-                <TabIcon icon="replay" />
-              </span>
-              Replay welcome
-            </button>
-
-            <button
               onClick={onSignOut}
               disabled={signingOut}
               aria-busy={signingOut}

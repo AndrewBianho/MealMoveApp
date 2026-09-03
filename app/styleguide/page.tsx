@@ -247,6 +247,7 @@ export default function StyleGuidePage() {
         >
           <MapPlannerDemo />
         </Section>
+
       </div>
 
       <p className="mt-12 font-mono text-[11px] text-neutral-700">

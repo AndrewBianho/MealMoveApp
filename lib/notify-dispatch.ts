@@ -1,7 +1,6 @@
 import { prisma } from "./prisma";
 import { sendNudgeEmail } from "./email";
 import { sendMulticast, type PushSender } from "./firebaseAdmin";
-import { quietHoursActive } from "./quietHours";
 
 export interface NotifyPayload {
   title: string;
@@ -19,14 +18,12 @@ export async function dispatchToUser(
     db?: Db;
     push?: PushSender;
     email?: typeof sendNudgeEmail;
-    now?: Date;
     force?: boolean;
   } = {}
-): Promise<{ channel: "push" | "email" | "none" | "quiet" }> {
+): Promise<{ channel: "push" | "email" | "none" }> {
   const db = deps.db ?? prisma;
   const push = deps.push ?? sendMulticast;
   const email = deps.email ?? sendNudgeEmail;
-  const now = deps.now ?? new Date();
   const force = deps.force ?? false;
 
   const user = await db.user.findUnique({
@@ -34,17 +31,12 @@ export async function dispatchToUser(
     select: {
       email: true,
       notificationsEnabled: true,
-      quietHoursStart: true,
-      quietHoursEnd: true,
     },
   });
   if (!user) return { channel: "none" };
   // Announcements pass force:true to reach volunteers as chapter comms; all
-  // other callers respect the opt-out toggle and the quiet-hours window.
+  // other callers respect the opt-out toggle.
   if (!force && !user.notificationsEnabled) return { channel: "none" };
-  if (!force && quietHoursActive(user.quietHoursStart, user.quietHoursEnd, now)) {
-    return { channel: "quiet" };
-  }
 
   const tokens = (
     await db.deviceToken.findMany({ where: { userId }, select: { token: true } })
