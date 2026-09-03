@@ -151,11 +151,6 @@ model User {
   passwordResetTokens  PasswordResetToken[]
   dropOffNotices       DropOffNotice[]
   notificationsEnabled Boolean       @default(false)
-  // Quiet hours: don't send push/email between these local hours (0–23). Both
-  // null = always on. Wraps midnight when start > end (e.g. 22 → 7). A single
-  // chapter-local clock — no per-user timezone is tracked.
-  quietHoursStart      Int?
-  quietHoursEnd        Int?
   notifyPrimedAt       DateTime?
   announcementsSeenAt  DateTime? // when the volunteer last opened /updates
   announcements        Announcement[] @relation("AnnouncementAuthor")

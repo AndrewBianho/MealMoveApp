@@ -207,7 +207,7 @@ export function buildRestaurantRescuePayload(
 
 // Fans out a rescue update to every account that shares the restaurant
 // (User.restaurantId), via the existing per-user dispatch (which honors each
-// member's opt-out, quiet hours, and push→email fallback). Best-effort:
+// member's opt-out and the push→email fallback). Best-effort:
 // Promise.allSettled so one dead token / bounced email never rejects the batch.
 // Recipient lookup and dispatch are injectable for tests.
 export async function sendRestaurantRescueNotice(
