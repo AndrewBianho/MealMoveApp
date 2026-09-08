@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getDataMode } from "@/lib/mode";
 import { unseenCount } from "@/lib/announcements";
+import { findActiveClaimFor } from "@/lib/activeClaim";
 import { NavBar } from "./NavBar";
 
 export async function Header() {
@@ -12,6 +13,13 @@ export async function Header() {
   const demo = dataMode === "demo";
   const updatesUnseen =
     user?.role === "volunteer" ? await unseenCount(user.id, dataMode) : 0;
+
+  // Only volunteers can carry a rescue, and only they see the feed tab — so
+  // this cheap indexed lookup is skipped for every other role.
+  const hasActivePickup =
+    user?.role === "volunteer"
+      ? Boolean(await findActiveClaimFor(prisma, user.id))
+      : false;
 
   let image: string | null = null;
   // Name is read from the DB (not session.user.name) so a profile rename shows
@@ -33,7 +41,7 @@ export async function Header() {
       {/* min-h + wrap (not a fixed h-16): roles with many nav items (org
           admin) overflow a single 768–1024px row; wrapping onto a second
           row beats horizontal page scroll. One-row roles render identically. */}
-      <div className="relative mx-auto flex min-h-16 max-w-[1760px] flex-wrap items-center gap-x-4 gap-y-1 px-6 py-2">
+      <div className="relative mx-auto flex min-h-16 max-w-console flex-wrap items-center gap-x-4 gap-y-1 px-6 py-2">
         <Link href="/" className="group flex items-center gap-2.5">
           {/* The mark is a CSS mask filled with theme ink, so it renders crisp
               in both Arctic (dark ink) and Forest (light ink) with no square. */}
@@ -78,6 +86,7 @@ export async function Header() {
             name={name}
             image={image}
             unseen={updatesUnseen}
+            hasActivePickup={hasActivePickup}
           />
         )}
       </div>

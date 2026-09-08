@@ -185,11 +185,16 @@ export function NavBar({
   name,
   image = null,
   unseen = 0,
+  hasActivePickup = false,
 }: {
   role: Role;
   name: string;
   image?: string | null;
   unseen?: number;
+  /** True while this volunteer is carrying a rescue. The feed redirects to that
+   *  rescue, so the Available tab would bounce; it opts out of the takeover
+   *  instead of looking broken. */
+  hasActivePickup?: boolean;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -221,6 +226,11 @@ export function NavBar({
     );
   };
 
+  // The Available tab's link target, not its identity: `isActive` still matches
+  // on "/" so the pill lights up in browse mode too.
+  const linkTo = (href: string) =>
+    href === "/" && hasActivePickup ? "/?browse=1" : href;
+
   const roleLabel = role.replace(/_/g, " ");
 
   // Mobile bottom bar: show up to 4 primary tabs, then a "More" tab. Anything
@@ -240,7 +250,7 @@ export function NavBar({
         {items.map((item) => (
           <Link
             key={item.href}
-            href={item.href}
+            href={linkTo(item.href)}
             aria-current={isActive(item.href) ? "page" : undefined}
             className={cn(
               "rounded-full px-4 py-1.5 text-sm font-semibold transition duration-150",
@@ -308,7 +318,7 @@ export function NavBar({
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={linkTo(item.href)}
               aria-current={active ? "page" : undefined}
               className="flex flex-1 flex-col items-center gap-1 py-1.5 focus:outline-none focus-visible:bg-card"
             >
