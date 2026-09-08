@@ -65,7 +65,7 @@ export default function StyleGuidePage() {
   // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   return (
-    <main className="mx-auto max-w-[1760px] px-6 py-8">
+    <main className="mx-auto max-w-console px-6 py-8">
       <header>
         <p className="font-mono text-[10px] text-neutral-700">
           Design system · live components

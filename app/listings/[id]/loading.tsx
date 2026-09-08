@@ -5,7 +5,7 @@ import { LoadingStatus, SkeletonBlock } from "@/components/skeletons";
 // the claim surface appears in place.
 export default function Loading() {
   return (
-    <main className="mx-auto max-w-[1760px] px-6 py-8">
+    <main className="mx-auto max-w-console px-6 py-8">
       <LoadingStatus label="Loading pickup details" />
       <div aria-hidden="true">
         <SkeletonBlock className="mb-4 h-4 w-16" />

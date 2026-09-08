@@ -51,7 +51,7 @@ export default async function RestaurantListingsPage() {
   const accuracy = restaurant ? await restaurantAccuracy(restaurant.id, demo) : null;
 
   return (
-    <main className="mx-auto max-w-[1760px] px-6 py-8">
+    <main className="mx-auto max-w-console px-6 py-8">
       <header className="mb-6">
         <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">Your listings</h1>
         <p className="mt-1 text-sm text-neutral-700">

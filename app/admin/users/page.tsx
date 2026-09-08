@@ -152,7 +152,7 @@ export default async function AdminUsersPage({
   })).filter((g) => g.members.length > 0);
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-roster px-6 py-8">
       <header className="mb-6">
         <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">
           Members

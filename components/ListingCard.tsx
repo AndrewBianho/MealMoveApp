@@ -147,12 +147,15 @@ export function ListingCard({
       )}
     >
       {/* Photo as a fixed-width panel on the right, stretched to the body's
-          height. No photo → the Meal Move mark as a contained brand placeholder. */}
+          height. The panel steps up on wide viewports so it keeps its share of
+          a card that grows with the feed shell, instead of leaving the body to
+          swallow the extra width alone. No photo → the Meal Move mark as a
+          contained brand placeholder. */}
       <Link
         href={`/listings/${id}`}
         aria-label={`View ${title}`}
         className={cn(
-          "relative w-28 shrink-0 self-stretch overflow-hidden sm:w-44 lg:w-[232px]",
+          "relative w-28 shrink-0 self-stretch overflow-hidden sm:w-44 lg:w-[232px] xl:w-[264px] 2xl:w-[292px]",
           isPlaceholder ? "bg-card" : "bg-neutral-100"
         )}
       >
@@ -166,7 +169,7 @@ export function ListingCard({
             src={img}
             alt={title}
             fill
-            sizes="232px"
+            sizes="(min-width: 1536px) 292px, (min-width: 1280px) 264px, (min-width: 1024px) 232px, (min-width: 640px) 176px, 112px"
             priority={priorityImage}
             className={cn(
               "object-cover transition-transform duration-300 group-hover:scale-[1.03]",

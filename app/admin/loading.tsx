@@ -4,7 +4,7 @@ import { LoadingStatus, SkeletonBlock } from "@/components/skeletons";
 // health, reliability): header + stacked row/table boxes in the console shell.
 export default function Loading() {
   return (
-    <main className="mx-auto max-w-[1760px] px-6 py-8">
+    <main className="mx-auto max-w-console px-6 py-8">
       <LoadingStatus label="Loading admin console" />
       <header className="mb-6" aria-hidden="true">
         <SkeletonBlock className="h-10 w-64 max-w-full" />

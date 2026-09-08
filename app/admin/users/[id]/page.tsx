@@ -114,7 +114,7 @@ export default async function MemberDetailPage(
   // shared 1760px shell stranded ~680px of dead surface on one side at a 1600px
   // viewport. Capped so that whitespace becomes symmetric margin instead.
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-roster px-6 py-8">
       <Link
         href="/admin/users"
         className="mb-6 inline-flex items-center gap-1 font-mono text-[13px] text-clay-800 underline-offset-2 hover:underline"

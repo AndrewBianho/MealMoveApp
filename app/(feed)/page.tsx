@@ -73,8 +73,8 @@ export default async function FeedPage() {
   const openNow = listings.filter((l) => l.status === "open" && !l.scheduled).length;
 
   return (
-    <main className="mx-auto max-w-[720px] px-6 py-10 sm:px-8 lg:max-w-[1200px]">
-      <header className="mb-7 lg:max-w-2xl">
+    <main className="mx-auto max-w-[720px] px-6 py-10 sm:px-8 lg:max-w-feed">
+      <header className="mb-7 lg:max-w-3xl">
         <h1 className="font-display text-[36px] font-medium leading-[1.05] tracking-tight text-balance">
           Available pickups
         </h1>
@@ -90,7 +90,7 @@ export default async function FeedPage() {
       <UpdatesBanner unseen={updatesUnseen} />
 
       {invited.length > 0 && (
-        <section className="mb-8 lg:max-w-2xl">
+        <section className="mb-8 lg:max-w-3xl">
           <div className="mb-1 flex items-center gap-2">
             <h2 className="text-[16px] font-semibold text-neutral-800">
               Buddy invites
@@ -111,7 +111,7 @@ export default async function FeedPage() {
       )}
 
       {onboarding?.show && (
-        <div className="lg:max-w-2xl">
+        <div className="lg:max-w-3xl">
           <FirstRescueTracker step={onboarding.step} active={onboarding.active} />
         </div>
       )}
