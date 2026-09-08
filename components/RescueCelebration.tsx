@@ -119,12 +119,17 @@ export function RescueCelebration({
           </span>
         </h2>
 
-        <p className="mt-3 flex items-center justify-center gap-1.5 font-sans text-[15px] text-neutral-700">
-          <span className="truncate">{source}</span>
-          <span className="shrink-0 text-clay-600">
-            <ArrowRight />
+        {/* Same wrap-don't-truncate rule as ClaimHoldPanel: on a narrow phone
+            one row cut both ends of the route to a few characters each, which
+            is the whole line's meaning. The arrow stays with the destination. */}
+        <p className="mt-3 flex flex-wrap items-center justify-center gap-x-1.5 font-sans text-[15px] text-neutral-700">
+          <span className="max-w-full truncate">{source}</span>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="shrink-0 text-clay-600">
+              <ArrowRight />
+            </span>
+            <span className="max-w-full truncate">{dropOff ?? "drop-off"}</span>
           </span>
-          <span className="truncate">{dropOff ?? "drop-off"}</span>
         </p>
 
         <p className="mt-5 text-[16px] leading-relaxed text-neutral-700">

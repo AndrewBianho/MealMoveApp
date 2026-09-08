@@ -56,11 +56,18 @@ export function DropOffName({
   return (
     <span
       className={cn(
-        "inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5",
+        // min-w-0 so this can shrink inside a narrow flex parent — an
+        // inline-flex defaults to min-width:auto and would otherwise push past
+        // its container instead of letting the name truncate.
+        "inline-flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5",
         className
       )}
     >
-      <span>{name}</span>
+      {/* Truncation lives here, not on what callers pass in: a caller's span is
+          a plain inline inside this slot, and max-width/overflow don't apply to
+          inline boxes — it would overflow instead of ellipsing. This slot is a
+          flex item, so it's blockified and can actually clip. */}
+      <span className="min-w-0 truncate">{name}</span>
       {hours && <OpenNowBadge hours={hours} />}
     </span>
   );
@@ -90,7 +97,7 @@ export function RetrievalHoursDisplay({ hours }: { hours: RetrievalHours | null 
             <li key={d} className="flex justify-between gap-4 font-mono text-[13px]">
               <span
                 className={cn(
-                  "flex items-center gap-1.5",
+                  "flex min-w-0 items-center gap-1.5",
                   today ? "font-semibold text-neutral-900" : "text-neutral-700"
                 )}
               >
@@ -103,6 +110,7 @@ export function RetrievalHoursDisplay({ hours }: { hours: RetrievalHours | null 
               </span>
               <span
                 className={cn(
+                  "shrink-0 whitespace-nowrap text-right",
                   closed
                     ? "text-neutral-700"
                     : today

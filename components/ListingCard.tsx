@@ -43,14 +43,29 @@ const DEFAULT_IMAGE = "/mealmovelogo.jpg";
 // (<10) · closed (spent) · taken home (deferred).
 function urgency(listing: Listing) {
   if (SPENT.includes(listing.status)) {
-    return { text: "text-neutral-700", word: "closed", minutes: null, held: true };
+    return {
+      text: "text-neutral-700",
+      word: "closed",
+      minutes: null,
+      held: true,
+    };
   }
   if (listing.status === "taken home") {
-    return { text: "text-transit-800", word: "taken home", minutes: null, held: true };
+    return {
+      text: "text-transit-800",
+      word: "taken home",
+      minutes: null,
+      held: true,
+    };
   }
   const m = listing.minutesLeft;
   if (m < 10) {
-    return { text: "text-failed-800", word: "closing soon", minutes: m, held: false };
+    return {
+      text: "text-failed-800",
+      word: "closing soon",
+      minutes: m,
+      held: false,
+    };
   }
   if (m < 35) {
     return { text: "text-urgent-800", word: "soon", minutes: m, held: false };
@@ -111,7 +126,10 @@ export function ListingCard({
   // Distance is only meaningful to a volunteer, and only once we actually know it
   // — an unshared location renders "—", so guard against a dangling "· — away".
   const showDistance =
-    audience === "volunteer" && !!distance && distance !== "—" && distance !== "";
+    audience === "volunteer" &&
+    !!distance &&
+    distance !== "—" &&
+    distance !== "";
   const showSource = audience !== "restaurant";
   const showRoute = audience !== "dropoff";
   const sourceLabel = audience === "dropoff" ? `from ${source}` : source;
@@ -120,22 +138,37 @@ export function ListingCard({
   // semantic urgency word. Mono, color-coded, never a dot or a tinted chip.
   const statusLine = scheduled ? (
     <span
-      aria-label={recurrence ? `recurs ${recurrence}` : `available ${availableLabel}`}
+      aria-label={
+        recurrence ? `recurs ${recurrence}` : `available ${availableLabel}`
+      }
       className="font-mono text-[14px] font-semibold text-clay-800"
     >
       {recurrence ? (
-        <span>Recurs {recurrence}</span>
+        <span className="whitespace-nowrap">Recurs {recurrence}</span>
       ) : (
-        <span className="tabular-nums">Available {availableLabel}</span>
+        <span className="whitespace-nowrap tabular-nums">
+          Available {availableLabel}
+        </span>
       )}
     </span>
   ) : (
     <span
-      aria-label={spent ? "closed" : u.held ? u.word : `${u.word}, ${formatTimeLeft(minutesLeft, { long: true })} left`}
+      aria-label={
+        spent
+          ? "closed"
+          : u.held
+            ? u.word
+            : `${u.word}, ${formatTimeLeft(minutesLeft, { long: true })} left`
+      }
       className={cn("font-mono text-[14px] font-semibold", u.text)}
     >
       <span>{capitalize(u.word)}</span>
-      {u.minutes != null && <span className="tabular-nums"> · {formatTimeLeft(u.minutes)}</span>}
+      {u.minutes != null && (
+        <span className="whitespace-nowrap tabular-nums">
+          {" · "}
+          {formatTimeLeft(u.minutes)}
+        </span>
+      )}
     </span>
   );
 
@@ -143,7 +176,7 @@ export function ListingCard({
     <article
       className={cn(
         "group flex animate-fade-up flex-row-reverse overflow-hidden rounded-3xl border border-neutral-200/70 bg-card shadow-card transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift",
-        className
+        className,
       )}
     >
       {/* Photo as a fixed-width panel on the right, stretched to the body's
@@ -155,8 +188,8 @@ export function ListingCard({
         href={`/listings/${id}`}
         aria-label={`View ${title}`}
         className={cn(
-          "relative w-28 shrink-0 self-stretch overflow-hidden sm:w-44 lg:w-[232px] xl:w-[264px] 2xl:w-[292px]",
-          isPlaceholder ? "bg-card" : "bg-neutral-100"
+          "relative w-24 shrink-0 self-stretch overflow-hidden sm:w-44 lg:w-[232px] xl:w-[264px] 2xl:w-[292px]",
+          isPlaceholder ? "bg-card" : "bg-neutral-100",
         )}
       >
         {isPlaceholder ? (
@@ -169,18 +202,18 @@ export function ListingCard({
             src={img}
             alt={title}
             fill
-            sizes="(min-width: 1536px) 292px, (min-width: 1280px) 264px, (min-width: 1024px) 232px, (min-width: 640px) 176px, 112px"
+            sizes="(min-width: 1536px) 292px, (min-width: 1280px) 264px, (min-width: 1024px) 232px, (min-width: 640px) 176px, 96px"
             priority={priorityImage}
             className={cn(
               "object-cover transition-transform duration-300 group-hover:scale-[1.03]",
-              spent && "opacity-75 saturate-[0.7]"
+              spent && "opacity-75 saturate-[0.7]",
             )}
           />
         )}
       </Link>
 
       {/* Body — one quiet stack: status · title · source · facts · action. */}
-      <div className="flex min-w-0 flex-1 flex-col justify-center p-6 sm:p-7">
+      <div className="flex min-w-0 flex-1 flex-col justify-center p-4 sm:p-7">
         <div className="mb-2.5">{statusLine}</div>
 
         <h3 className="font-display text-[24px] font-medium leading-[1.18] tracking-tight text-balance sm:text-[27px]">
@@ -201,11 +234,15 @@ export function ListingCard({
 
         {/* Decision facts — one mono line; only the numbers carry weight + ink. */}
         <p className="mt-3.5 font-mono text-[15px] font-medium text-neutral-700">
-          <span className="font-bold text-neutral-900">{servings}</span> servings
+          <span className="font-bold text-neutral-900">{servings}</span>{" "}
+          servings
           {showDistance && (
             <>
               <span className="mx-1.5 text-neutral-300">·</span>
-              <span className="font-bold text-neutral-900">{distance}</span> away
+              <span className="whitespace-nowrap font-bold text-neutral-900">
+                {distance}
+              </span>{" "}
+              away
             </>
           )}
           {/* A big haul needs several cars. A volunteer decides on the open
@@ -217,28 +254,33 @@ export function ListingCard({
               {audience === "volunteer" ? (
                 claimedCount > 0 ? (
                   <>
-                    <span className="font-bold text-neutral-900">
+                    <span className="whitespace-nowrap font-bold text-neutral-900">
                       {carsNeeded - claimedCount} of {carsNeeded}
                     </span>{" "}
-                    cars still needed
+                    cars
+                    <span className="hidden sm:inline"> still needed</span>
                   </>
                 ) : (
                   <>
-                    <span className="font-bold text-neutral-900">{carsNeeded}</span>{" "}
+                    <span className="font-bold text-neutral-900">
+                      {carsNeeded}
+                    </span>{" "}
                     cars needed
                   </>
                 )
               ) : claimedCount > 0 ? (
                 <>
-                  <span className="font-bold text-neutral-900">
+                  <span className="whitespace-nowrap font-bold text-neutral-900">
                     {claimedCount} of {carsNeeded}
                   </span>{" "}
                   cars claimed
                 </>
               ) : (
                 <>
-                  <span className="font-bold text-neutral-900">{carsNeeded}</span> cars
-                  needed
+                  <span className="font-bold text-neutral-900">
+                    {carsNeeded}
+                  </span>{" "}
+                  cars needed
                 </>
               )}
             </>
@@ -251,7 +293,9 @@ export function ListingCard({
           <InfoRows
             className="mt-3"
             rows={[
-              ...(category ? [{ label: "food", value: capitalize(category) }] : []),
+              ...(category
+                ? [{ label: "food", value: capitalize(category) }]
+                : []),
               ...(handling
                 ? [
                     {
@@ -285,7 +329,11 @@ export function ListingCard({
           status === "open" &&
           !scheduled &&
           nearbyVolunteers != null && (
-            <NearbyVolunteers variant="inline" count={nearbyVolunteers} className="mt-2.5" />
+            <NearbyVolunteers
+              variant="inline"
+              count={nearbyVolunteers}
+              className="mt-2.5"
+            />
           )}
 
         {/* Action — for an open listing, a full-width link to the full details
@@ -303,7 +351,7 @@ export function ListingCard({
               className={cn(
                 "flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 px-5 py-2.5 text-[16px] font-bold text-neutral-50 shadow-card transition-all duration-200",
                 "hover:-translate-y-0.5 hover:bg-neutral-800 hover:shadow-lift active:translate-y-0 active:scale-[0.98]",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50"
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-50",
               )}
             >
               More details
@@ -318,7 +366,9 @@ export function ListingCard({
                 </span>
               )}
               {claimedBy && (
-                <span className="truncate text-[15px] text-neutral-700">by {claimedBy}</span>
+                <span className="truncate text-[15px] text-neutral-700">
+                  by {claimedBy}
+                </span>
               )}
             </div>
           )}

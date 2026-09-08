@@ -53,7 +53,7 @@ export function MetricCard({
 }) {
   const a = ACCENTS[accent];
   return (
-    <div className="group relative overflow-hidden rounded-3xl bg-card p-6 text-center shadow-card transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift active:translate-y-0 active:scale-[0.99]">
+    <div className="group relative min-w-0 overflow-hidden rounded-3xl bg-card p-5 text-center shadow-card transition-all duration-300 hover:-translate-y-1.5 hover:shadow-lift active:translate-y-0 active:scale-[0.99] sm:p-6">
       <div
         aria-hidden="true"
         className={cn(
@@ -61,7 +61,7 @@ export function MetricCard({
           a.glow
         )}
       />
-      <div className={cn("relative font-display text-4xl font-semibold leading-none", a.value)}>
+      <div className={cn("relative font-display text-3xl font-semibold leading-none sm:text-4xl", a.value)}>
         <CountUp value={value} />
       </div>
       <div className="relative mt-2 font-mono text-[13px] text-neutral-700">

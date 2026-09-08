@@ -48,7 +48,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="mt-10">
+    <section className="mt-10 min-w-0">
       <h2 className="text-lg font-medium">{title}</h2>
       <p className="mb-4 text-sm text-neutral-700">{hint}</p>
       {children}
@@ -114,7 +114,7 @@ export default function StyleGuidePage() {
                 {CLAIMABLE.length}
               </span>
             </div>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
               {CLAIMABLE.map((l) => (
                 <div
                   key={l.id}
@@ -134,7 +134,7 @@ export default function StyleGuidePage() {
                 {UNCLAIMABLE.length}
               </span>
             </div>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
               {UNCLAIMABLE.map((l) => (
                 <ListingCard key={l.id} listing={l} />
               ))}
@@ -147,7 +147,7 @@ export default function StyleGuidePage() {
         title="Listing cards by audience"
         hint="One claimed listing seen by each account type. Volunteers get servings · distance and the claim affordance. Restaurants drop the meaningless distance and their own (redundant) source line, keeping the → drop-off destination. Drop-offs drop the distance and the self-referential → drop-off line, and surface 'from {restaurant}' instead."
       >
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3 [&>*]:min-w-0">
           <div>
             <p className="mb-2 font-mono text-[10px] text-neutral-700">
               Volunteer
@@ -169,9 +169,9 @@ export default function StyleGuidePage() {
         </div>
       </Section>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 [&>*]:min-w-0">
         <Section title="Impact metrics" hint="Mono values on a neutral fill.">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             <MetricCard label="meals rescued" value="12,480" />
             <MetricCard label="pickups this week" value="37" />
             <MetricCard label="lbs diverted" value="2,140" />
@@ -224,7 +224,7 @@ export default function StyleGuidePage() {
           title="Claim hold"
           hint="The acknowledgment at claim, and the honest face of the 15-minute hold. Banded on the hold's own scale — sage most of the window, honey under 5m, tomato under 2m — with the literal countdown, not the hue, naming the urgency."
         >
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
             {HOLD_STATES.map((s) => (
               <div key={s.label}>
                 <p className="mb-2 font-mono text-[11px] text-neutral-700">
