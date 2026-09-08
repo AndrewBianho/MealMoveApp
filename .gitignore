@@ -44,3 +44,8 @@ docs/SECURITY-AUDIT.md
 
 # Brainstorm mockups and SDD scratch — session artifacts, not source.
 .superpowers/
+
+# Impeccable ships a ~12MB per-platform binary with each skill update. It's a
+# rebuildable vendor artifact, not source, and git would keep every version of
+# it forever — reinstall it with `npx impeccable skills update`.
+.claude/skills/impeccable/scripts/bin/
