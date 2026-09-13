@@ -27,7 +27,7 @@ import { BuddyInvitePicker } from "./BuddyInvitePicker";
 import { ImageUploadField } from "./ImageUploadField";
 import { OpenInMapsButton } from "./OpenInMapsButton";
 import { SafetyChecklist } from "./SafetyChecklist";
-import { ClaimHoldPanel } from "./ClaimHoldPanel";
+import { ClaimConfirmedPanel } from "./ClaimConfirmedPanel";
 import { RescueAccuracySignal } from "./RescueAccuracySignal";
 import { startFailureReplay } from "@/lib/analytics/client";
 import { capitalize } from "@/lib/text";
@@ -921,10 +921,8 @@ export function ListingDetail({
               {listing.status === "claimed" &&
                 (listing.mine ? (
                   <>
-                    {listing.holdUntil && !listing.photoAtPickupUrl && (
-                      <ClaimHoldPanel
-                        holdUntil={listing.holdUntil}
-                        claimedAt={listing.claimedAt}
+                    {!listing.photoAtPickupUrl && (
+                      <ClaimConfirmedPanel
                         source={listing.source}
                         dropOff={listing.dropOff}
                         dropOffHours={listing.dropOffHours}

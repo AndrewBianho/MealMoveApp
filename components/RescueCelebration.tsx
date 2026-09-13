@@ -119,7 +119,7 @@ export function RescueCelebration({
           </span>
         </h2>
 
-        {/* Same wrap-don't-truncate rule as ClaimHoldPanel: on a narrow phone
+        {/* Same wrap-don't-truncate rule as ClaimConfirmedPanel: on a narrow phone
             one row cut both ends of the route to a few characters each, which
             is the whole line's meaning. The arrow stays with the destination. */}
         <p className="mt-3 flex flex-wrap items-center justify-center gap-x-1.5 font-sans text-[15px] text-neutral-700">

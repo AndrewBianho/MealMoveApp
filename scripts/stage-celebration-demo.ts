@@ -37,7 +37,6 @@ async function main() {
     data: {
       listingId: listing.id,
       volunteerId: volunteer.id,
-      holdUntil: new Date(Date.now() + 15 * 60_000),
       photoAtPickupUrl: "/food-wraps.jpg",
     },
   });

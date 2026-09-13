@@ -47,8 +47,6 @@ import {
   emailTaken,
 } from "@/lib/orgAdminInvite";
 
-const HOLD_MINUTES = 15;
-
 type SignUpResult =
   | { ok: true; pending?: boolean }
   | { ok: false; error: string };
@@ -684,7 +682,8 @@ function refreshViews(listingId?: string) {
 
 /**
  * Claim an open listing. A transaction guards against volunteers over-filling
- * the listing, and stamps a 15-minute hold the expiry cron enforces. A listing
+ * the listing. The claim has no deadline of its own — it stands until the
+ * volunteer delivers it or releases it by hand. A listing
  * that needs several cars (carsNeeded) takes one claim per volunteer and only
  * leaves the open feed once enough people have claimed.
  *
@@ -761,13 +760,7 @@ export async function claimListing(listingId: string, dropOffId?: string) {
       }
       chosenDropOffId = dropOff.id;
     }
-    await tx.pickup.create({
-      data: {
-        listingId,
-        volunteerId,
-        holdUntil: new Date(Date.now() + HOLD_MINUTES * 60_000),
-      },
-    });
+    await tx.pickup.create({ data: { listingId, volunteerId } });
     // Stamp the destination; only the claim that fills the last car seat closes
     // the listing — until then it stays open so the remaining cars can still be
     // claimed (delivering to the same drop-off).

@@ -1,5 +1,5 @@
 import { Button } from "@/components/Button";
-import { ClaimHoldPanel } from "@/components/ClaimHoldPanel";
+import { ClaimConfirmedPanel } from "@/components/ClaimConfirmedPanel";
 import { cn } from "@/components/cn";
 import { ListingCard } from "@/components/ListingCard";
 import { MetricCard } from "@/components/MetricCard";
@@ -27,17 +27,6 @@ const UNCLAIMABLE = LISTINGS.filter((l) => l.status !== "open");
 // reframes itself per audience.
 const AUDIENCE_DEMO = LISTINGS.find((l) => l.status === "claimed") ?? LISTINGS[0];
 
-// The claim hold across its bands. Minutes remaining out of the 15-minute
-// window, so each panel below shows a real countdown ticking in its own band.
-// The clock is read per render (not at module scope) or every panel would
-// decay to "lapsed" as the server process aged.
-const HOLD_STATES = [
-  { label: "calm · plenty of time", minutesLeft: 12 },
-  { label: "soon · under 5m", minutesLeft: 4 },
-  { label: "close · under 2m", minutesLeft: 1 },
-  { label: "lapsed", minutesLeft: 0 },
-];
-
 function Section({
   title,
   hint,
@@ -57,13 +46,6 @@ function Section({
 }
 
 export default function StyleGuidePage() {
-  // Read per render on purpose — see HOLD_STATES above. Hoisting this to module
-  // scope to satisfy the purity rule would reintroduce the exact bug that
-  // comment documents: the panels decay to "lapsed" as the server process ages.
-  // This is a server component rendered per request, so there is no client
-  // re-render for the compiler to keep pure.
-  // eslint-disable-next-line react-hooks/purity
-  const now = Date.now();
   return (
     <main className="mx-auto max-w-console px-6 py-8">
       <header>
@@ -221,24 +203,13 @@ export default function StyleGuidePage() {
         </Section>
 
         <Section
-          title="Claim hold"
-          hint="The acknowledgment at claim, and the honest face of the 15-minute hold. Banded on the hold's own scale — sage most of the window, honey under 5m, tomato under 2m — with the literal countdown, not the hue, naming the urgency."
+          title="Claim confirmed"
+          hint="The acknowledgment at claim — the quiet bookend to the delivery celebration. Same journey line, same sage, but a panel rather than a modal."
         >
-          <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
-            {HOLD_STATES.map((s) => (
-              <div key={s.label}>
-                <p className="mb-2 font-mono text-[11px] text-neutral-700">
-                  {s.label}
-                </p>
-                <ClaimHoldPanel
-                  holdUntil={now + s.minutesLeft * 60_000}
-                  claimedAt={now - (15 - s.minutesLeft) * 60_000}
-                  source="Sunrise Bakery"
-                  dropOff="St. Mark's Shelter"
-                />
-              </div>
-            ))}
-          </div>
+          <ClaimConfirmedPanel
+            source="Sunrise Bakery"
+            dropOff="St. Mark's Shelter"
+          />
         </Section>
 
         <Section

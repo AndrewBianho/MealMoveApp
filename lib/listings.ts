@@ -107,7 +107,6 @@ export function serializeListing(l: DbListing, viewerId?: string): Listing {
     postedAt: l.postedAt.getTime(),
     claimedAt: pick?.claimedAt.getTime(),
     deliveredAt: pick?.deliveredAt?.getTime(),
-    holdUntil: pick?.holdUntil.getTime(),
     takenHomeAt: pick?.takenHomeAt?.getTime(),
     deliverBy: pick?.deliverBy?.getTime(),
     photoAtPickupUrl: pick?.photoAtPickupUrl ?? undefined,

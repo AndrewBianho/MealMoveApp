@@ -10,7 +10,6 @@ async function main() {
     expiresAt: l?.expiresAt,
     now: new Date(),
     volunteers: l?.pickups.map((p) => p.volunteer?.email),
-    holdUntil: l?.pickups.map((p) => p.holdUntil),
     events: l?.events.map((e) => e.type),
   });
 }

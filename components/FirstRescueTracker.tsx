@@ -32,8 +32,10 @@ function guidance(step: OnboardingStep, source?: string): {
       return { line: null, cta: null };
     case 1:
       return {
+        // No deadline in this line any more: the 15-minute hold it promised was
+        // removed, and a countdown the app no longer runs is worse than none.
         line: source
-          ? `You're holding ${source} for 15 minutes. Head over and grab the food.`
+          ? `${source} is yours. Head over and grab the food.`
           : "You've claimed a pickup. Head over and grab the food.",
         cta: { label: "Go to your pickup" },
       };
