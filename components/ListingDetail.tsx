@@ -890,19 +890,28 @@ export function ListingDetail({
                         — the destination is already set for this rescue.
                       </p>
                     )}
-                    <Button
-                      variant="claim"
-                      className="w-full"
-                      onClick={onClaim}
-                      disabled={isPending || !claimReady}
-                    >
-                      Claim pickup
-                    </Button>
-                    {needsDropOff && !chosenDropOff && dropOffChoices.length > 0 && (
-                      <p className="mt-2 text-center font-mono text-[13px] text-neutral-700">
-                        Choose a drop-off above to claim
-                      </p>
-                    )}
+                    {/* Desktop's claim CTA. Below md the pinned bar at the
+                        bottom of the page is the CTA instead (same render
+                        condition as showClaimBar), so this one hides rather
+                        than standing beside it — once a drop-off is picked
+                        both read "Claim pickup" and the screen offers the same
+                        action twice. The picker above stays visible either
+                        way; only the button moves. */}
+                    <div className="hidden md:block">
+                      <Button
+                        variant="claim"
+                        className="w-full"
+                        onClick={onClaim}
+                        disabled={isPending || !claimReady}
+                      >
+                        Claim pickup
+                      </Button>
+                      {needsDropOff && !chosenDropOff && dropOffChoices.length > 0 && (
+                        <p className="mt-2 text-center font-mono text-[13px] text-neutral-700">
+                          Choose a drop-off above to claim
+                        </p>
+                      )}
+                    </div>
                   </>
                 ) : (
                   <p className="rounded-xl bg-neutral-100 px-4 py-3 text-[16px] text-neutral-700">
