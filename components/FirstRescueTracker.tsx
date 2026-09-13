@@ -20,13 +20,16 @@ const STEPS = [
 ] as const;
 
 // Contextual line + (optional) action for the current milestone.
-function guidance(step: OnboardingStep, source?: string) {
+function guidance(step: OnboardingStep, source?: string): {
+  line: string | null;
+  cta: { label: string } | null;
+} {
   switch (step) {
     case 0:
-      return {
-        line: "Three steps to your first saved meal. Start by claiming an open pickup below.",
-        cta: null,
-      };
+      // No line here: the stepper below already names the three steps and marks
+      // "claim a pickup" as current, so a sentence saying the same thing twice
+      // is just more to read before the first move.
+      return { line: null, cta: null };
     case 1:
       return {
         line: source
@@ -107,9 +110,11 @@ export function FirstRescueTracker({
       >
         Your first rescue
       </h2>
-      <p className="mt-1 max-w-prose text-[16px] leading-relaxed text-neutral-700">
-        {line}
-      </p>
+      {line && (
+        <p className="mt-1 max-w-prose text-[16px] leading-relaxed text-neutral-700">
+          {line}
+        </p>
+      )}
 
       {/* Stepper. An ordered list so it reads as a sequence to assistive tech;
           aria-current marks the live step. */}
