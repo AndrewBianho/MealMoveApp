@@ -10,13 +10,13 @@ import {
 export default function Loading() {
   // Cap matches page.tsx so the skeleton doesn't jump width on load.
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-roster px-6 py-8">
       <LoadingStatus label="Loading impact numbers" />
       <header className="mb-8" aria-hidden="true">
         <SkeletonBlock className="h-10 w-72 max-w-full" />
         <SkeletonBlock className="mt-3 h-4 w-96 max-w-full" />
       </header>
-      <div className="max-w-4xl space-y-8" aria-hidden="true">
+      <div className="space-y-8" aria-hidden="true">
         {[0, 1].map((section) => (
           <section key={section}>
             <SkeletonBlock className="mb-3 h-3 w-24" />

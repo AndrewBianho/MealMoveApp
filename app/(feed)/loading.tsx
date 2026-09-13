@@ -10,9 +10,9 @@ import {
 // the layout. Boxes only — the real text arrives with the data.
 export default function Loading() {
   return (
-    <main className="mx-auto max-w-[720px] px-6 py-10 sm:px-8 lg:max-w-[1200px]">
+    <main className="mx-auto max-w-[720px] px-6 py-10 sm:px-8 lg:max-w-feed">
       <LoadingStatus label="Loading pickups" />
-      <header className="mb-7 lg:max-w-2xl" aria-hidden="true">
+      <header className="mb-7 lg:max-w-3xl" aria-hidden="true">
         <SkeletonBlock className="h-9 w-64 max-w-full" />
         <SkeletonBlock className="mt-3 h-4 w-80 max-w-full" />
       </header>
@@ -23,7 +23,7 @@ export default function Loading() {
         <FilterPillSkeleton className="w-36" />
         <FilterPillSkeleton className="w-56" />
       </div>
-      <div className="flex flex-col gap-6 lg:max-w-2xl" aria-hidden="true">
+      <div className="flex flex-col gap-6 lg:max-w-3xl" aria-hidden="true">
         <ListingCardSkeleton />
         <ListingCardSkeleton />
         <ListingCardSkeleton />

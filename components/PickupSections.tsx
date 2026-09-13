@@ -75,7 +75,7 @@ export function PickupSections({
   const shown = filter === "all" ? all : all.filter((l) => l.status === filter);
 
   return (
-    <section className="max-w-[780px]">
+    <section>
       {chips.length > 2 && (
         <div
           role="group"
@@ -114,7 +114,16 @@ export function PickupSections({
       )}
 
       {shown.length > 0 ? (
-        <div className="flex flex-col gap-6">
+        // One column is the reading order on narrow screens; past ~1280px a
+        // single 780px stack stranded the right half of the shell, so the
+        // cards pair up instead of stretching. One card can't pair, so it keeps
+        // the single-column measure rather than sitting beside a gap.
+        <div
+          className={cn(
+            "grid grid-cols-1 items-start gap-6",
+            shown.length > 1 ? "xl:grid-cols-2" : "max-w-[780px]"
+          )}
+        >
           {shown.map((l, i) => (
             <PickupTimelineCard
               key={l.id}
@@ -125,7 +134,7 @@ export function PickupSections({
           ))}
         </div>
       ) : (
-        <p className="rounded-3xl border border-neutral-200/70 bg-card px-5 py-14 text-center text-[16px] font-medium text-neutral-700">
+        <p className="max-w-[780px] rounded-3xl border border-neutral-200/70 bg-card px-5 py-14 text-center text-[16px] font-medium text-neutral-700">
           No pickups in this stage right now.
         </p>
       )}

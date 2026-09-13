@@ -4,7 +4,7 @@ import { LoadingStatus, SkeletonBlock } from "@/components/skeletons";
 // photo, recurring schedules, team) as placeholder boxes.
 export default function Loading() {
   return (
-    <main className="mx-auto max-w-[1760px] px-6 py-8">
+    <main className="mx-auto max-w-console px-6 py-8">
       <LoadingStatus label="Loading the posting page" />
       <header className="mb-6" aria-hidden="true">
         <SkeletonBlock className="h-10 w-80 max-w-full" />

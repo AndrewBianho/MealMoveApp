@@ -26,8 +26,8 @@ export function ListingCardSkeleton() {
       className="flex flex-row-reverse overflow-hidden rounded-3xl border border-neutral-200/70 bg-card shadow-card"
     >
       {/* Photo panel */}
-      <SkeletonBlock className="w-28 shrink-0 self-stretch rounded-none sm:w-44 lg:w-[232px]" />
-      <div className="flex min-w-0 flex-1 flex-col justify-center p-5 sm:p-6">
+      <SkeletonBlock className="w-24 shrink-0 self-stretch rounded-none sm:w-44 lg:w-[232px] xl:w-[264px] 2xl:w-[292px]" />
+      <div className="flex min-w-0 flex-1 flex-col justify-center p-4 sm:p-7">
         {/* Urgency line */}
         <SkeletonBlock className="h-3 w-24" />
         {/* Title */}

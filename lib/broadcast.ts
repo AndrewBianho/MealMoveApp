@@ -3,7 +3,6 @@ import { prisma } from "./prisma";
 import { milesBetween } from "./geo";
 import { dispatchToUser } from "./notify-dispatch";
 import { buildBroadcastPayload } from "./notify";
-import { quietHoursActive } from "./quietHours";
 
 // The escalating-broadcast engine. Open listings shouldn't sit and rot waiting
 // to be browsed: as a listing's pickup window narrows, we push it to a widening
@@ -124,28 +123,16 @@ export async function escalateBroadcasts(deps: EscalateDeps = {}): Promise<{
   if (listings.length === 0) return { notified, byBand };
 
   // Opted-in, located volunteers — fetched once and filtered per listing world.
-  // Volunteers currently in their quiet-hours window are held back here (rather
-  // than suppressed at dispatch) so they aren't recorded as "notified" for this
-  // band — a later pass can still reach them once their quiet hours end.
-  const volunteers = (
-    await db.user.findMany({
-      where: {
-        role: "volunteer",
-        status: "active",
-        notificationsEnabled: true,
-        lat: { not: null },
-        lng: { not: null },
-      },
-      select: {
-        id: true,
-        lat: true,
-        lng: true,
-        dataMode: true,
-        quietHoursStart: true,
-        quietHoursEnd: true,
-      },
-    })
-  ).filter((v) => !quietHoursActive(v.quietHoursStart, v.quietHoursEnd, now));
+  const volunteers = await db.user.findMany({
+    where: {
+      role: "volunteer",
+      status: "active",
+      notificationsEnabled: true,
+      lat: { not: null },
+      lng: { not: null },
+    },
+    select: { id: true, lat: true, lng: true, dataMode: true },
+  });
 
   for (const listing of listings) {
     const minutesLeft = Math.floor(

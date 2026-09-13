@@ -125,7 +125,10 @@ export function ClaimHoldPanel({
 
   return (
     <div
-      className={cn("animate-fade-up rounded-xl bg-rescued-50 px-4 py-4", className)}
+      className={cn(
+        "animate-fade-up rounded-xl bg-rescued-50 px-4 py-4",
+        className,
+      )}
     >
       <div className="flex items-start gap-3">
         <span
@@ -140,15 +143,26 @@ export function ClaimHoldPanel({
           </p>
           {/* The same source → drop-off line the celebration closes with, so
               the two moments read as bookends on one journey. */}
-          <p className="mt-0.5 flex items-center gap-1.5 text-[15px] text-neutral-700">
-            <span className="truncate">{source}</span>
-            <span aria-hidden className="shrink-0 text-clay-600">
-              <ArrowRight />
+          {/* Wraps rather than truncating: on a 320px phone one row squeezed
+              both ends of the route to about seven characters each ("Sunris… →
+              St. M…"), which is the whole message gone. The arrow travels with
+              the destination onto the second line; truncation is the last
+              resort, for a single name too long for a line on its own. */}
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[15px] text-neutral-700">
+            <span className="max-w-full truncate">{source}</span>
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span aria-hidden className="shrink-0 text-clay-600">
+                <ArrowRight />
+              </span>
+              <DropOffName
+                name={
+                  <span className="max-w-full truncate">
+                    {dropOff ?? "drop-off"}
+                  </span>
+                }
+                hours={dropOffHours}
+              />
             </span>
-            <DropOffName
-              name={<span className="truncate">{dropOff ?? "drop-off"}</span>}
-              hours={dropOffHours}
-            />
           </p>
         </div>
       </div>
@@ -167,7 +181,7 @@ export function ClaimHoldPanel({
               aria-live="off"
               className={cn(
                 "font-mono text-[13px] font-semibold tabular-nums",
-                BAND_TEXT[band]
+                BAND_TEXT[band],
               )}
             >
               {formatHold(msLeft)}
@@ -178,7 +192,7 @@ export function ClaimHoldPanel({
           <div
             className={cn(
               "h-full rounded-full transition-[width] duration-1000 ease-linear",
-              BAND_BAR[band]
+              BAND_BAR[band],
             )}
             style={{ width: `${pct}%` }}
           />

@@ -10,7 +10,7 @@ lose trust), and **loss of institutional memory when founders graduate**.
 
 ## Stack
 
-- **Next.js 14** (App Router) + React + TypeScript
+- **Next.js 16** (App Router) + React + TypeScript
 - **Tailwind CSS** for all styling — design tokens live in `tailwind.config.ts`
 - **Prisma** + PostgreSQL (Supabase)
 - **NextAuth.js** (JWT) with five roles: `volunteer`, `restaurant`, `drop_off`,

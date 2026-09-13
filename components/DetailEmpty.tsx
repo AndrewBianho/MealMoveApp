@@ -12,7 +12,7 @@ export function DetailEmpty({ children }: { children: React.ReactNode }) {
 // Full-page "not found" state for the restaurant / drop-off detail routes.
 export function DetailNotFound({ label }: { label: string }) {
   return (
-    <main className="mx-auto max-w-[1760px] px-6 py-8">
+    <main className="mx-auto max-w-console px-6 py-8">
       <div className="rounded-3xl border border-dashed border-neutral-200 bg-card px-6 py-16 text-center shadow-card">
         <p className="text-sm text-neutral-700">{label}</p>
         <Link

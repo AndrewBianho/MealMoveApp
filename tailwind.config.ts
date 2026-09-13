@@ -84,6 +84,15 @@ const config: Config = {
         // Raised card surface — white in light, lifted charcoal in dark.
         card: "rgb(var(--card) / <alpha-value>)",
       },
+      // Page shell widths. "Width follows content" (DESIGN.md), so a route
+      // picks the step that matches what it holds instead of inventing a
+      // number — four names replaced eight ad-hoc caps.
+      maxWidth: {
+        console: "1760px", // detail + console: a content column beside a map
+        feed: "1560px",    // the listing feed: card list beside a sticky map
+        roster: "1280px",  // tables, stat grids, card grids
+        form: "960px",     // forms and composers, plus their supporting rail
+      },
       borderRadius: {
         md: "14px",
         lg: "18px",

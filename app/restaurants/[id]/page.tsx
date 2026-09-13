@@ -55,7 +55,7 @@ export default async function RestaurantDetailPage(
   }
 
   return (
-    <main className="mx-auto max-w-[1760px] px-6 py-8">
+    <main className="mx-auto max-w-console px-6 py-8">
       <DetailHero
         backHref="/map"
         backLabel="Map"

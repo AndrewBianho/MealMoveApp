@@ -6,7 +6,7 @@
     },
     {
       "path": "/api/cron/reset-demo",
-      "schedule": "0 8 * * *"
+      "schedule": "0 * * * *"
     }
   ]
 }

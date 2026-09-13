@@ -23,7 +23,7 @@
 - **Do not change** `RAMP.route` (`#2563B0`), the map pin colors, the Mapbox base style, or `setBtnCls`'s `bg-neutral-900` fill.
 - **Tests must live in `lib/`.** `package.json`'s test script globs only `lib/*.test.ts` and `lib/analytics/*.test.ts`. Logic placed under `components/` is not run by `npm test`.
 - **Verification commands:** `npm test`, `npm run typecheck`, `npm run lint`. Lint has two pre-existing `react-hooks/exhaustive-deps` warnings in `ListingDetail.tsx` — those are expected; do not "fix" them.
-- **The dev sandbox cannot reach `api.mapbox.com`.** Tiles, geocoding, and Directions all fail locally. Never claim address suggestions or leg times were verified locally.
+- **Tiles, geocoding and Directions do not resolve locally — but NOT because Mapbox is unreachable.** Mapbox is reachable from this sandbox — the earlier claim that it was not was wrong. Verified: DNS and HTTPS to api.mapbox.com return 200, the token authenticates against the Styles API, lib/csp.ts allows the host in connect-src/img-src plus blob: workers, and both the page and a blob worker can fetch it. What actually fails is narrower and still unexplained: mapbox-gl initialises (canvas, controls and markers all render) but no request to api.mapbox.com is ever issued, so no tiles paint. Treat map imagery as unverified here, but do not record it as a network or egress restriction. Never claim address suggestions or leg times were verified locally.
 
 ---
 
@@ -1308,7 +1308,7 @@ Then start the preview (`preview_start` with `{name: "dev"}`), open
 - The `×` on a filled row clears it; "Clear trip" empties all but Start.
 - Console has no hydration warnings.
 
-Address suggestions will NOT appear — the sandbox cannot reach `api.mapbox.com`.
+Address suggestions will NOT appear locally. Note this is not an egress restriction: api.mapbox.com resolves and the token authenticates; the requests are simply never issued from the page.
 That is expected here; do not report it as a bug, and do not claim they work.
 
 - [x] **Step 4: Commit**
@@ -1866,4 +1866,4 @@ Then in the browser: `/styleguide` → "Trip planner", and `/map` at 1280×800 a
 
 **State honestly in the PR body that these were not verified:** address
 suggestions, route leg times, route camera framing, and map tiles — all require
-`api.mapbox.com`, which this sandbox cannot reach. They need a preview deploy.
+`api.mapbox.com`. Those requests are never issued locally — though the host IS reachable and the token IS valid, so do not describe it as blocked. They need a preview deploy.

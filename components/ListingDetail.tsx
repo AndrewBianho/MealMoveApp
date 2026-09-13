@@ -447,17 +447,17 @@ export function ListingDetail({
         showClaimBar && "pb-20 md:pb-0"
       )}
     >
-      {/* No way back while you're carrying this one: the feed redirects
-          straight to this page (see app/(feed)/page.tsx), so the link would
-          promise a list and return you here. Everyone else keeps it. */}
-      {!working && (
-        <Link
-          href="/"
-          className="-mx-1.5 mb-2 inline-block rounded px-1.5 py-2 text-[16px] text-neutral-700 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
-        >
-          ← Feed
-        </Link>
-      )}
+      {/* While you're carrying this one the plain "/" link would promise a list
+          and bounce you straight back here (the feed redirects — see
+          app/(feed)/page.tsx), so it carries `?browse=1` instead: the feed
+          opts out of the takeover, shows nothing as claimable, and keeps a
+          link back to this page. The label says what you'll get. */}
+      <Link
+        href={working ? "/?browse=1" : "/"}
+        className="-mx-1.5 mb-2 inline-block rounded px-1.5 py-2 text-[16px] text-neutral-700 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
+      >
+        {working ? "← Browse other pickups" : "← Feed"}
+      </Link>
 
       {primeOpen && (
         <div className="mb-4 animate-fade-in">

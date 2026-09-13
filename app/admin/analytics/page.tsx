@@ -147,7 +147,7 @@ export default async function AnalyticsPage({
   }
 
   return (
-    <main className="mx-auto max-w-[1760px] px-6 py-8">
+    <main className="mx-auto max-w-console px-6 py-8">
       <header className="mb-6">
         <h1 className="font-display text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">
           Analytics
@@ -269,7 +269,7 @@ export default async function AnalyticsPage({
             shame
           </p>
           {orgReliability.length > 0 ? (
-            <div className="max-w-xl space-y-4 rounded-xl border border-neutral-200/40 bg-card p-5">
+            <div className="grid gap-x-10 gap-y-4 rounded-xl border border-neutral-200/40 bg-card p-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {orgReliability.map((v) => (
                 <div key={v.id}>
                   <ReliabilityMeter name={v.name} pct={v.reliability} />

@@ -4,14 +4,14 @@ import { LoadingStatus, SkeletonBlock } from "@/components/skeletons";
 // and a stack of labelled fields as placeholder boxes — the real page's shell.
 export default function Loading() {
   return (
-    <main className="mx-auto max-w-xl px-6 py-8">
+    <main className="mx-auto max-w-form px-6 py-8">
       <LoadingStatus label="Loading your profile" />
       <header className="mb-6" aria-hidden="true">
         <SkeletonBlock className="h-9 w-56 max-w-full" />
         <SkeletonBlock className="mt-3 h-4 w-72 max-w-full" />
       </header>
       <div
-        className="space-y-6 rounded-2xl border border-neutral-900/5 bg-card p-6 shadow-card"
+        className="space-y-6 rounded-2xl border border-neutral-900/5 bg-card p-6 shadow-card lg:max-w-[calc(100%-18rem)]"
         aria-hidden="true"
       >
         <div className="flex items-center gap-4">

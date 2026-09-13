@@ -543,7 +543,13 @@ export function ListingFeed({
     <div className="space-y-9">
       {claimable.length > 0 && (
         <section>
-          <SectionHeader title="Available to claim" count={claimable.length} />
+          {/* "to claim" would be a promise the page can't keep for someone
+              already carrying a rescue (or any non-claiming role) — the cards
+              are still worth browsing, so only the verb changes. */}
+          <SectionHeader
+            title={canClaim ? "Available to claim" : "Open right now"}
+            count={claimable.length}
+          />
           <ListingStack listings={claimable} claimable={canClaim} lead />
         </section>
       )}

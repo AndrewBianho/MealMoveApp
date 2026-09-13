@@ -67,7 +67,7 @@ export default async function ImpactPage() {
     myImpact = await getVolunteerImpact(userId, demo);
     const all = await getListings(userId);
     myPast = all.filter(
-      (l) => l.mine && ["delivered", "expired", "failed"].includes(l.status)
+      (l) => l.mine && ["delivered", "expired", "failed"].includes(l.status),
     );
   }
 
@@ -110,16 +110,19 @@ export default async function ImpactPage() {
   const foodMoved = stats.slice(0, 3);
   const operation = stats.slice(3);
 
-  // Width follows content (DESIGN.md), so this page caps at 5xl rather than the
-  // shared 1760px shell: nothing here exceeds 896px for any role — harvest panel
-  // and stat grids at max-w-4xl, past pickups at 780px, org-admin reliability at
-  // max-w-xl. Under 1760px that stranded ~680px of dead surface on one side at a
-  // 1600px viewport; capped, the same whitespace becomes symmetric margin. The
-  // feed does the same with max-w-[1200px] around its 1136px of content.
+  // Width follows content (DESIGN.md): this is a stat-grid page, not a map
+  // console, so it takes the `roster` step rather than `console`. The grids
+  // below span the full shell — a 5xl cap left ~490px of dead margin per side
+  // at 1512px while three metric cards sat at 280px each.
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-roster px-6 py-8">
       <header className="mb-8 flex items-center gap-4">
-        <Avatar name={user.name} src={user.imageUrl} size="lg" className="shadow-card" />
+        <Avatar
+          name={user.name}
+          src={user.imageUrl}
+          size="lg"
+          className="shadow-card"
+        />
         <div>
           <h1 className="font-display text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">
             {user.name}
@@ -130,14 +133,16 @@ export default async function ImpactPage() {
         </div>
       </header>
 
-      <p className="mb-8 max-w-[72ch] text-[16px] text-neutral-700">{subtitle}</p>
+      <p className="mb-8 max-w-[72ch] text-[16px] text-neutral-700">
+        {subtitle}
+      </p>
 
       {isDropOff ? (
         <DropOffImpact stats={dropOffStats} donations={donations} />
       ) : (
         <>
           {myImpact && (
-            <div className="mb-10 max-w-4xl space-y-8">
+            <div className="mb-10 space-y-8">
               <section>
                 <PersonalHarvest impact={myImpact} />
                 {myImpact.attempts > 0 && (
@@ -158,11 +163,15 @@ export default async function ImpactPage() {
                   Past pickups
                 </h2>
                 {myPast.length > 0 ? (
-                  <PickupSections active={[]} past={myPast} hadInvites={false} />
+                  <PickupSections
+                    active={[]}
+                    past={myPast}
+                    hadInvites={false}
+                  />
                 ) : (
                   <p className="text-[16px] text-neutral-700">
-                    No completed pickups yet — your finished rescues will collect
-                    here.
+                    No completed pickups yet — your finished rescues will
+                    collect here.
                   </p>
                 )}
               </section>
@@ -175,18 +184,23 @@ export default async function ImpactPage() {
 
           {loadFailed ? (
             <div className="mb-10 rounded-2xl border border-neutral-200/60 bg-card p-6 text-[16px] text-neutral-700 shadow-card">
-              These numbers are taking a moment to load. Refresh the page in a few
-              seconds and they&apos;ll be back.
+              These numbers are taking a moment to load. Refresh the page in a
+              few seconds and they&apos;ll be back.
             </div>
           ) : (
-            <div className="mb-10 max-w-4xl space-y-8">
+            <div className="mb-10 space-y-8">
               <section>
                 <h2 className="mb-3 font-mono text-[13px] text-neutral-700">
                   Food moved
                 </h2>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   {foodMoved.map((s) => (
-                    <MetricCard key={s.label} label={s.label} value={s.value} accent={metricAccent(s.label)} />
+                    <MetricCard
+                      key={s.label}
+                      label={s.label}
+                      value={s.value}
+                      accent={metricAccent(s.label)}
+                    />
                   ))}
                 </div>
               </section>
@@ -196,7 +210,12 @@ export default async function ImpactPage() {
                 </h2>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                   {operation.map((s) => (
-                    <MetricCard key={s.label} label={s.label} value={s.value} accent={metricAccent(s.label)} />
+                    <MetricCard
+                      key={s.label}
+                      label={s.label}
+                      value={s.value}
+                      accent={metricAccent(s.label)}
+                    />
                   ))}
                 </div>
               </section>
@@ -205,13 +224,15 @@ export default async function ImpactPage() {
 
           {isOrgAdmin && !loadFailed && (
             <section>
-              <h2 className="mb-1 text-lg font-medium">Volunteer reliability</h2>
+              <h2 className="mb-1 text-lg font-medium">
+                Volunteer reliability
+              </h2>
               <p className="mb-4 text-[16px] text-neutral-700">
-                A bar and a percentage — never a grade. We surface who needs support,
-                not who to shame. Visible to org admins only.
+                A bar and a percentage — never a grade. We surface who needs
+                support, not who to shame. Visible to org admins only.
               </p>
               {volunteers.length > 0 ? (
-                <div className="max-w-xl space-y-4 rounded-xl border border-neutral-200/40 bg-card p-5">
+                <div className="grid gap-x-10 gap-y-4 rounded-xl border border-neutral-200/40 bg-card p-5 sm:grid-cols-2 xl:grid-cols-3">
                   {volunteers.map((v) => (
                     <div key={v.id}>
                       <ReliabilityMeter name={v.name} pct={v.reliability} />
@@ -223,7 +244,8 @@ export default async function ImpactPage() {
                 </div>
               ) : (
                 <p className="text-[16px] text-neutral-700">
-                  No pickups yet — reliability appears once volunteers start claiming.
+                  No pickups yet — reliability appears once volunteers start
+                  claiming.
                 </p>
               )}
             </section>

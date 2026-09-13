@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getDataMode } from "@/lib/mode";
 import { listAnnouncementsFor } from "@/lib/announcements";
 import { MarkSeenOnView } from "@/components/MarkSeenOnView";
+import { cn } from "@/components/cn";
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +15,17 @@ export default async function UpdatesPage() {
   const updates = await listAnnouncementsFor(session.user.id, world);
 
   return (
-    <main className="mx-auto max-w-[720px] px-6 py-8">
+    // Two columns need two cards. With a single update the wide shell would
+    // strand half the page beside one card, so the page falls back to the
+    // comfortable reading column instead of pretending to be wide.
+    <main
+      className={cn(
+        "mx-auto px-6 py-8",
+        updates.length > 1 ? "max-w-roster" : "max-w-[720px]",
+      )}
+    >
       <MarkSeenOnView />
-      <header className="mb-6">
+      <header className="mb-6 max-w-[52ch]">
         <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">
           Updates
         </h1>
@@ -30,7 +39,10 @@ export default async function UpdatesPage() {
           No updates yet — you&apos;re all caught up.
         </p>
       ) : (
-        <ul className="space-y-[18px]">
+        // Two columns past lg: an update body stays at a comfortable measure
+        // inside its card instead of running the full shell, and the list stops
+        // stranding half the page.
+        <ul className="grid grid-cols-1 items-start gap-[18px] lg:grid-cols-2">
           {updates.map((a) => (
             <li key={a.id} className="rounded-3xl bg-card p-6 shadow-card">
               <div className="flex items-baseline justify-between gap-3">
