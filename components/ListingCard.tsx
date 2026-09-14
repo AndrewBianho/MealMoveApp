@@ -240,15 +240,24 @@ export function ListingCard({
           </p>
         )}
 
-        {/* Decision facts and category as one small table: a mono label per
-            row, values on a shared line, hairline between rows. The unit words
-            that used to trail each number ("18 servings", "1 of 2 cars still
-            needed") are the labels now, so nothing reads as a lower-case
-            fragment and every value lines up. */}
+        {/* Servings leads, above the table: it's the one number that decides
+            whether a volunteer can take this at all, so it keeps the weight the
+            old facts line gave it. Capitalised label, same figure-over-label
+            pairing the detail page's stat block uses. */}
+        <p className="mt-3 flex items-baseline gap-1.5 font-mono">
+          <span className="text-[22px] font-bold leading-none tabular-nums text-neutral-900">
+            {servings}
+          </span>
+          <span className="text-[13px] text-neutral-700">Servings</span>
+        </p>
+
+        {/* The rest as a small table: a mono label per row, values on a shared
+            line, hairline between rows. The unit words that used to trail each
+            number ("0.4 mi away", "1 of 2 cars still needed") are the labels
+            now, so nothing reads as a lower-case fragment. */}
         <InfoRows
-          className="mt-3.5"
+          className="mt-3"
           rows={[
-            { label: "servings", value: <Data>{servings}</Data> },
             ...(showDistance
               ? [{ label: "distance", value: <Data>{distance}</Data> }]
               : []),
