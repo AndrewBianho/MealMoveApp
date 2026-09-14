@@ -1,5 +1,6 @@
 import { DataModeToggle } from "@/components/DataModeToggle";
 import { NotificationsToggle } from "@/components/NotificationsToggle";
+import { RestaurantPhotoSetting } from "@/components/RestaurantPhotoSetting";
 import { getDataMode } from "@/lib/mode";
 import { requireUser } from "@/lib/authz";
 import { prisma } from "@/lib/prisma";
@@ -17,8 +18,14 @@ export default async function SettingsPage() {
     select: {
       notificationsEnabled: true,
       demo: true,
+      // The restaurant this account speaks for, so its default listing photo
+      // can be set here. Only a `restaurant` account has one; an org admin
+      // oversees the chapter rather than any single restaurant, so there'd be
+      // no one photo for them to set.
+      restaurant: { select: { id: true, imageUrl: true } },
     },
   });
+  const restaurant = viewer.role === "restaurant" ? me?.restaurant : null;
 
   return (
     <main className="mx-auto max-w-form px-6 py-8">
@@ -72,6 +79,13 @@ export default async function SettingsPage() {
             </>
           )}
         </section>
+
+        {restaurant && (
+          <RestaurantPhotoSetting
+            restaurantId={restaurant.id}
+            imageUrl={restaurant.imageUrl}
+          />
+        )}
       </div>
     </main>
   );

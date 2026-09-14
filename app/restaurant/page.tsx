@@ -94,8 +94,6 @@ export default async function RestaurantPage() {
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
           <RestaurantPostHub
             restaurant={restaurant.name}
-            restaurantId={restaurant.id}
-            restaurantImageUrl={restaurant.imageUrl}
             nearbyVolunteers={nearbyVolunteers}
           />
           <div className="flex flex-col gap-6">
