@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { cn } from "./cn";
 import { capitalize } from "@/lib/text";
 
@@ -6,40 +6,67 @@ export interface InfoRow {
   /** Mono micro-label, authored lower-case; rendered sentence case. */
   label: string;
   value: ReactNode;
+  /** Leading glyph for the value (handling, allergens). Passed separately, not
+   *  baked into `value`, so it sits in its own reserved slot and the value text
+   *  starts at the same x on every row. */
+  icon?: ReactNode;
 }
 
 /**
- * A calm definition list: a mono micro-label beside its value, hairline-divided.
+ * A calm definition list: a mono micro-label beside its value.
  * The app-wide way to lay out listing metadata — food type, handling, cars,
- * allergens, drop-off — replacing the old row of mini-pill chips. The label
- * column is fixed-width so the values align into a clean second column.
+ * allergens, drop-off.
+ *
+ * Alignment is the whole job here, and it comes from a two-column grid whose
+ * label track is `max-content`: the column sizes itself to the longest label in
+ * the list, so values line up exactly without anyone guessing a rem width (a
+ * fixed 4.5rem left "Food" stranded from its value and pinched "Handling").
+ * Rows are separated by space rather than hairlines — two rules inside an
+ * already-bordered card read as a broken table, not a list.
  */
 export function InfoRows({
   rows,
   className,
-  labelClassName,
 }: {
   rows: InfoRow[];
   className?: string;
-  /** Override the label column width, e.g. a wider column on the detail page. */
-  labelClassName?: string;
 }) {
+  // One row with an icon reserves the slot on every row, so a value with no
+  // glyph still starts where the others do.
+  const hasIcon = rows.some((r) => r.icon);
   return (
-    <dl className={cn("divide-y divide-neutral-200/60", className)}>
+    <dl
+      className={cn(
+        // Two aligned columns wherever there's room. Under 360px the value
+        // track drops below ~64px and a one-word value ("Prepared") has no
+        // wrap opportunity, so it spills past the card; there the label sits
+        // above its value instead.
+        "grid grid-cols-1 items-baseline gap-y-2",
+        "min-[360px]:grid-cols-[max-content_minmax(0,1fr)] min-[360px]:gap-x-4 min-[360px]:gap-y-1.5",
+        className
+      )}
+    >
       {rows.map((r) => (
-        <div key={r.label} className="flex items-baseline gap-3 py-2">
-          <dt
-            className={cn(
-              "shrink-0 font-mono text-[13px] text-neutral-700",
-              labelClassName ?? "w-[4.5rem]"
-            )}
-          >
+        <Fragment key={r.label}>
+          <dt className="font-mono text-[13px] leading-5 text-neutral-700">
             {capitalize(r.label)}
           </dt>
-          <dd className="min-w-0 flex-1 text-[15px] font-medium text-neutral-800">
-            {r.value}
+          <dd className="min-w-0 break-words text-[15px] font-medium leading-5 text-neutral-800">
+            {hasIcon ? (
+              <span className="flex items-baseline gap-1.5">
+                <span
+                  aria-hidden
+                  className="w-[1.05em] shrink-0 self-center text-neutral-700"
+                >
+                  {r.icon}
+                </span>
+                <span className="min-w-0">{r.value}</span>
+              </span>
+            ) : (
+              r.value
+            )}
           </dd>
-        </div>
+        </Fragment>
       ))}
     </dl>
   );

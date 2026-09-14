@@ -602,7 +602,6 @@ export function ListingDetail({
                 food type · handling · cars · drop-off · allergens. */}
             <InfoRows
               className="mt-5"
-              labelClassName="w-24"
               rows={[
                 ...(listing.category
                   ? [{ label: "food type", value: capitalize(listing.category) }]
@@ -611,18 +610,15 @@ export function ListingDetail({
                   ? [
                       {
                         label: "handling",
-                        value: (
-                          <span className="inline-flex items-center gap-1.5">
-                            {listing.tempHandling === "hot" ? (
-                              <Flame className="text-[0.95em] text-neutral-700" />
-                            ) : listing.tempHandling === "cold" ? (
-                              <Snowflake className="text-[0.95em] text-neutral-700" />
-                            ) : (
-                              <Box className="text-[0.95em] text-neutral-700" />
-                            )}
-                            Keep {TEMP_LABEL[listing.tempHandling]}
-                          </span>
-                        ),
+                        icon:
+                          listing.tempHandling === "hot" ? (
+                            <Flame className="text-[0.95em]" />
+                          ) : listing.tempHandling === "cold" ? (
+                            <Snowflake className="text-[0.95em]" />
+                          ) : (
+                            <Box className="text-[0.95em]" />
+                          ),
+                        value: `Keep ${TEMP_LABEL[listing.tempHandling]}`,
                       },
                     ]
                   : []),

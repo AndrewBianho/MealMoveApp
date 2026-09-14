@@ -300,12 +300,8 @@ export function ListingCard({
                 ? [
                     {
                       label: "handling",
-                      value: (
-                        <span className="inline-flex items-center gap-1.5">
-                          <handling.icon className="text-[0.95em] text-neutral-700" />
-                          {handling.label}
-                        </span>
-                      ),
+                      icon: <handling.icon className="text-[0.95em]" />,
+                      value: handling.label,
                     },
                   ]
                 : []),
