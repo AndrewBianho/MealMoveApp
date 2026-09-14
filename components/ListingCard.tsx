@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { cn } from "./cn";
@@ -172,6 +173,13 @@ export function ListingCard({
     </span>
   );
 
+  // Numbers stay mono and inked; the label beside them carries the unit.
+  const Data = ({ children }: { children: ReactNode }) => (
+    <span className="whitespace-nowrap font-mono font-bold text-neutral-900">
+      {children}
+    </span>
+  );
+
   return (
     <article
       className={cn(
@@ -232,82 +240,42 @@ export function ListingCard({
           </p>
         )}
 
-        {/* Decision facts — one mono line; only the numbers carry weight + ink. */}
-        <p className="mt-3.5 font-mono text-[15px] font-medium text-neutral-700">
-          <span className="font-bold text-neutral-900">{servings}</span>{" "}
-          servings
-          {showDistance && (
-            <>
-              <span className="mx-1.5 text-neutral-300">·</span>
-              <span className="whitespace-nowrap font-bold text-neutral-900">
-                {distance}
-              </span>{" "}
-              away
-            </>
-          )}
-          {/* A big haul needs several cars. A volunteer decides on the open
-              seats ("2 of 3 cars still needed"); a restaurant/admin watches the
-              fill ("1 of 3 cars claimed"). */}
-          {carsNeeded > 1 && (status === "open" || scheduled) && (
-            <>
-              <span className="mx-1.5 text-neutral-300">·</span>
-              {audience === "volunteer" ? (
-                claimedCount > 0 ? (
-                  <>
-                    <span className="whitespace-nowrap font-bold text-neutral-900">
-                      {carsNeeded - claimedCount} of {carsNeeded}
-                    </span>{" "}
-                    cars
-                    <span className="hidden sm:inline"> still needed</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="font-bold text-neutral-900">
-                      {carsNeeded}
-                    </span>{" "}
-                    cars needed
-                  </>
-                )
-              ) : claimedCount > 0 ? (
-                <>
-                  <span className="whitespace-nowrap font-bold text-neutral-900">
-                    {claimedCount} of {carsNeeded}
-                  </span>{" "}
-                  cars claimed
-                </>
-              ) : (
-                <>
-                  <span className="font-bold text-neutral-900">
-                    {carsNeeded}
-                  </span>{" "}
-                  cars needed
-                </>
-              )}
-            </>
-          )}
-        </p>
-
-        {/* Scannability — food type + handling as calm labelled rows (no pills),
-            so the feed reads by category at a glance. Each only when set. */}
-        {(category || handling) && (
-          <InfoRows
-            className="mt-3"
-            rows={[
-              ...(category
-                ? [{ label: "food", value: capitalize(category) }]
-                : []),
-              ...(handling
-                ? [
-                    {
-                      label: "handling",
-                      icon: <handling.icon className="text-[0.95em]" />,
-                      value: handling.label,
-                    },
-                  ]
-                : []),
-            ]}
-          />
-        )}
+        {/* Decision facts and category as one small table: a mono label per
+            row, values on a shared line, hairline between rows. The unit words
+            that used to trail each number ("18 servings", "1 of 2 cars still
+            needed") are the labels now, so nothing reads as a lower-case
+            fragment and every value lines up. */}
+        <InfoRows
+          className="mt-3.5"
+          rows={[
+            { label: "servings", value: <Data>{servings}</Data> },
+            ...(showDistance
+              ? [{ label: "distance", value: <Data>{distance}</Data> }]
+              : []),
+            ...(carsNeeded > 1 && (status === "open" || scheduled)
+              ? [
+                  {
+                    label: "cars",
+                    value: (
+                      <Data>
+                        {audience === "volunteer"
+                          ? claimedCount > 0
+                            ? `${carsNeeded - claimedCount} of ${carsNeeded} needed`
+                            : `${carsNeeded} needed`
+                          : claimedCount > 0
+                            ? `${claimedCount} of ${carsNeeded} claimed`
+                            : `${carsNeeded} needed`}
+                      </Data>
+                    ),
+                  },
+                ]
+              : []),
+            ...(category
+              ? [{ label: "food", value: capitalize(category) }]
+              : []),
+            ...(handling ? [{ label: "handling", value: handling.label }] : []),
+          ]}
+        />
 
         {dropOff && showRoute && (
           <p className="mt-2 flex items-start gap-1.5 text-[15px] text-clay-800">
@@ -333,13 +301,13 @@ export function ListingCard({
           )}
 
         {/* Action — for an open listing, a full-width link to the full details
-            page (where the claim happens); a calm "opens <when>" cue for a
+            page (where the claim happens); a calm "Opens <when>" cue for a
             scheduled one; otherwise the live status + who has it. */}
         <div className="mt-5">
           {scheduled ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-clay-50 px-3 py-1 font-mono text-[13px] text-clay-800">
               <Clock className="text-[0.95em]" />
-              opens {availableLabel}
+              Opens {availableLabel}
             </span>
           ) : status === "open" && claimable ? (
             <Link

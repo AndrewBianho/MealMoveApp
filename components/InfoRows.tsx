@@ -6,23 +6,18 @@ export interface InfoRow {
   /** Mono micro-label, authored lower-case; rendered sentence case. */
   label: string;
   value: ReactNode;
-  /** Leading glyph for the value (handling, allergens). Passed separately, not
-   *  baked into `value`, so it sits in its own reserved slot and the value text
-   *  starts at the same x on every row. */
-  icon?: ReactNode;
 }
 
 /**
- * A calm definition list: a mono micro-label beside its value.
- * The app-wide way to lay out listing metadata — food type, handling, cars,
- * allergens, drop-off.
+ * Listing metadata as a small table: a mono label column, a value column, and
+ * a hairline between rows.
  *
- * Alignment is the whole job here, and it comes from a two-column grid whose
- * label track is `max-content`: the column sizes itself to the longest label in
- * the list, so values line up exactly without anyone guessing a rem width (a
- * fixed 4.5rem left "Food" stranded from its value and pinched "Handling").
- * Rows are separated by space rather than hairlines — two rules inside an
- * already-bordered card read as a broken table, not a list.
+ * Both columns come from one grid whose label track is `max-content`, so the
+ * column sizes itself to the longest label in this particular list and every
+ * value starts on the same line. The rule is drawn as a border on the cells
+ * rather than the row, and the columns are separated by the label's own
+ * padding rather than a grid gap, so the two borders meet and the line runs
+ * unbroken across the table.
  */
 export function InfoRows({
   rows,
@@ -31,43 +26,43 @@ export function InfoRows({
   rows: InfoRow[];
   className?: string;
 }) {
-  // One row with an icon reserves the slot on every row, so a value with no
-  // glyph still starts where the others do.
-  const hasIcon = rows.some((r) => r.icon);
   return (
     <dl
       className={cn(
-        // Two aligned columns wherever there's room. Under 360px the value
-        // track drops below ~64px and a one-word value ("Prepared") has no
-        // wrap opportunity, so it spills past the card; there the label sits
-        // above its value instead.
-        "grid grid-cols-1 items-baseline gap-y-2",
-        "min-[360px]:grid-cols-[max-content_minmax(0,1fr)] min-[360px]:gap-x-4 min-[360px]:gap-y-1.5",
+        "grid grid-cols-[max-content_minmax(0,1fr)] items-baseline",
         className
       )}
     >
-      {rows.map((r) => (
-        <Fragment key={r.label}>
-          <dt className="font-mono text-[13px] leading-5 text-neutral-700">
-            {capitalize(r.label)}
-          </dt>
-          <dd className="min-w-0 break-words text-[15px] font-medium leading-5 text-neutral-800">
-            {hasIcon ? (
-              <span className="flex items-baseline gap-1.5">
-                <span
-                  aria-hidden
-                  className="w-[1.05em] shrink-0 self-center text-neutral-700"
-                >
-                  {r.icon}
-                </span>
-                <span className="min-w-0">{r.value}</span>
-              </span>
-            ) : (
-              r.value
-            )}
-          </dd>
-        </Fragment>
-      ))}
+      {rows.map((r, i) => {
+        // Rules sit between rows, never above the first or below the last.
+        const rule = i > 0 ? "border-t border-neutral-200/70" : "";
+        return (
+          <Fragment key={r.label}>
+            <dt
+              className={cn(
+                // Tighter label on the narrowest phones: at 320px the card's
+                // text column is ~144px, and a 13px label plus a 20px gutter
+                // left too little for a one-word value, which then broke
+                // mid-word.
+                "py-2 pr-3 font-mono text-[12px] leading-5 text-neutral-700",
+                "min-[400px]:pr-5 min-[400px]:text-[13px]",
+                rule
+              )}
+            >
+              {capitalize(r.label)}
+            </dt>
+            <dd
+              className={cn(
+                "min-w-0 break-words py-2 text-[14px] font-medium leading-5 text-neutral-800",
+                "min-[400px]:text-[15px]",
+                rule
+              )}
+            >
+              {r.value}
+            </dd>
+          </Fragment>
+        );
+      })}
     </dl>
   );
 }

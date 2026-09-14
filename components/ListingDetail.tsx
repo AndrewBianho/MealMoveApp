@@ -8,7 +8,7 @@ import { Button } from "./Button";
 import { StatusBadge } from "./StatusBadge";
 import { InfoRows } from "./InfoRows";
 import { Toast, useToast } from "./Toast";
-import { ArrowRight, Car, MapPin, Users, Flame, Snowflake, Box } from "./icons";
+import { ArrowRight, Car, MapPin, Users } from "./icons";
 import { cn } from "./cn";
 import {
   claimListing,
@@ -610,14 +610,6 @@ export function ListingDetail({
                   ? [
                       {
                         label: "handling",
-                        icon:
-                          listing.tempHandling === "hot" ? (
-                            <Flame className="text-[0.95em]" />
-                          ) : listing.tempHandling === "cold" ? (
-                            <Snowflake className="text-[0.95em]" />
-                          ) : (
-                            <Box className="text-[0.95em]" />
-                          ),
                         value: `Keep ${TEMP_LABEL[listing.tempHandling]}`,
                       },
                     ]
@@ -659,7 +651,6 @@ export function ListingDetail({
                         label: "allergens",
                         value: (
                           <span className="text-urgent-800">
-                            <span aria-hidden>⚠ </span>
                             {listing.allergens.join(", ")}
                           </span>
                         ),
