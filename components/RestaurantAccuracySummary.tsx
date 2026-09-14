@@ -33,7 +33,7 @@ export function RestaurantAccuracySummary({
 
       {data.total === 0 ? (
         <p className="mt-1 text-sm text-neutral-700">
-          No volunteer signals yet — this fills in as pickups complete.
+          No volunteer signals yet. This fills in as pickups complete.
         </p>
       ) : (
         <>

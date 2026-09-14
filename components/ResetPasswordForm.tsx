@@ -31,7 +31,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
       <div className="space-y-4">
         <div className="rounded-md bg-rescued-50 p-4">
           <p className="text-sm text-rescued-800">
-            Your password has been updated. You can sign in with it now.
+            Password updated. You can sign in now.
           </p>
         </div>
         <Link href="/login">
@@ -48,7 +48,7 @@ export function ResetPasswordForm({ token }: { token: string }) {
       <div className="space-y-4">
         <div className="rounded-md bg-failed-50 p-4">
           <p className="text-sm text-failed-800">
-            This reset link is missing its token. Request a new one.
+            This reset link is broken. Request a new one.
           </p>
         </div>
         <Link

@@ -59,7 +59,7 @@ type SignUpResult =
 // writes outright while in demo mode rather than let a demo session touch real
 // people's accounts.
 const DEMO_BLOCKED =
-  "This is a demo account — it can explore the app, but can't change live chapter data.";
+  "This is a demo account. It can explore the app, but can't change live chapter data.";
 
 async function blockIfDemo(): Promise<{ ok: false; error: string } | null> {
   return (await isDemo()) ? { ok: false, error: DEMO_BLOCKED } : null;
@@ -434,7 +434,7 @@ export async function createOrgAdminInvite(input: {
 
   const origin = await requestOrigin();
   if (!origin) {
-    return { ok: false, error: "Server misconfigured (APP_URL unset) — can't build a link." };
+    return { ok: false, error: "Server misconfigured (APP_URL unset). Can't build a link." };
   }
 
   const { raw, hash } = mintToken();
@@ -617,7 +617,7 @@ export async function requestPasswordReset(
       // No safe origin (APP_URL unset in production): don't email a header-derived
       // link. The token simply goes unused and expires.
       console.error(
-        "[password-reset] APP_URL is not set — skipping email to avoid an unsafe reset link."
+        "[password-reset] APP_URL is not set, skipping email to avoid an unsafe reset link."
       );
     }
   }
@@ -736,7 +736,7 @@ export async function claimListing(listingId: string, dropOffId?: string) {
     const active = await findActiveClaimFor(tx, volunteerId, listingId);
     if (active) {
       throw new Error(
-        `One rescue at a time — you're already on "${active.title}". Deliver or release it first.`
+        `One rescue at a time. You're already on "${active.title}". Deliver or release it first.`
       );
     }
     // Resolve the destination. Once set (by the first car, or a legacy row) it
@@ -756,7 +756,7 @@ export async function claimListing(listingId: string, dropOffId?: string) {
         throw new Error(`${dropOff.name} can't take ${listing.category} food.`);
       }
       if (listing.perishable && !dropOff.refrigerated) {
-        throw new Error(`${dropOff.name} isn't refrigerated — this food needs cold storage.`);
+        throw new Error(`${dropOff.name} isn't refrigerated. This food needs cold storage.`);
       }
       chosenDropOffId = dropOff.id;
     }

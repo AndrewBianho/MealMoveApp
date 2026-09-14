@@ -173,7 +173,7 @@ export default async function AdminUsersPage({
       {demo && (
         <div className="mb-6 rounded-xl border border-transit-200/60 bg-transit-50 px-4 py-3 text-sm text-transit-800">
           You&apos;re exploring in demo mode. Member management is disabled here
-          so the showcase can&apos;t change real accounts — switch to your real
+          so the showcase can&apos;t change real accounts. Switch to your real
           account to approve partners or assign roles.
         </div>
       )}
@@ -189,8 +189,7 @@ export default async function AdminUsersPage({
             </span>
           </div>
           <p className="mb-3 max-w-2xl text-sm text-neutral-700">
-            New restaurants and drop-offs need your confirmation before they can
-            sign in or go live on the map.
+            Approve these before they can sign in or go live on the map.
           </p>
           <ul className="overflow-hidden rounded-2xl border border-urgent-200/60 bg-card shadow-card">
             {pending.map((u) => (

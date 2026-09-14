@@ -80,8 +80,7 @@ export function PersonalHarvest({ impact }: { impact: VolunteerImpact }) {
               Ready when you are
             </p>
             <p className="mt-2 max-w-[46ch] text-[16px] leading-relaxed text-rescued-100">
-              Claim a pickup and the first number lands here. Every meal you move
-              is one that was headed for the bin.
+              Claim a pickup and the first number lands here.
             </p>
           </>
         )}

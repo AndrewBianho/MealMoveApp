@@ -280,7 +280,7 @@ export function ListingDetail({
   // Every photo prompt leads with the stage it unlocks, so the shutter button
   // is never just "a photo" — it's the thing that moves the rescue forward.
   const photoHint = (detail: string) =>
-    nextStep ? `Take the photo to move to “${nextStep.name}” — ${detail}` : detail;
+    nextStep ? `Take the photo to move to “${nextStep.name}”, ${detail}` : detail;
   // Only the volunteer actually carrying this rescue gets the step counter; a
   // restaurant reading its own listing sees the bare timeline.
   const working = isLiveOwnRescue(listing);
@@ -318,7 +318,7 @@ export function ListingDetail({
         if (canPrimeNotifications) setPrimeOpen(true);
         // The hold panel now carries "it's yours" and the live countdown, so
         // the toast just points forward instead of repeating it.
-        show("Claimed — head over when you're ready.");
+        show("Claimed. Head over when you're ready.");
       } catch (e) {
         show(e instanceof Error ? e.message : "Couldn't claim this pickup.");
       }
@@ -346,7 +346,7 @@ export function ListingDetail({
     startTransition(async () => {
       try {
         await recordRescueAccuracy(id, accuracy, note);
-        show("Thanks — that helps us keep pickups dependable.");
+        show("Thanks. That helps us keep pickups dependable.");
       } catch {
         show("Couldn't save that just now.");
       }
@@ -358,7 +358,7 @@ export function ListingDetail({
       try {
         await takeHomeForTomorrow(id);
         setConfirmTakeHome(false);
-        show("Saved for tomorrow — thanks for keeping it safe. 🌙");
+        show("Saved for tomorrow. 🌙");
       } catch {
         show("This pickup is no longer active.");
       }
@@ -380,7 +380,7 @@ export function ListingDetail({
     startTransition(async () => {
       try {
         await respondToBuddyInvite(incomingInvite.id, false, id);
-        show("No worries — declined.");
+        show("No worries, declined.");
       } catch {
         show("This invite is no longer available.");
       }
@@ -403,10 +403,10 @@ export function ListingDetail({
         await releaseClaim(id);
         show(
           listing!.iAmBuddy
-            ? "Stepped off — your buddy still has it."
+            ? "Stepped off. Your buddy still has it."
             : listing!.buddyName
               ? `Handed off to ${listing!.buddyName}.`
-              : "Cancelled — back on the feed for someone else."
+              : "Cancelled. Back on the feed."
         );
         setConfirmCancel(false);
       } catch {
@@ -472,7 +472,7 @@ export function ListingDetail({
           </p>
           <p className="mt-1 text-[16px] text-rescued-800">
             <span className="font-medium">{incomingInvite.inviterName}</span>{" "}
-            invited you to buddy this pickup — do it together so neither of you
+            invited you to buddy this pickup. Do it together so neither of you
             has to flake.
           </p>
           <div className="mt-3 flex gap-2">
@@ -674,7 +674,7 @@ export function ListingDetail({
             />
             {listing.allergens?.length ? (
               <p className="mt-1.5 text-[14px] text-neutral-700">
-                Contains allergens — handle and label with care.
+                Contains allergens, handle and label with care.
               </p>
             ) : null}
 
@@ -767,7 +767,7 @@ export function ListingDetail({
                 (canClaim && activeElsewhere ? (
                   <div className="rounded-xl bg-neutral-100 px-4 py-3 text-[16px] text-neutral-700">
                     <p>
-                      One rescue at a time — you&apos;re already on{" "}
+                      One rescue at a time. You&apos;re already on{" "}
                       <span className="font-medium text-neutral-900">
                         {activeElsewhere.title}
                       </span>
@@ -786,12 +786,12 @@ export function ListingDetail({
                     {needsDropOff && (
                       <div id="dropoff-picker" className="mb-4">
                         <p className="mb-2.5 text-[15px] text-neutral-700">
-                          First, pick where you&apos;ll take it — every rescue
+                          First, pick where you&apos;ll take it, every rescue
                           starts with a destination.
                         </p>
                         {dropOffChoices.length === 0 ? (
                           <p className="rounded-xl bg-neutral-100 px-4 py-3 text-[16px] text-neutral-700">
-                            No drop-off can take this food right now — check
+                            No drop-off can take this food right now. Check
                             back soon.
                           </p>
                         ) : (
@@ -887,7 +887,7 @@ export function ListingDetail({
                         <span className="font-medium text-neutral-900">
                           {listing.dropOff}
                         </span>{" "}
-                        — the destination is already set for this rescue.
+                       , the destination is already set for this rescue.
                       </p>
                     )}
                     {/* Desktop's claim CTA. Below md the pinned bar at the
@@ -915,7 +915,7 @@ export function ListingDetail({
                   </>
                 ) : (
                   <p className="rounded-xl bg-neutral-100 px-4 py-3 text-[16px] text-neutral-700">
-                    Org admins oversee rescues — claiming is for volunteers.
+                    Claiming is for volunteers.
                   </p>
                 ))}
               {listing.status === "claimed" &&
@@ -978,7 +978,7 @@ export function ListingDetail({
                             You&apos;re on the way
                           </p>
                           <p className="mt-0.5 text-[15px] leading-relaxed text-neutral-700">
-                            Head to {listing.dropOff ?? "the drop-off"} — follow
+                            Head to {listing.dropOff ?? "the drop-off"}. Follow
                             the route on the map.
                             {dropOffOpen === false &&
                               " It's closed right now, so message ahead before you arrive."}
@@ -1005,7 +1005,7 @@ export function ListingDetail({
                           Take it home for tonight?
                         </p>
                         <p className="mt-0.5 text-[15px] text-transit-800/80">
-                          Keep it chilled and deliver it tomorrow — the rescue
+                          Keep it chilled and deliver it tomorrow, the rescue
                           still counts, and {listing.dropOff ?? "the drop-off"}{" "}
                           will know it&apos;s coming.
                         </p>
@@ -1120,7 +1120,7 @@ export function ListingDetail({
                     </svg>
                   </span>
                   <p className="mt-3 font-display text-lg font-medium text-neutral-900">
-                    Delivered — thank you
+                    Delivered, thank you
                   </p>
                   <p className="mt-1 text-[15px] text-neutral-700">
                     ~{listing.servings} servings reached{" "}
@@ -1215,7 +1215,7 @@ export function ListingDetail({
                   </p>
                   <p className="mt-0.5 text-[15px] text-failed-800/80">
                     {listing.iAmBuddy
-                      ? "You'll step off — your buddy keeps the pickup."
+                      ? "You'll step off. Your buddy keeps the pickup."
                       : listing.buddyName
                         ? `${listing.buddyName} will take over so the rescue still happens.`
                         : "It goes back on the feed so someone else can grab it."}

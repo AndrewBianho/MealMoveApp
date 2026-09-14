@@ -41,7 +41,7 @@ function guidance(step: OnboardingStep, source?: string): {
       };
     default:
       return {
-        line: "You've got the food. Drop it at the drop-off to close your first rescue.",
+        line: "You've got the food. Drop it off to finish.",
         cta: { label: "Finish your delivery" },
       };
   }

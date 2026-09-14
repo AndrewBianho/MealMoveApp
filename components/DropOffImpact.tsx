@@ -75,7 +75,7 @@ export function DropOffImpact({
               </svg>
             }
             title="No donations yet"
-            hint="Once food is delivered here, every completed drop-off is recorded on this page."
+            hint="Completed drop-offs are recorded here."
           />
         )}
       </div>

@@ -278,7 +278,7 @@ export function ImageUploadField({
       {queued && (
         <p className="mt-1.5 flex items-center gap-1.5 text-[14px] text-urgent-700">
           <span aria-hidden="true">⏳</span>
-          Saved — we&apos;ll upload it when you&apos;re back online. Your pickup is
+          Saved. We&apos;ll upload it when you&apos;re back online. Your pickup is
           safe.
         </p>
       )}

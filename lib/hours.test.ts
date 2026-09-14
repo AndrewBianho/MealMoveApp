@@ -137,7 +137,7 @@ test("validateDay flags inverted and overlapping windows, passes clean ones", ()
       { open: "09:00", close: "12:00" },
       { open: "11:00", close: "13:00" },
     ]),
-    "These hours overlap — adjust them"
+    "These hours overlap. Adjust them"
   );
 });
 

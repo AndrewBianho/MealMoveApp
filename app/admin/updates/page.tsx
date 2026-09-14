@@ -41,7 +41,7 @@ export default async function AdminUpdatesPage() {
           Updates
         </h1>
         <p className="mt-1 text-sm text-neutral-700">
-          Send a note to your volunteers — everyone, or a specific group.
+          Send a note to your volunteers.
         </p>
       </header>
 

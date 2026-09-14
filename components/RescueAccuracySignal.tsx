@@ -40,7 +40,7 @@ export function RescueAccuracySignal({
           Rescue accuracy
         </p>
         <p className="mt-1 text-[16px] text-neutral-800">
-          Thanks — you marked this <span className="font-semibold">{label?.toLowerCase()}</span>.
+          Thanks. You marked this <span className="font-semibold">{label?.toLowerCase()}</span>.
           It helps us keep pickups dependable.
         </p>
         <button
@@ -58,8 +58,7 @@ export function RescueAccuracySignal({
     <div className="rounded-2xl border border-neutral-200/60 bg-card p-4">
       <p className="text-[16px] font-semibold">How was this pickup?</p>
       <p className="text-[15px] text-neutral-700">
-        Was the food there and roughly as described? This stays private — it helps the
-        chapter, never a public score.
+        Was the food there and roughly as described? This stays private.
       </p>
 
       <div className="mt-3 flex flex-wrap gap-2">

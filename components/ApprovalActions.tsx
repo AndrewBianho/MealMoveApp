@@ -34,7 +34,7 @@ export function ApprovalActions({
   if (demo) {
     return (
       <span className="block text-right font-mono text-[11px] text-neutral-700">
-        Demo — approvals disabled
+        Demo, approvals disabled
       </span>
     );
   }

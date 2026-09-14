@@ -44,11 +44,10 @@ export function DonorProtectionNote({
         each donation and pickup to support that good-faith standard.
       </p>
       <p className="mt-3 rounded-md bg-neutral-100 px-3 py-2 font-mono text-[11px] text-neutral-700">
-        Placeholder — pending legal review
+        Placeholder, pending legal review
       </p>
       <p className="mt-3 text-[13px] leading-relaxed text-neutral-700">
-        This summary is informational only, not legal advice. The specific
-        protections, and any conditions, will be confirmed and finalized here.
+        Informational only, not legal advice.
       </p>
     </section>
   );

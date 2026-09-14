@@ -183,7 +183,7 @@ export function RetrievalHoursEditor({
                       <span key={i} className="inline-flex items-center gap-1.5">
                         <button
                           type="button"
-                          aria-label={`${DAY_LABELS[day]} window ${i + 1} opens — ${to12h(w.open)}`}
+                          aria-label={`${DAY_LABELS[day]} window ${i + 1} opens, ${to12h(w.open)}`}
                           onClick={() => openPicker(day, i, "open")}
                           className={timeButton}
                         >
@@ -194,7 +194,7 @@ export function RetrievalHoursEditor({
                         </span>
                         <button
                           type="button"
-                          aria-label={`${DAY_LABELS[day]} window ${i + 1} closes — ${to12h(w.close)}`}
+                          aria-label={`${DAY_LABELS[day]} window ${i + 1} closes, ${to12h(w.close)}`}
                           onClick={() => openPicker(day, i, "close")}
                           className={timeButton}
                         >
@@ -250,8 +250,7 @@ export function RetrievalHoursEditor({
         <div className="mt-4 flex items-start gap-2 rounded-xl border border-failed-200 bg-failed-50 px-3.5 py-3 text-[13px] font-semibold text-failed-600">
           <AlertTriangle className="mt-0.5 shrink-0 text-[15px]" />
           <span>
-            Some days have overlapping or invalid hours. Fix the highlighted days
-            to save.
+            Fix the highlighted days to save.
           </span>
         </div>
       )}

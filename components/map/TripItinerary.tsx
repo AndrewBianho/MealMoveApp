@@ -23,8 +23,8 @@ const OPTIONAL_ROWS: {
   label: string;
   prompt: string;
 }[] = [
-  { slot: "pickup", label: "Pickup", prompt: "Choose a pickup — tap a pin" },
-  { slot: "dropOff", label: "Drop-off", prompt: "Choose a drop-off — tap a pin" },
+  { slot: "pickup", label: "Pickup", prompt: "Choose a pickup. Tap a pin" },
+  { slot: "dropOff", label: "Drop-off", prompt: "Choose a drop-off. Tap a pin" },
   { slot: "end", label: "End", prompt: "Add a final destination (optional)" },
 ];
 

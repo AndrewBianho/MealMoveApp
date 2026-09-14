@@ -60,7 +60,7 @@ export default async function DropoffPage() {
       // the people who set the hours — so "are we currently listed as open"
       // is answered next to the name, not inferred from the editor below.
       badge={ownHours ? <OpenNowBadge hours={ownHours} /> : null}
-      subtitle="What you're in charge of — your opening times, your team, what you accept, and any notices for volunteers on their way."
+      subtitle="Your hours, team, what you accept, and notices for volunteers."
     >
       <div className="grid items-start gap-4 md:grid-cols-2 lg:gap-6">
         <SettingsCard title="What you accept">
@@ -80,7 +80,7 @@ export default async function DropoffPage() {
             members={members}
             invites={invites}
             title="Your team"
-            description="Everyone here manages this drop-off together. Invite a teammate to add another account for this location."
+            description="Invite a teammate to add another account for this location."
             demo={demo}
           />
         )}

@@ -162,7 +162,7 @@ test("startDeliveryWithPhotoFor: no drop-off notice when none is assigned yet, b
   });
   assert.equal(notices.length, 0);
   assert.equal(calls.messages.length, 1);
-  assert.match(calls.messages[0].body, /Picked up — on the way now/);
+  assert.match(calls.messages[0].body, /Picked up, on the way now/);
 });
 
 test("markDeliveredWithPhotoFor: stores the delivery photo, stamps deliveredAt, completes", async () => {

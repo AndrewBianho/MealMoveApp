@@ -83,7 +83,7 @@ export default async function RestaurantPage() {
       <header className="mb-6">
         <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">Post surplus</h1>
         <p className="mt-1 text-sm text-neutral-700">
-          Share tonight&apos;s extra food — as a one-off or on a standing schedule.
+          Share tonight&apos;s extra food, as a one-off or on a standing schedule.
         </p>
       </header>
 
@@ -103,7 +103,7 @@ export default async function RestaurantPage() {
             <TeamPanel
               members={members}
               invites={invites}
-              description="Everyone here manages this restaurant together — listings, photos, and pickups are shared."
+              description="Listings, photos, and pickups are shared."
               demo={demo}
             />
           </div>

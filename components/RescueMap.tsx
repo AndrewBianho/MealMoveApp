@@ -548,8 +548,8 @@ export function RescueMap({
         if (!auto) {
           setGeoError(
             err.code === err.PERMISSION_DENIED
-              ? "Location permission was denied — enter an address instead."
-              : "Couldn't get your location — enter an address instead."
+              ? "Location denied. Enter an address instead."
+              : "Couldn't get your location. Enter an address instead."
           );
         }
       },

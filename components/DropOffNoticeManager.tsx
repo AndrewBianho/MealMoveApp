@@ -134,7 +134,7 @@ export function DropOffNoticeManager({
             rows={2}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="e.g. Closing at 6 PM today for a building event — please arrive before then."
+            placeholder="e.g. Closing at 6 PM today, please arrive before then."
             className={fieldCls}
           />
           <label className="block">

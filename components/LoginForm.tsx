@@ -67,7 +67,7 @@ export function LoginForm() {
       res = await signIn("credentials", { email: emailArg, password: passwordArg, redirect: false });
     } catch {
       setLoading(false);
-      setError("We're having trouble signing you in right now. Please try again in a moment.");
+      setError("Trouble signing you in. Try again in a moment.");
       return;
     }
     if (res?.error) {
@@ -76,7 +76,7 @@ export function LoginForm() {
       setError(
         wrongCredentials
           ? "That email and password don't match. Try again."
-          : "We're having trouble signing you in right now. Please try again in a moment."
+          : "Trouble signing you in. Try again in a moment."
       );
       return;
     }

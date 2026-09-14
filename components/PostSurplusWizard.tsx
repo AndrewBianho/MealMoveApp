@@ -67,7 +67,7 @@ function minutesUntilEndOfDay(): number {
 const KEEPS = [
   { key: "refrigerated", label: "Refrigerated", hint: "Keep cold (≤40°F)", temp: "cold", icon: Snowflake },
   { key: "frozen", label: "Frozen", hint: "Keep frozen", temp: "cold", icon: Snowflake },
-  { key: "hot", label: "Hot — kept warm", hint: "Keep hot (≥140°F)", temp: "hot", icon: Flame },
+  { key: "hot", label: "Hot, kept warm", hint: "Keep hot (≥140°F)", temp: "hot", icon: Flame },
   { key: "room", label: "Room temp", hint: "Shelf-stable", temp: "ambient", icon: Thermometer },
 ] as const;
 type KeepKey = (typeof KEEPS)[number]["key"] | "";
@@ -290,10 +290,10 @@ export function PostSurplusWizard({
         {step === 4 && <KeepStep value={keep} onChange={setKeep} />}
         {step === 5 && (
           <div>
-            <StepHeading title="Add a photo?" sub="A clear photo helps a volunteer recognize the food. Optional — your restaurant photo is the fallback." />
+            <StepHeading title="Add a photo?" sub="Optional. Your restaurant photo is the fallback." />
             <ImageUploadField
               label="Food photo"
-              hint="Take a photo or upload one — JPG/PNG, up to 5 MB."
+              hint="Take a photo or upload one, JPG/PNG, up to 5 MB."
               value={foodImage}
               onChange={setFoodImage}
             />
@@ -426,7 +426,7 @@ function QuantityStep({
 }) {
   return (
     <div>
-      <StepHeading title="How much is there?" sub="Give the total weight — we'll suggest how many cars it takes to carry." />
+      <StepHeading title="How much is there?" sub="We'll suggest how many cars it takes." />
       <div className="space-y-5">
         <Stepper
           label="Weight (lbs)"
@@ -514,7 +514,7 @@ function DetailsStep({
             value={allergens}
             onChange={(e) => setAllergens(e.target.value)}
           />
-          <p className="mt-1.5 text-[11px] text-neutral-700">Comma-separated — shown to volunteers.</p>
+          <p className="mt-1.5 text-[11px] text-neutral-700">Comma-separated, shown to volunteers.</p>
         </div>
         <div>
           <label className={labelCls} htmlFor="special">
@@ -537,7 +537,7 @@ function DetailsStep({
 function KeepStep({ value, onChange }: { value: KeepKey; onChange: (v: KeepKey) => void }) {
   return (
     <div>
-      <StepHeading title="How should it be kept?" sub="Optional — helps a volunteer bring the right bag." />
+      <StepHeading title="How should it be kept?" sub="Optional. Helps a volunteer bring the right bag." />
       <div className="space-y-2.5">
         {KEEPS.map((k) => {
           const Icon = k.icon;

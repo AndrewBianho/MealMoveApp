@@ -78,7 +78,7 @@ export function PickupTimelineCard({
     : delivered
       ? "Delivered to"
       : heldOvernight
-        ? "Held overnight — deliver to"
+        ? "Held overnight. Deliver to"
         : status === "in transit"
           ? "On the way to"
           : "For";
@@ -205,13 +205,13 @@ export function PickupTimelineCard({
           ) : delivered ? (
             <p className="flex items-center justify-center gap-2 rounded-2xl bg-rescued-50 px-4 py-2.5 text-[15px] font-semibold text-rescued-800">
               <Check className="h-3.5 w-3.5" />
-              Delivered — thank you
+              Delivered, thank you
             </p>
           ) : (
             <p className="flex items-center justify-center gap-2 rounded-2xl bg-neutral-100 px-4 py-2.5 text-[15px] font-medium text-neutral-700">
               {status === "expired"
                 ? "This one closed before it could be rescued."
-                : "This one didn't make it — thanks for trying."}
+                : "This one didn't make it."}
             </p>
           )}
         </div>

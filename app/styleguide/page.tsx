@@ -54,14 +54,13 @@ export default function StyleGuidePage() {
         </p>
         <h1 className="mt-2 text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">Style guide</h1>
         <p className="mt-2 max-w-xl text-sm text-neutral-700">
-          Every element below is a real React component built against the tokens
-          in tailwind.config.ts.
+          Real components, built against the tokens in tailwind.config.ts.
         </p>
       </header>
 
       <Section
         title="Status badges"
-        hint="Mono, sentence case, the status color as text — no dot, no filled pill. The word names the status; color reinforces."
+        hint="Mono, sentence case, the status color as text. No dot, no filled pill. The word names the status; color reinforces."
       >
         <div className="flex flex-wrap gap-2 rounded-xl border border-neutral-200/40 bg-card p-5">
           {STATUSES.map((s) => (
@@ -72,7 +71,7 @@ export default function StyleGuidePage() {
 
       <Section
         title="Buttons"
-        hint="Primary, secondary, danger, ghost. Focus ring only — no shadows."
+        hint="Primary, secondary, danger, ghost. Focus ring only."
       >
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-neutral-200/40 bg-card p-5">
           <Button variant="primary">Claim pickup</Button>
@@ -84,7 +83,7 @@ export default function StyleGuidePage() {
 
       <Section
         title="Listing cards"
-        hint="Volunteer view. Claimable food (open) sits up top; everything that can't be claimed — claimed, in transit, or closed — drops into its own subsection. Urgency chip pairs icon + minutes (never hue alone): tomato under 10 min with a pulse, honey under 35, sage otherwise; neutral 'closed' when spent. The closing-soon open card is featured across two columns."
+        hint="Volunteer view. Claimable food (open) sits up top; everything that can't be claimed. Claimed, in transit, or closed, drops into its own subsection. Urgency chip pairs icon + minutes (never hue alone): tomato under 10 min with a pulse, honey under 35, sage otherwise; neutral 'closed' when spent. The closing-soon open card is featured across two columns."
       >
         <div className="space-y-8">
           <div>
@@ -163,7 +162,7 @@ export default function StyleGuidePage() {
 
         <Section
           title="Reliability meter"
-          hint="Non-punitive — a bar and a percentage, never a grade."
+          hint="A bar and a percentage, never a grade."
         >
           <div className="space-y-4 rounded-xl border border-neutral-200/40 bg-card p-5">
             <ReliabilityMeter name="Marcus L." pct={94} />
@@ -174,7 +173,7 @@ export default function StyleGuidePage() {
 
         <Section
           title="Personal harvest"
-          hint="A volunteer's own numbers as one statement, not a row of equal metric cards. The app's one committed-colour surface. A first-timer gets the invitation instead of a drenched zero."
+          hint="A volunteer's own numbers as one statement, not a row of metric cards."
         >
           <div className="max-w-3xl space-y-4">
             <PersonalHarvest
@@ -204,7 +203,7 @@ export default function StyleGuidePage() {
 
         <Section
           title="Claim confirmed"
-          hint="The acknowledgment at claim — the quiet bookend to the delivery celebration. Same journey line, same sage, but a panel rather than a modal."
+          hint="The acknowledgment at claim. A panel, not a modal."
         >
           <ClaimConfirmedPanel
             source="Sunrise Bakery"
@@ -214,7 +213,7 @@ export default function StyleGuidePage() {
 
         <Section
           title="Trip planner"
-          hint="The rescue map's itinerary and location search. Fixed slots — start, pickup, drop-off, end — filled by tapping pins on the real map; the ranked candidates hang off whichever slot is still empty. Type 'sun' in the field to see on-map locations rank above addresses."
+          hint="The rescue map's itinerary and location search. Fixed slots. Start, pickup, drop-off, end, filled by tapping pins on the real map; the ranked candidates hang off whichever slot is still empty. Type 'sun' in the field to see on-map locations rank above addresses."
         >
           <MapPlannerDemo />
         </Section>

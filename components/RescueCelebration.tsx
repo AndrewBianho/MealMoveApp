@@ -134,8 +134,8 @@ export function RescueCelebration({
 
         <p className="mt-5 text-[16px] leading-relaxed text-neutral-700">
           {firstRescue
-            ? "That was your first rescue — welcome to the crew. Food that was headed for the bin is on its way to plates instead."
-            : "Food that was headed for the bin is on its way to plates instead. Thank you for showing up."}
+            ? "That was your first rescue. Welcome to the crew."
+            : "Food that was headed for the bin is on its way to plates instead."}
         </p>
 
         <div className="mt-6 border-t border-neutral-200/60 pt-5">

@@ -98,10 +98,10 @@ export default async function FeedPage({
         </h1>
         <p className="mt-2 text-[16px] font-medium text-neutral-700">
           {current
-            ? "Browsing while you finish the one you're on — deliver or release it to claim another."
+            ? "Finish the one you're on to claim another."
             : openNow > 0
               ? `${openNow} surplus ${openNow === 1 ? "meal" : "meals"} near you, ready to rescue.`
-              : "No open pickups right now — new surplus posts throughout the evening."}
+              : "No open pickups right now."}
         </p>
       </header>
 
@@ -145,7 +145,7 @@ export default async function FeedPage({
             </span>
           </div>
           <p className="mb-3.5 text-[16px] text-neutral-700">
-            Someone asked you to join their rescue — open one to accept.
+            Open one to accept.
           </p>
           <div className="flex flex-col gap-6">
             {invited.map((l) => (

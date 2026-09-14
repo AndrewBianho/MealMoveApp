@@ -87,7 +87,7 @@ export default async function AdminPartnersPage() {
           Partner notes
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-700">
-          Who to call and what&apos;s quirky about each restaurant and drop-off — the
+          Who to call and what&apos;s quirky about each restaurant and drop-off, the
           relationship know-how that keeps running after this year&apos;s leaders graduate.
           Internal only; never shown to volunteers.
         </p>

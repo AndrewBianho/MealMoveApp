@@ -75,7 +75,7 @@ export function RestaurantPostHub({
         </p>
         <ImageUploadField
           label="Default photo"
-          hint="Take a photo or upload one — JPG/PNG, up to 5 MB."
+          hint="Take a photo or upload one, JPG/PNG, up to 5 MB."
           value={restaurantImageUrl}
           onChange={saveDefaultImage}
         />

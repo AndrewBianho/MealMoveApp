@@ -104,7 +104,7 @@ export function DropOffConstraintsEditor({
         </div>
         {state.categories.length === 0 && (
           <p className="mt-2 text-xs text-neutral-700">
-            Nothing selected — volunteers can&apos;t be routed here until you accept
+            Nothing selected, volunteers can&apos;t be routed here until you accept
             at least one food type.
           </p>
         )}

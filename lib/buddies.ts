@@ -197,7 +197,7 @@ export async function respondToInviteFor(
   });
   if (elsewhere) {
     throw new Error(
-      "One rescue at a time — finish or release your current pickup before joining another."
+      "One rescue at a time, finish or release your current pickup before joining another."
     );
   }
 

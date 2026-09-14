@@ -121,8 +121,7 @@ export function RestaurantListings({
             <span className="font-mono text-xs text-neutral-700">{shownUpcoming.length}</span>
           </div>
           <p className="mb-4 text-sm text-neutral-700">
-            From your recurring schedule — each opens to the volunteer feed at
-            its listed time.
+            Each opens to the volunteer feed at its listed time.
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             {shownUpcoming.map((l) => (

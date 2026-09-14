@@ -459,7 +459,7 @@ export function RecurringPostManager({
       startTransition(async () => {
         const res = await createRecurringPost({ restaurantId, ...values });
         if (res.ok) {
-          show(`Scheduled “${values.title}” — upcoming pickups are on the feed.`);
+          show(`Scheduled “${values.title}”, upcoming pickups are on the feed.`);
           setAdding(false);
         } else {
           show(res.error);
@@ -476,8 +476,7 @@ export function RecurringPostManager({
         Recurring posts
       </h2>
       <p className="mb-4 text-sm text-neutral-700">
-        Set surplus that repeats — daily, weekly, or on the days you choose.
-        Volunteers see each pickup ahead of time and can claim it once it opens.
+        Surplus that repeats daily, weekly, or on the days you choose.
       </p>
 
       {/* Existing schedules */}
@@ -560,8 +559,8 @@ export function RecurringPostManager({
                           onClick={() => togglePaused(s)}
                           aria-label={
                             s.active
-                              ? `Pause ${s.title} — stop generating pickups`
-                              : `Resume ${s.title} — start generating pickups`
+                              ? `Pause ${s.title}. Stop generating pickups`
+                              : `Resume ${s.title}. Start generating pickups`
                           }
                           title={s.active ? "Pause" : "Resume"}
                           className={cn(

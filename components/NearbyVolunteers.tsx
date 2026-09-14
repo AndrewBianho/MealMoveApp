@@ -38,7 +38,7 @@ export function NearbyVolunteers({
             Nearby
           </span>
         ) : (
-          <span>none nearby yet — a longer window helps</span>
+          <span>none nearby yet, a longer window helps</span>
         )}
       </p>
     );
@@ -59,7 +59,7 @@ export function NearbyVolunteers({
       <p className="mt-1 text-[13px] leading-relaxed text-neutral-700">
         {some
           ? "Good chance someone claims this soon after you post."
-          : "Posting a longer pickup window — or trying again a little later — gives more people a chance to claim it."}
+          : "A longer pickup window gives more people a chance to claim it."}
       </p>
     </div>
   );

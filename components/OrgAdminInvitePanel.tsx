@@ -103,7 +103,7 @@ export function OrgAdminInvitePanel({
       {demo && (
         <div className="mb-4 rounded-xl border border-transit-200/60 bg-transit-50 px-4 py-3 text-sm text-transit-800">
           You&apos;re exploring in demo mode. Generating and revoking invites is
-          disabled here so the showcase can&apos;t create real accounts — switch
+          disabled here so the showcase can&apos;t create real accounts. Switch
           to your real account to invite an org admin.
         </div>
       )}
@@ -202,7 +202,7 @@ export function OrgAdminInvitePanel({
       {link && (
         <div className="mt-4 rounded-xl border border-rescued-200/60 bg-rescued-50 p-3.5 sm:max-w-md">
           <p className="mb-2 font-mono text-[11px] text-rescued-800">
-            Copy this now — it won&apos;t be shown again.
+            Copy this now. It won&apos;t be shown again.
           </p>
           <div className="flex items-center gap-2">
             <input

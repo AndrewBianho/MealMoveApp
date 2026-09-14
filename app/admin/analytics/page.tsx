@@ -153,7 +153,7 @@ export default async function AnalyticsPage({
           Analytics
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-700">
-          How much food moves and how reliably — the bottlenecks public impact
+          How much food moves and how reliably, the bottlenecks public impact
           numbers don&apos;t show. Internal only.
         </p>
       </header>
@@ -265,7 +265,7 @@ export default async function AnalyticsPage({
             {selectedOrgName} reliability
           </h2>
           <p className="mb-4 font-mono text-[11px] text-neutral-700">
-            a bar and a percentage, never a grade — who needs support, not who to
+            a bar and a percentage, never a grade, who needs support, not who to
             shame
           </p>
           {orgReliability.length > 0 ? (
@@ -281,7 +281,7 @@ export default async function AnalyticsPage({
             </div>
           ) : (
             <p className="text-sm text-neutral-700">
-              No pickups yet — reliability appears once volunteers start claiming.
+              No pickups yet.
             </p>
           )}
         </section>
@@ -294,7 +294,7 @@ export default async function AnalyticsPage({
         </p>
         {funnelTotal === 0 ? (
           <p className="mt-4 text-sm text-neutral-700">
-            No claims in this window yet — nothing to chart.
+            No claims in this window yet.
           </p>
         ) : (
           <div className="mt-5 space-y-4">

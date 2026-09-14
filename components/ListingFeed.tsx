@@ -535,7 +535,7 @@ export function ListingFeed({
         </svg>
       }
       title={`No ${filter === "all" ? "" : `${filter} `}listings right now`}
-      hint="Check back soon — new rescues post throughout the evening."
+      hint="Check back soon, new rescues post throughout the evening."
     />
   );
 
@@ -557,8 +557,7 @@ export function ListingFeed({
         <section>
           <SectionHeader title="Coming up" count={comingUpScheduleCount} />
           <p className="-mt-2 mb-3.5 text-[16px] text-neutral-700">
-            Scheduled pickups you can plan around — each opens to claim at its
-            listed time.
+            Each opens to claim at its listed time.
           </p>
           <ComingUpStack listings={comingUp} />
         </section>
