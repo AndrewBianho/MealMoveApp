@@ -36,7 +36,7 @@ export default async function UpdatesPage() {
 
       {updates.length === 0 ? (
         <p className="text-[16px] text-neutral-700">
-          No updates yet — you&apos;re all caught up.
+          No updates yet. You&apos;re all caught up.
         </p>
       ) : (
         // Two columns past lg: an update body stays at a comfortable measure

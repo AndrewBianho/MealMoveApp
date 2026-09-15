@@ -210,7 +210,7 @@ export function AnnouncementComposer({ anchors }: { anchors: AnchorOption[] }) {
           <div className="mt-3 space-y-2">
             {anchors.length === 0 ? (
               <p className="text-sm text-neutral-700">
-                No locations yet — add a restaurant or drop-off first.
+                Add a restaurant or drop-off first.
               </p>
             ) : (
               <>
@@ -242,10 +242,10 @@ export function AnnouncementComposer({ anchors }: { anchors: AnchorOption[] }) {
           {reach === null
             ? "Counting…"
             : reach === "error"
-              ? "Couldn't check this group — try again."
+              ? "Couldn't check this group. Try again."
               : reach === 0
                 ? "No volunteers match this group right now."
-                : `This will reach ${reach} volunteer${reach === 1 ? "" : "s"} — ${reachLabel}.`}
+                : `This will reach ${reach} volunteer${reach === 1 ? "" : "s"}, ${reachLabel}.`}
         </p>
       </div>
 
@@ -274,7 +274,7 @@ export function AnnouncementComposer({ anchors }: { anchors: AnchorOption[] }) {
       </label>
 
       <p className="mt-2 text-[13px] text-neutral-700">
-        Write warmly — volunteers are people doing a favor, not workers being policed.
+        Volunteers are people doing a favor.
       </p>
 
       {confirming ? (

@@ -47,8 +47,6 @@ import {
   emailTaken,
 } from "@/lib/orgAdminInvite";
 
-const HOLD_MINUTES = 15;
-
 type SignUpResult =
   | { ok: true; pending?: boolean }
   | { ok: false; error: string };
@@ -61,7 +59,7 @@ type SignUpResult =
 // writes outright while in demo mode rather than let a demo session touch real
 // people's accounts.
 const DEMO_BLOCKED =
-  "This is a demo account — it can explore the app, but can't change live chapter data.";
+  "This is a demo account. It can explore the app, but can't change live chapter data.";
 
 async function blockIfDemo(): Promise<{ ok: false; error: string } | null> {
   return (await isDemo()) ? { ok: false, error: DEMO_BLOCKED } : null;
@@ -436,7 +434,7 @@ export async function createOrgAdminInvite(input: {
 
   const origin = await requestOrigin();
   if (!origin) {
-    return { ok: false, error: "Server misconfigured (APP_URL unset) — can't build a link." };
+    return { ok: false, error: "Server misconfigured (APP_URL unset). Can't build a link." };
   }
 
   const { raw, hash } = mintToken();
@@ -619,7 +617,7 @@ export async function requestPasswordReset(
       // No safe origin (APP_URL unset in production): don't email a header-derived
       // link. The token simply goes unused and expires.
       console.error(
-        "[password-reset] APP_URL is not set — skipping email to avoid an unsafe reset link."
+        "[password-reset] APP_URL is not set, skipping email to avoid an unsafe reset link."
       );
     }
   }
@@ -684,7 +682,8 @@ function refreshViews(listingId?: string) {
 
 /**
  * Claim an open listing. A transaction guards against volunteers over-filling
- * the listing, and stamps a 15-minute hold the expiry cron enforces. A listing
+ * the listing. The claim has no deadline of its own — it stands until the
+ * volunteer delivers it or releases it by hand. A listing
  * that needs several cars (carsNeeded) takes one claim per volunteer and only
  * leaves the open feed once enough people have claimed.
  *
@@ -737,7 +736,7 @@ export async function claimListing(listingId: string, dropOffId?: string) {
     const active = await findActiveClaimFor(tx, volunteerId, listingId);
     if (active) {
       throw new Error(
-        `One rescue at a time — you're already on "${active.title}". Deliver or release it first.`
+        `One rescue at a time. You're already on "${active.title}". Deliver or release it first.`
       );
     }
     // Resolve the destination. Once set (by the first car, or a legacy row) it
@@ -757,17 +756,11 @@ export async function claimListing(listingId: string, dropOffId?: string) {
         throw new Error(`${dropOff.name} can't take ${listing.category} food.`);
       }
       if (listing.perishable && !dropOff.refrigerated) {
-        throw new Error(`${dropOff.name} isn't refrigerated — this food needs cold storage.`);
+        throw new Error(`${dropOff.name} isn't refrigerated. This food needs cold storage.`);
       }
       chosenDropOffId = dropOff.id;
     }
-    await tx.pickup.create({
-      data: {
-        listingId,
-        volunteerId,
-        holdUntil: new Date(Date.now() + HOLD_MINUTES * 60_000),
-      },
-    });
+    await tx.pickup.create({ data: { listingId, volunteerId } });
     // Stamp the destination; only the claim that fills the last car seat closes
     // the listing — until then it stays open so the remaining cars can still be
     // claimed (delivering to the same drop-off).

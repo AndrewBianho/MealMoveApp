@@ -216,7 +216,7 @@ export default async function MemberDetailPage(
             </>
           ) : (
             <p className="text-[16px] text-neutral-700">
-              No donations yet — stats appear once this restaurant&apos;s posts
+              No donations yet. Stats appear once this restaurant&apos;s posts
               are rescued.
             </p>
           )}
@@ -224,7 +224,7 @@ export default async function MemberDetailPage(
             <section className="max-w-md rounded-2xl border border-neutral-200/40 bg-card p-5 shadow-card">
               <h2 className="mb-2 text-lg font-medium">Pickup accuracy</h2>
               <p className="mb-3 text-[14px] text-neutral-700">
-                How often pickups were there and as described — an internal
+                How often pickups were there and as described, an internal
                 signal, never a public grade.
               </p>
               <RestaurantAccuracySummary data={accuracy} />

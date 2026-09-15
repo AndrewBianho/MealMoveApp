@@ -41,8 +41,7 @@ export default async function ProfilePage() {
           Your profile
         </h1>
         <p className="mt-1 text-[16px] text-neutral-700">
-          How you show up on Meal Move — your name and photo appear to the
-          people you coordinate a rescue with.
+          Your name and photo appear to the people you coordinate a rescue with.
         </p>
       </header>
 

@@ -22,14 +22,14 @@ export default async function AdminReliabilityPage() {
         </h1>
         <p className="mt-1 max-w-2xl text-sm text-neutral-700">
           How often pickups were there and as described, from volunteers. This is
-          an internal operations signal — keep it private; it&apos;s never shown
+          an internal operations signal. Keep it private; it&apos;s never shown
           publicly or used to rank partners.
         </p>
       </header>
 
       {rows.length === 0 ? (
         <p className="text-sm text-neutral-700">
-          No accuracy signals yet — they appear here as volunteers complete pickups.
+          No accuracy signals yet.
         </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

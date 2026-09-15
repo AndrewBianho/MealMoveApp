@@ -88,7 +88,7 @@ export function TeamPanel({
 
       {demo ? (
         <p className="rounded-md bg-neutral-100 px-3 py-2 font-mono text-[11px] text-neutral-700">
-          demo — inviting teammates is disabled
+          demo. Inviting teammates is disabled
         </p>
       ) : (
         <form onSubmit={onInvite} className="flex gap-2">

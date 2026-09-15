@@ -19,7 +19,7 @@ const CONTACT_EMAIL = "support@mealmove.org";
 const EFFECTIVE_DATE = "June 16, 2026";
 
 export const metadata: Metadata = {
-  title: "Privacy policy — Meal Move",
+  title: "Privacy policy · Meal Move",
   description:
     "How Meal Move collects, uses, and protects your information.",
 };

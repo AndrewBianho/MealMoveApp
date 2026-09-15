@@ -188,7 +188,7 @@ export function SignupForm() {
     return (
       <SuccessPanel
         heading="You're all set"
-        message="Welcome to Meal Move — taking you to your dashboard…"
+        message="Welcome to Meal Move."
       >
         <p className="mt-5 text-[16px]">
           <BackToSignIn />
@@ -208,7 +208,7 @@ export function SignupForm() {
           <CheckIcon className="h-7 w-7" />
         </div>
         <h2 className="mt-4 font-display text-2xl font-bold text-neutral-900">
-          Thanks — you&apos;re almost in
+          Thanks. You&apos;re almost in
         </h2>
         <p className="mx-auto mt-1.5 max-w-[36ch] text-[16px] leading-relaxed text-neutral-700">
           {ROLE_LABEL[role]} accounts are confirmed by an org admin before they go
@@ -217,7 +217,7 @@ export function SignupForm() {
             {email.trim().toLowerCase()}
           </span>{" "}
           once <span className="font-semibold text-neutral-900">{orgName}</span> is
-          approved — then you can sign in and get started.
+          approved, then you can sign in and get started.
         </p>
         <p className="mt-5 text-[16px]">
           <BackToSignIn />
@@ -276,7 +276,7 @@ export function SignupForm() {
                 onChange={setPhone}
               />
               <p className="mt-1.5 font-mono text-[13px] leading-relaxed text-neutral-700">
-                Only used to coordinate pickups — never shared with admins.
+                Never shown to admins.
               </p>
             </div>
           </>
@@ -402,7 +402,7 @@ function stepCopy(
       return { title: "Create your login", sub: "You'll use these every time you sign in." };
     case 3:
       if (invite)
-        return { title: `Join ${invite.orgName}`, sub: "You were invited — we'll add you to the team." };
+        return { title: `Join ${invite.orgName}`, sub: "You were invited to the team." };
       if (role === "restaurant")
         return { title: "Your restaurant", sub: "Where volunteers will pick up surplus." };
       if (role === "drop_off")
@@ -477,7 +477,7 @@ function RoleSpecificStep(props: {
         You&apos;ve been invited to join{" "}
         <span className="font-semibold">{props.invite.orgName}</span>{" "}
         {props.invite.role === "restaurant" ? "as a restaurant teammate" : "as a drop-off teammate"}.
-        Creating your account adds you to the team — no extra details needed.
+        Creating your account adds you to the team. No extra details needed.
       </div>
     );
   }

@@ -64,9 +64,9 @@ interface Located {
  * concerns: localStorage, and knowing which entity ids currently exist so a
  * stored trip pointing at a vanished listing hydrates to an empty slot.
  *
- * `hydrated` starts false and flips after the mount effect, mirroring the
- * pattern ClaimHoldPanel uses for its clock: the server render and first client
- * render must agree, so nothing storage-dependent is read during render.
+ * `hydrated` starts false and flips after the mount effect: the server render
+ * and first client render must agree, so nothing storage-dependent is read
+ * during render.
  */
 export function useTripPlan({
   restaurants,

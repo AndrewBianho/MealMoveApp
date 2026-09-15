@@ -37,7 +37,7 @@ export function SafetyChecklist({
             </span>
           </p>
           <p className="text-[15px] text-neutral-700">
-            Tick what applies — it travels with the pickup.
+            Travels with the pickup.
           </p>
         </div>
         <button

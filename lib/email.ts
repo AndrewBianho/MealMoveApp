@@ -35,7 +35,7 @@ export function absoluteUrl(path: string): string {
   // in emails (they open in no browser context). Warn so the misconfiguration is
   // visible at send time rather than when a recipient clicks a broken link.
   if (!base) {
-    console.warn("[email] APP_URL is not set — email links will be relative and may not work.");
+    console.warn("[email] APP_URL is not set, email links will be relative and may not work.");
   }
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
@@ -99,7 +99,7 @@ export async function sendPasswordResetEmail(
         `If this wasn't you, you can safely ignore this email.`,
       html:
         `<p>Someone asked to reset the password for this Meal Move account.</p>` +
-        `<p><a href="${link}">Reset your password</a> — the link expires in 1 hour.</p>` +
+        `<p><a href="${link}">Reset your password</a>, the link expires in 1 hour.</p>` +
         `<p>If this wasn't you, you can safely ignore this email.</p>`,
     });
   } catch (e) {

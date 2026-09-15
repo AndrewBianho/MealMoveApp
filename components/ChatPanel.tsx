@@ -138,8 +138,7 @@ export function ChatPanel({
       <div ref={listRef} className="mb-3 max-h-72 space-y-3 overflow-y-auto">
         {messages.length === 0 ? (
           <p className="text-[15px] text-neutral-700">
-            No messages yet. Say hello — the restaurant and drop-off can see this
-            too.
+            No messages yet. The restaurant and drop-off can see this too.
           </p>
         ) : (
           messages.map((m) => {

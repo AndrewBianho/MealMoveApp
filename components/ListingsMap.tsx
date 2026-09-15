@@ -447,7 +447,7 @@ export function ListingsMap({
         el.setAttribute("role", "button");
         el.setAttribute(
           "aria-label",
-          `Pickup: ${l.title}, ${l.source} — ~${l.servings} servings, ${l.status}`
+          `Pickup: ${l.title}, ${l.source}, ~${l.servings} servings, ${l.status}`
         );
         const popup = new mapboxgl.Popup({ offset: 16, closeButton: false }).setHTML(
           popupHtml(l)

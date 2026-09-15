@@ -103,8 +103,8 @@ export default async function ImpactPage() {
     : isVolunteer
       ? "The pickups behind your numbers."
       : isDropOff
-        ? "What your location has received, and the donations behind it."
-        : "Every number here is food that reached people instead of the bin.";
+        ? "What your location has received."
+        : "Food that reached people instead of the bin.";
 
   // Chapter stats arrive food-first (meals, lbs, hours), then the operation.
   const foodMoved = stats.slice(0, 3);
@@ -170,8 +170,7 @@ export default async function ImpactPage() {
                   />
                 ) : (
                   <p className="text-[16px] text-neutral-700">
-                    No completed pickups yet — your finished rescues will
-                    collect here.
+                    No completed pickups yet.
                   </p>
                 )}
               </section>
@@ -228,7 +227,7 @@ export default async function ImpactPage() {
                 Volunteer reliability
               </h2>
               <p className="mb-4 text-[16px] text-neutral-700">
-                A bar and a percentage — never a grade. We surface who needs
+                A bar and a percentage. Never a grade. We surface who needs
                 support, not who to shame. Visible to org admins only.
               </p>
               {volunteers.length > 0 ? (
@@ -244,8 +243,7 @@ export default async function ImpactPage() {
                 </div>
               ) : (
                 <p className="text-[16px] text-neutral-700">
-                  No pickups yet — reliability appears once volunteers start
-                  claiming.
+                  No pickups yet.
                 </p>
               )}
             </section>

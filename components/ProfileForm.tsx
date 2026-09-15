@@ -118,7 +118,7 @@ export function ProfileForm({
           className={`${inputCls} cursor-not-allowed bg-neutral-100 text-neutral-700`}
         />
         <p id="profile-email-note" className="mt-1.5 text-[14px] text-neutral-700">
-          Your email is how you sign in — reach an org admin to change it.
+          Reach an org admin to change it.
         </p>
       </div>
 

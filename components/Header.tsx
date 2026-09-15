@@ -61,7 +61,7 @@ export async function Header() {
           // reads without relying on color.
           <Link
             href="/settings"
-            title="You're viewing demo data — change in Settings"
+            title="You're viewing demo data, change in Settings"
             className="inline-flex items-center gap-1.5 rounded-full border border-neutral-200 bg-neutral-100 py-1.5 pl-2 pr-2.5 font-mono text-[11px] leading-none text-neutral-700 transition-colors hover:border-neutral-300 hover:bg-neutral-200 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400 focus-visible:ring-offset-1 focus-visible:ring-offset-neutral-50"
           >
             <svg

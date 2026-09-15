@@ -114,7 +114,7 @@ export function buildBroadcastPayload(push: BroadcastPush): NotifyPayload {
     body: `${servings} · about ${mins} min left. Tap to claim it.`,
     url: `/listings/${push.listingId}`,
     email: {
-      subject: `${lead} — "${push.listingTitle}" needs a rescue`,
+      subject: `${lead}, "${push.listingTitle}" needs a rescue`,
       html:
         `<p>"${title}" (${servings}) has about ${mins} minutes left before its ` +
         `pickup window closes. If you can grab it, tap below to claim it.</p>` +
@@ -174,8 +174,8 @@ export function buildRestaurantRescuePayload(
     case "claimed":
       if (multiCar) {
         pushTitle = "Your pickup was claimed";
-        pushBody = `"${raw}" — ${notice.carsClaimed} of ${notice.carsNeeded} cars claimed.`;
-        bodyHtml = `"${title}" — ${notice.carsClaimed} of ${notice.carsNeeded} cars claimed.`;
+        pushBody = `"${raw}", ${notice.carsClaimed} of ${notice.carsNeeded} cars claimed.`;
+        bodyHtml = `"${title}", ${notice.carsClaimed} of ${notice.carsNeeded} cars claimed.`;
       } else {
         pushTitle = "Someone's coming for your pickup";
         pushBody = `A volunteer claimed "${raw}" and is on their way.`;
@@ -189,8 +189,8 @@ export function buildRestaurantRescuePayload(
       break;
     case "fell_through":
       pushTitle = "Your pickup is open again";
-      pushBody = `The volunteer for "${raw}" couldn't make it — it's back open and we're finding someone new.`;
-      bodyHtml = `The volunteer for "${title}" couldn't make it — it's back open and we're finding someone new.`;
+      pushBody = `The volunteer for "${raw}" couldn't make it. It's back open and we're finding someone new.`;
+      bodyHtml = `The volunteer for "${title}" couldn't make it. It's back open and we're finding someone new.`;
       break;
   }
 

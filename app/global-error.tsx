@@ -37,7 +37,7 @@ export default function GlobalError({
             Something went sideways
           </h1>
           <p className="mt-2 max-w-sm text-sm text-neutral-700">
-            Meal Move hit an unexpected error. Give it another go in a moment.
+            Something went wrong. Try again in a moment.
           </p>
           <button
             onClick={() => reset()}

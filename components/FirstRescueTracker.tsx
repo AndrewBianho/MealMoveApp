@@ -20,23 +20,28 @@ const STEPS = [
 ] as const;
 
 // Contextual line + (optional) action for the current milestone.
-function guidance(step: OnboardingStep, source?: string) {
+function guidance(step: OnboardingStep, source?: string): {
+  line: string | null;
+  cta: { label: string } | null;
+} {
   switch (step) {
     case 0:
-      return {
-        line: "Three steps to your first saved meal. Start by claiming an open pickup below.",
-        cta: null,
-      };
+      // No line here: the stepper below already names the three steps and marks
+      // "claim a pickup" as current, so a sentence saying the same thing twice
+      // is just more to read before the first move.
+      return { line: null, cta: null };
     case 1:
       return {
+        // No deadline in this line any more: the 15-minute hold it promised was
+        // removed, and a countdown the app no longer runs is worse than none.
         line: source
-          ? `You're holding ${source} for 15 minutes. Head over and grab the food.`
+          ? `${source} is yours. Head over and grab the food.`
           : "You've claimed a pickup. Head over and grab the food.",
         cta: { label: "Go to your pickup" },
       };
     default:
       return {
-        line: "You've got the food. Drop it at the drop-off to close your first rescue.",
+        line: "You've got the food. Drop it off to finish.",
         cta: { label: "Finish your delivery" },
       };
   }
@@ -107,9 +112,11 @@ export function FirstRescueTracker({
       >
         Your first rescue
       </h2>
-      <p className="mt-1 max-w-prose text-[16px] leading-relaxed text-neutral-700">
-        {line}
-      </p>
+      {line && (
+        <p className="mt-1 max-w-prose text-[16px] leading-relaxed text-neutral-700">
+          {line}
+        </p>
+      )}
 
       {/* Stepper. An ordered list so it reads as a sequence to assistive tech;
           aria-current marks the live step. */}

@@ -143,8 +143,6 @@ export interface Listing {
   pickedUpAt?: number;
   /** Epoch ms when the food was delivered. */
   deliveredAt?: number;
-  /** Epoch ms of the 15-min auto-release deadline. */
-  holdUntil?: number;
   /** Epoch ms when the volunteer took the food home to deliver the next day. */
   takenHomeAt?: number;
   /** Epoch ms of the gentle next-day deadline for a taken-home pickup. */

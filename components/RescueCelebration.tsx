@@ -119,7 +119,7 @@ export function RescueCelebration({
           </span>
         </h2>
 
-        {/* Same wrap-don't-truncate rule as ClaimHoldPanel: on a narrow phone
+        {/* Same wrap-don't-truncate rule as ClaimConfirmedPanel: on a narrow phone
             one row cut both ends of the route to a few characters each, which
             is the whole line's meaning. The arrow stays with the destination. */}
         <p className="mt-3 flex flex-wrap items-center justify-center gap-x-1.5 font-sans text-[15px] text-neutral-700">
@@ -134,8 +134,8 @@ export function RescueCelebration({
 
         <p className="mt-5 text-[16px] leading-relaxed text-neutral-700">
           {firstRescue
-            ? "That was your first rescue — welcome to the crew. Food that was headed for the bin is on its way to plates instead."
-            : "Food that was headed for the bin is on its way to plates instead. Thank you for showing up."}
+            ? "That was your first rescue. Welcome to the crew."
+            : "Food that was headed for the bin is on its way to plates instead."}
         </p>
 
         <div className="mt-6 border-t border-neutral-200/60 pt-5">

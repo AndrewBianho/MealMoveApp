@@ -1,47 +1,26 @@
-"use client";
-
 import Link from "next/link";
-import { useTransition } from "react";
 import { NearbyVolunteers } from "./NearbyVolunteers";
 import { DonorProtectionNote } from "./DonorProtectionNote";
-import { ImageUploadField } from "./ImageUploadField";
-import { Toast, useToast } from "./Toast";
 import { cn } from "./cn";
 import { primaryFill } from "./styles";
 import { ArrowRight } from "./icons";
-import { setRestaurantImage } from "@/app/actions";
 
 /**
  * The posting side of the restaurant surface: the "post tonight's surplus"
- * call-to-action and the restaurant's default photo. Tracking what's already
- * posted lives on its own page (/restaurant/listings → RestaurantListings).
+ * call-to-action. The default listing photo moved to Settings (it's an account
+ * detail, not part of the nightly posting flow); tracking what's already posted
+ * lives on its own page (/restaurant/listings → RestaurantListings).
  */
 export function RestaurantPostHub({
   restaurant,
-  restaurantId,
-  restaurantImageUrl,
   nearbyVolunteers,
 }: {
   restaurant: string;
-  restaurantId: string;
-  restaurantImageUrl?: string | null;
   /** Volunteers active near this restaurant right now — the post-time odds. */
   nearbyVolunteers: number;
 }) {
-  const { message, show } = useToast();
-  const [isPending, startTransition] = useTransition();
-
-  // Set/clear the restaurant's default image — used on a card when the listing
-  // has no food photo of its own.
-  function saveDefaultImage(url: string | null) {
-    startTransition(async () => {
-      const res = await setRestaurantImage(restaurantId, url);
-      show(res.ok ? (url ? "Default photo updated." : "Default photo removed.") : res.error);
-    });
-  }
-
   return (
-    <div className={cn("space-y-4", isPending && "opacity-70")}>
+    <div className="space-y-4">
       {/* Post surplus — the form lives in a focused step-by-step flow. */}
       <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
         <h2 className="text-lg font-medium">Tonight&apos;s surplus</h2>
@@ -66,22 +45,6 @@ export function RestaurantPostHub({
 
         <DonorProtectionNote variant="inline" />
       </div>
-
-      {/* Restaurant default photo */}
-      <div className="rounded-xl border border-neutral-200/40 bg-card p-5">
-        <h2 className="text-lg font-medium">Restaurant photo</h2>
-        <p className="mb-4 text-sm text-neutral-700">
-          Shown on a card when a listing has no food photo of its own.
-        </p>
-        <ImageUploadField
-          label="Default photo"
-          hint="Take a photo or upload one — JPG/PNG, up to 5 MB."
-          value={restaurantImageUrl}
-          onChange={saveDefaultImage}
-        />
-      </div>
-
-      <Toast message={message} />
     </div>
   );
 }

@@ -15,7 +15,7 @@ export function NotificationsToggle({ initialEnabled }: { initialEnabled: boolea
     const token = await requestPushToken();
     if (!token) {
       setError(
-        "We couldn't turn on push here — you may have blocked notifications, or this browser doesn't support them. You'll still get email reminders."
+        "Couldn't turn on push. You'll still get email reminders."
       );
       // Still record the opt-in so email reminders flow.
     }

@@ -1,7 +1,5 @@
 import { prisma } from "./prisma";
 import { occurrencesWithin, SCHEDULE_HORIZON_DAYS } from "./recurring";
-import { trackServer } from "@/lib/analytics";
-import { sendRestaurantRescueNotice } from "./notify";
 
 // How far ahead we materialize scheduled listings. Every account sees at most
 // the next week of upcoming pickups; the sweep tops this up (and prunes past
@@ -116,117 +114,25 @@ export async function materializeSchedules(
   return { scheduled };
 }
 
-// The anti-flaking engine. Run on a schedule, it:
-//   1. Releases claims whose 15-min hold lapsed without the volunteer starting
-//      delivery — the listing returns to the feed and the flake is logged.
-//   2. Expires open listings whose pickup window has passed.
-// Both write ListingEvents, so flaking and expiry become part of the record
-// (and feed volunteer reliability).
-type SweepDb = Pick<
-  typeof prisma,
-  "pickup" | "foodListing" | "buddyInvite" | "listingEvent" | "$transaction"
->;
+// Expires open listings whose pickup window has passed, writing a ListingEvent
+// so expiry is part of the record.
+//
+// This used to also auto-release claims whose 15-minute hold had lapsed. That
+// hold is gone (2026-09-13): a claim now stands until the volunteer delivers it
+// or releases it by hand, so nothing here reclaims an abandoned pickup.
+type SweepDb = Pick<typeof prisma, "foodListing" | "listingEvent" | "$transaction">;
 
 export async function runSweep(
-  deps: {
-    db?: SweepDb;
-    notify?: typeof sendRestaurantRescueNotice;
-    track?: typeof trackServer;
-  } = {}
+  deps: { db?: SweepDb } = {}
 ): Promise<{
-  released: number;
   expired: number;
   at: string;
 }> {
   const db = deps.db ?? prisma;
-  const notify = deps.notify ?? sendRestaurantRescueNotice;
-  const track = deps.track ?? trackServer;
   const now = new Date();
-  let released = 0;
   let expired = 0;
 
-  // 1) Auto-release flaked claims. Per-pickup: a multi-car listing can carry
-  //    several claims, and one lapsing shouldn't touch the others. A claim is
-  //    still in its hold stage until the pickup photo lands; the listing may be
-  //    "open" (waiting on more cars) or "claimed" (full).
-  const flaked = await db.pickup.findMany({
-    where: {
-      holdUntil: { lt: now },
-      photoAtPickupUrl: null,
-      // Demo time is frozen (see displayMinutesLeft in lib/listings.ts): the
-      // curated demo world is rebuilt by reset, never decayed by the sweep —
-      // otherwise seeded claims dissolve 15 wall-clock minutes after a reseed.
-      listing: { status: { in: ["open", "claimed"] }, demo: false },
-    },
-    include: { listing: { select: { restaurantId: true, title: true } } },
-  });
-  for (const pickup of flaked) {
-    // When this was the last car on the listing, the drop-off choice is
-    // released too — the destination belongs to the claim, and whoever claims
-    // next picks their own.
-    const otherCars = await db.pickup.count({
-      where: { listingId: pickup.listingId, id: { not: pickup.id } },
-    });
-    await db.$transaction([
-      db.pickup.delete({ where: { id: pickup.id } }),
-      // Dropping a claim always puts the listing back under capacity.
-      db.foodListing.update({
-        where: { id: pickup.listingId },
-        data: {
-          status: "open",
-          ...(otherCars === 0 ? { dropOffId: null } : {}),
-        },
-      }),
-      // Cancel this volunteer's pending buddy invites so a stale one can't
-      // later attach a buddy to whoever re-claims. Other cars' invites on the
-      // same listing are untouched.
-      db.buddyInvite.updateMany({
-        where: {
-          listingId: pickup.listingId,
-          inviterId: pickup.volunteerId,
-          status: "pending",
-        },
-        data: { status: "cancelled", respondedAt: now },
-      }),
-      db.listingEvent.create({
-        data: {
-          listingId: pickup.listingId,
-          type: "released",
-          actorId: pickup.volunteerId,
-          meta: { reason: "hold_expired" },
-        },
-      }),
-    ]);
-    track(
-      {
-        name: "flaked",
-        props: {
-          pickupId: pickup.id,
-          stage: pickup.photoAtPickupUrl ? "photographed" : "claimed",
-          minutesHeld: Math.max(0, Math.round((Date.now() - pickup.claimedAt.getTime()) / 60000)),
-        },
-      },
-      pickup.volunteerId,
-    );
-    // The 15-min hold lapsed with no pickup — the food is back open. Tell the
-    // restaurant, but only when this was the last car covering it. Best-effort.
-    if (otherCars === 0) {
-      try {
-        await notify({
-          event: "fell_through",
-          restaurantId: pickup.listing.restaurantId,
-          listingId: pickup.listingId,
-          listingTitle: pickup.listing.title,
-        });
-      } catch {
-        // best-effort notification
-      }
-    }
-    released++;
-  }
-
-  // 2) Expire open listings past their window (includes any just re-opened
-  //    above whose expiry has also passed).
+  // Expire open listings past their window.
   const stale = await db.foodListing.findMany({
     where: {
       status: "open",
@@ -253,5 +159,5 @@ export async function runSweep(
     expired++;
   }
 
-  return { released, expired, at: now.toISOString() };
+  return { expired, at: now.toISOString() };
 }

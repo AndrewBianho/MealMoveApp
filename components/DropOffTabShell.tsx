@@ -44,7 +44,7 @@ export function DropOffNotLinked() {
       </h1>
       <p className="mt-2 text-sm text-neutral-700">
         Your account isn&apos;t linked to a drop-off location yet. An org admin
-        approves new drop-offs — reach out to your chapter&apos;s admin if this
+        approves new drop-offs. Reach out to your chapter&apos;s admin if this
         looks wrong.
       </p>
     </main>

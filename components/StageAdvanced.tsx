@@ -51,7 +51,7 @@ export function StageAdvanced({
       </span>
       <div>
         <p className="text-[16px] font-semibold text-rescued-800">
-          {step} — nice one.
+          {step}, nice one.
         </p>
         <p className="mt-0.5 text-[15px] leading-relaxed text-neutral-700">
           {detail} Next: {next}

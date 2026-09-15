@@ -55,14 +55,14 @@ export function AcceptOrgAdminForm({
       if (signInRes?.error) {
         setLoading(false);
         setError(
-          "Your account was created, but automatic sign-in failed. Please sign in."
+          "Account created. Please sign in."
         );
         return;
       }
     } catch {
       setLoading(false);
       setError(
-        "Your account was created, but automatic sign-in failed. Please sign in."
+        "Account created. Please sign in."
       );
       return;
     }

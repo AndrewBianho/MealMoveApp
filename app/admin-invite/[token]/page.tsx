@@ -30,8 +30,7 @@ export default async function AdminInvitePage(
           This invite link is no longer valid
         </h1>
         <p className="mt-2 text-[16px] text-neutral-700">
-          It may have already been used or been revoked. Ask a master admin to
-          send you a new one.
+          Ask a master admin for a new one.
         </p>
         <Link
           href="/login"

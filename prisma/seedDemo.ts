@@ -389,7 +389,6 @@ export async function seedDemo(prisma: PrismaClient) {
           volunteerId: actorId,
           buddyId: l.buddyName ? volunteerId.get(l.buddyName)! : null,
           claimedAt: claimAt,
-          holdUntil: new Date(claimAt.getTime() + 15 * 60_000),
           deliveredAt: delivered ? anchor : null,
           takenHomeAt,
           deliverBy: takenHome ? deliverBy : null,

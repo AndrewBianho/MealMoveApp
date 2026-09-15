@@ -36,8 +36,7 @@ export function DropOffChats({
   if (threads.length === 0) {
     return (
       <p className="rounded-2xl border border-dashed border-rescued-200/70 bg-gradient-to-b from-rescued-50/50 to-card px-6 py-10 text-center text-sm text-neutral-700">
-        No active deliveries to coordinate right now. Conversations open here once
-        a volunteer claims a pickup headed your way.
+        Conversations open once a volunteer claims a pickup headed your way.
       </p>
     );
   }

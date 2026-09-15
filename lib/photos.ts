@@ -96,8 +96,8 @@ export async function startDeliveryWithPhotoFor(
   // volunteer who captured the photo (a participant). The drop-off, restaurant,
   // and buddy all see it — the in-app counterpart to the push below.
   const body = dropOff
-    ? `Picked up — on the way to ${dropOff.name} now.`
-    : "Picked up — on the way now.";
+    ? `Picked up, on the way to ${dropOff.name} now.`
+    : "Picked up, on the way now.";
 
   await db.$transaction([
     db.pickup.update({
@@ -237,8 +237,8 @@ export async function takeHomeForTomorrowFor(
   const deliverBy = nextEveningDeadline(now);
 
   const body = dropOff
-    ? `Couldn't deliver today — keeping it safe overnight and dropping at ${dropOff.name} tomorrow.`
-    : "Couldn't deliver today — keeping it safe overnight and delivering tomorrow.";
+    ? `Couldn't deliver today. Keeping it safe overnight and dropping at ${dropOff.name} tomorrow.`
+    : "Couldn't deliver today. Keeping it safe overnight and delivering tomorrow.";
 
   await db.$transaction([
     db.pickup.update({

@@ -384,7 +384,6 @@ model Pickup {
   buddy       User?       @relation("PickupBuddy", fields: [buddyId], references: [id])
   buddyId     String?
   claimedAt   DateTime    @default(now())
-  holdUntil   DateTime // the 15-min hold; a cron releases claims past this
   deliveredAt DateTime?
   takenHomeAt DateTime? // set when the volunteer kept the food to deliver next day
   deliverBy   DateTime? // gentle next-day deadline for a taken-home pickup (display + nudge)

@@ -177,7 +177,7 @@ export function validateDay(windows: HourWindow[]): string | null {
   }
   const sorted = [...windows].sort((a, b) => a.open.localeCompare(b.open));
   for (let i = 1; i < sorted.length; i++) {
-    if (sorted[i].open < sorted[i - 1].close) return "These hours overlap — adjust them";
+    if (sorted[i].open < sorted[i - 1].close) return "These hours overlap. Adjust them";
   }
   return null;
 }

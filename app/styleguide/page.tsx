@@ -1,5 +1,5 @@
 import { Button } from "@/components/Button";
-import { ClaimHoldPanel } from "@/components/ClaimHoldPanel";
+import { ClaimConfirmedPanel } from "@/components/ClaimConfirmedPanel";
 import { cn } from "@/components/cn";
 import { ListingCard } from "@/components/ListingCard";
 import { MetricCard } from "@/components/MetricCard";
@@ -27,17 +27,6 @@ const UNCLAIMABLE = LISTINGS.filter((l) => l.status !== "open");
 // reframes itself per audience.
 const AUDIENCE_DEMO = LISTINGS.find((l) => l.status === "claimed") ?? LISTINGS[0];
 
-// The claim hold across its bands. Minutes remaining out of the 15-minute
-// window, so each panel below shows a real countdown ticking in its own band.
-// The clock is read per render (not at module scope) or every panel would
-// decay to "lapsed" as the server process aged.
-const HOLD_STATES = [
-  { label: "calm · plenty of time", minutesLeft: 12 },
-  { label: "soon · under 5m", minutesLeft: 4 },
-  { label: "close · under 2m", minutesLeft: 1 },
-  { label: "lapsed", minutesLeft: 0 },
-];
-
 function Section({
   title,
   hint,
@@ -57,13 +46,6 @@ function Section({
 }
 
 export default function StyleGuidePage() {
-  // Read per render on purpose — see HOLD_STATES above. Hoisting this to module
-  // scope to satisfy the purity rule would reintroduce the exact bug that
-  // comment documents: the panels decay to "lapsed" as the server process ages.
-  // This is a server component rendered per request, so there is no client
-  // re-render for the compiler to keep pure.
-  // eslint-disable-next-line react-hooks/purity
-  const now = Date.now();
   return (
     <main className="mx-auto max-w-console px-6 py-8">
       <header>
@@ -72,14 +54,13 @@ export default function StyleGuidePage() {
         </p>
         <h1 className="mt-2 text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">Style guide</h1>
         <p className="mt-2 max-w-xl text-sm text-neutral-700">
-          Every element below is a real React component built against the tokens
-          in tailwind.config.ts.
+          Real components, built against the tokens in tailwind.config.ts.
         </p>
       </header>
 
       <Section
         title="Status badges"
-        hint="Mono, sentence case, the status color as text — no dot, no filled pill. The word names the status; color reinforces."
+        hint="Mono, sentence case, the status color as text. No dot, no filled pill. The word names the status; color reinforces."
       >
         <div className="flex flex-wrap gap-2 rounded-xl border border-neutral-200/40 bg-card p-5">
           {STATUSES.map((s) => (
@@ -90,7 +71,7 @@ export default function StyleGuidePage() {
 
       <Section
         title="Buttons"
-        hint="Primary, secondary, danger, ghost. Focus ring only — no shadows."
+        hint="Primary, secondary, danger, ghost. Focus ring only."
       >
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-neutral-200/40 bg-card p-5">
           <Button variant="primary">Claim pickup</Button>
@@ -102,7 +83,7 @@ export default function StyleGuidePage() {
 
       <Section
         title="Listing cards"
-        hint="Volunteer view. Claimable food (open) sits up top; everything that can't be claimed — claimed, in transit, or closed — drops into its own subsection. Urgency chip pairs icon + minutes (never hue alone): tomato under 10 min with a pulse, honey under 35, sage otherwise; neutral 'closed' when spent. The closing-soon open card is featured across two columns."
+        hint="Volunteer view. Claimable food (open) sits up top; everything that can't be claimed. Claimed, in transit, or closed, drops into its own subsection. Urgency chip pairs icon + minutes (never hue alone): tomato under 10 min with a pulse, honey under 35, sage otherwise; neutral 'closed' when spent. The closing-soon open card is featured across two columns."
       >
         <div className="space-y-8">
           <div>
@@ -181,7 +162,7 @@ export default function StyleGuidePage() {
 
         <Section
           title="Reliability meter"
-          hint="Non-punitive — a bar and a percentage, never a grade."
+          hint="A bar and a percentage, never a grade."
         >
           <div className="space-y-4 rounded-xl border border-neutral-200/40 bg-card p-5">
             <ReliabilityMeter name="Marcus L." pct={94} />
@@ -192,7 +173,7 @@ export default function StyleGuidePage() {
 
         <Section
           title="Personal harvest"
-          hint="A volunteer's own numbers as one statement, not a row of equal metric cards. The app's one committed-colour surface. A first-timer gets the invitation instead of a drenched zero."
+          hint="A volunteer's own numbers as one statement, not a row of metric cards."
         >
           <div className="max-w-3xl space-y-4">
             <PersonalHarvest
@@ -221,29 +202,18 @@ export default function StyleGuidePage() {
         </Section>
 
         <Section
-          title="Claim hold"
-          hint="The acknowledgment at claim, and the honest face of the 15-minute hold. Banded on the hold's own scale — sage most of the window, honey under 5m, tomato under 2m — with the literal countdown, not the hue, naming the urgency."
+          title="Claim confirmed"
+          hint="The acknowledgment at claim. A panel, not a modal."
         >
-          <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
-            {HOLD_STATES.map((s) => (
-              <div key={s.label}>
-                <p className="mb-2 font-mono text-[11px] text-neutral-700">
-                  {s.label}
-                </p>
-                <ClaimHoldPanel
-                  holdUntil={now + s.minutesLeft * 60_000}
-                  claimedAt={now - (15 - s.minutesLeft) * 60_000}
-                  source="Sunrise Bakery"
-                  dropOff="St. Mark's Shelter"
-                />
-              </div>
-            ))}
-          </div>
+          <ClaimConfirmedPanel
+            source="Sunrise Bakery"
+            dropOff="St. Mark's Shelter"
+          />
         </Section>
 
         <Section
           title="Trip planner"
-          hint="The rescue map's itinerary and location search. Fixed slots — start, pickup, drop-off, end — filled by tapping pins on the real map; the ranked candidates hang off whichever slot is still empty. Type 'sun' in the field to see on-map locations rank above addresses."
+          hint="The rescue map's itinerary and location search. Fixed slots. Start, pickup, drop-off, end, filled by tapping pins on the real map; the ranked candidates hang off whichever slot is still empty. Type 'sun' in the field to see on-map locations rank above addresses."
         >
           <MapPlannerDemo />
         </Section>

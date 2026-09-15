@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { cn } from "./cn";
 import { capitalize } from "@/lib/text";
 
@@ -9,38 +9,60 @@ export interface InfoRow {
 }
 
 /**
- * A calm definition list: a mono micro-label beside its value, hairline-divided.
- * The app-wide way to lay out listing metadata — food type, handling, cars,
- * allergens, drop-off — replacing the old row of mini-pill chips. The label
- * column is fixed-width so the values align into a clean second column.
+ * Listing metadata as a small table: a mono label column, a value column, and
+ * a hairline between rows.
+ *
+ * Both columns come from one grid whose label track is `max-content`, so the
+ * column sizes itself to the longest label in this particular list and every
+ * value starts on the same line. The rule is drawn as a border on the cells
+ * rather than the row, and the columns are separated by the label's own
+ * padding rather than a grid gap, so the two borders meet and the line runs
+ * unbroken across the table.
  */
 export function InfoRows({
   rows,
   className,
-  labelClassName,
 }: {
   rows: InfoRow[];
   className?: string;
-  /** Override the label column width, e.g. a wider column on the detail page. */
-  labelClassName?: string;
 }) {
   return (
-    <dl className={cn("divide-y divide-neutral-200/60", className)}>
-      {rows.map((r) => (
-        <div key={r.label} className="flex items-baseline gap-3 py-2">
-          <dt
-            className={cn(
-              "shrink-0 font-mono text-[13px] text-neutral-700",
-              labelClassName ?? "w-[4.5rem]"
-            )}
-          >
-            {capitalize(r.label)}
-          </dt>
-          <dd className="min-w-0 flex-1 text-[15px] font-medium text-neutral-800">
-            {r.value}
-          </dd>
-        </div>
-      ))}
+    <dl
+      className={cn(
+        "grid grid-cols-[max-content_minmax(0,1fr)] items-baseline",
+        className
+      )}
+    >
+      {rows.map((r, i) => {
+        // Rules sit between rows, never above the first or below the last.
+        const rule = i > 0 ? "border-t border-neutral-200/70" : "";
+        return (
+          <Fragment key={r.label}>
+            <dt
+              className={cn(
+                // Tighter label on the narrowest phones: at 320px the card's
+                // text column is ~144px, and a 13px label plus a 20px gutter
+                // left too little for a one-word value, which then broke
+                // mid-word.
+                "py-2 pr-3 font-mono text-[12px] leading-5 text-neutral-700",
+                "min-[400px]:pr-5 min-[400px]:text-[13px]",
+                rule
+              )}
+            >
+              {capitalize(r.label)}
+            </dt>
+            <dd
+              className={cn(
+                "min-w-0 break-words py-2 text-[14px] font-medium leading-5 text-neutral-800",
+                "min-[400px]:text-[15px]",
+                rule
+              )}
+            >
+              {r.value}
+            </dd>
+          </Fragment>
+        );
+      })}
     </dl>
   );
 }

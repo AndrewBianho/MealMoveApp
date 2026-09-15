@@ -23,7 +23,7 @@ export function NotificationPrimeCard({ onDone }: { onDone?: () => void }) {
     setBusy(false);
     if (!token) {
       // Permission blocked or unsupported — the opt-in still flows to email.
-      setNote("You'll get email reminders. Turn on push anytime in settings.");
+      setNote("Turn on push anytime in settings.");
       return;
     }
     onDone?.();
@@ -46,7 +46,7 @@ export function NotificationPrimeCard({ onDone }: { onDone?: () => void }) {
         Want a nudge before pickup?
       </p>
       <p className="mt-1 text-[15px] text-neutral-700">
-        We&apos;ll remind you when it&apos;s time to grab this food and head out — so
+        We&apos;ll remind you when it&apos;s time to grab this food and head out, so
         it&apos;s one less thing to remember. You can turn this off anytime.
       </p>
       {note ? (

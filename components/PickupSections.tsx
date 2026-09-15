@@ -66,7 +66,7 @@ export function PickupSections({
             </svg>
           }
           title="Nothing in flight right now"
-          hint="Claim a pickup from the feed and it'll show up here."
+          hint="Claim a pickup and it'll show up here."
         />
       </section>
     );

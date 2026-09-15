@@ -16,7 +16,7 @@ export default async function DropOffConversationsPage() {
   return (
     <DropOffTabShell
       title="Conversations"
-      subtitle="Every active delivery headed your way, in one place — switch between volunteers without leaving the page."
+      subtitle="Every active delivery headed your way."
     >
       {viewerId ? (
         <DropOffChats viewerId={viewerId} threads={dropOffChatThreads(incoming)} />

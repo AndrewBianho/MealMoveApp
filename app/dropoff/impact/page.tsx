@@ -23,7 +23,7 @@ export default async function DropOffImpactPage() {
   return (
     <DropOffTabShell
       title="Impact"
-      subtitle="What this location has helped rescue, and the donations behind it."
+      subtitle="What this location has helped rescue."
     >
       <DropOffImpact stats={stats} donations={donations} />
     </DropOffTabShell>
