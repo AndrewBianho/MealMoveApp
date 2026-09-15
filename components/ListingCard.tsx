@@ -26,6 +26,10 @@ interface ListingCardProps {
   nearbyVolunteers?: number;
   /** Extra classes on the root — used for staggered entrance delays in the feed. */
   className?: string;
+  /** Render one notch smaller — same layout, tighter photo panel, padding, and
+   *  title. For grids that put two cards on a row (the restaurant's listings
+   *  column) where the full-width feed sizing would squeeze the body. */
+  compact?: boolean;
   /** Eager-load the photo. Set on the first card of the lead section only — it's
    *  the page's LCP element, and lazy-loading it delays the largest paint. */
   priorityImage?: boolean;
@@ -80,6 +84,7 @@ export function ListingCard({
   audience = "volunteer",
   nearbyVolunteers,
   className,
+  compact = false,
   priorityImage = false,
 }: ListingCardProps) {
   const {
@@ -196,7 +201,12 @@ export function ListingCard({
         href={`/listings/${id}`}
         aria-label={`View ${title}`}
         className={cn(
-          "relative w-24 shrink-0 self-stretch overflow-hidden sm:w-44 lg:w-[232px] xl:w-[264px] 2xl:w-[292px]",
+          "relative w-24 shrink-0 self-stretch overflow-hidden sm:w-44",
+          // Compact only diverges from lg up — that's where a compact grid goes
+          // two-up; below it the card is full width and wants the normal panel.
+          compact
+            ? "lg:w-40 xl:w-48 2xl:w-56"
+            : "lg:w-[232px] xl:w-[264px] 2xl:w-[292px]",
           isPlaceholder ? "bg-card" : "bg-neutral-100",
         )}
       >
@@ -210,7 +220,11 @@ export function ListingCard({
             src={img}
             alt={title}
             fill
-            sizes="(min-width: 1536px) 292px, (min-width: 1280px) 264px, (min-width: 1024px) 232px, (min-width: 640px) 176px, 96px"
+            sizes={
+              compact
+                ? "(min-width: 1536px) 224px, (min-width: 1280px) 192px, (min-width: 1024px) 160px, (min-width: 640px) 176px, 96px"
+                : "(min-width: 1536px) 292px, (min-width: 1280px) 264px, (min-width: 1024px) 232px, (min-width: 640px) 176px, 96px"
+            }
             priority={priorityImage}
             className={cn(
               "object-cover transition-transform duration-300 group-hover:scale-[1.03]",
@@ -221,10 +235,20 @@ export function ListingCard({
       </Link>
 
       {/* Body — one quiet stack: status · title · source · facts · action. */}
-      <div className="flex min-w-0 flex-1 flex-col justify-center p-4 sm:p-7">
+      <div
+        className={cn(
+          "flex min-w-0 flex-1 flex-col justify-center p-4 sm:p-7",
+          compact && "lg:p-5",
+        )}
+      >
         <div className="mb-2.5">{statusLine}</div>
 
-        <h3 className="font-display text-[24px] font-medium leading-[1.18] tracking-tight text-balance sm:text-[27px]">
+        <h3
+          className={cn(
+            "font-display font-medium leading-[1.18] tracking-tight text-balance text-[24px] sm:text-[27px]",
+            compact && "lg:text-[23px]",
+          )}
+        >
           <Link
             href={`/listings/${id}`}
             className="rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"

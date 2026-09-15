@@ -89,13 +89,14 @@ export function RestaurantListings({
             What volunteers can see right now.
           </p>
           {shownLive.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-2">
               {shownLive.map((l) => (
                 <ListingCard
                   key={l.id}
                   listing={l}
                   audience="restaurant"
                   nearbyVolunteers={nearbyVolunteers}
+                  compact
                 />
               ))}
             </div>
@@ -123,9 +124,9 @@ export function RestaurantListings({
           <p className="mb-4 text-sm text-neutral-700">
             Each opens to the volunteer feed at its listed time.
           </p>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             {shownUpcoming.map((l) => (
-              <ListingCard key={l.id} listing={l} audience="restaurant" />
+              <ListingCard key={l.id} listing={l} audience="restaurant" compact />
             ))}
           </div>
         </section>
@@ -135,9 +136,9 @@ export function RestaurantListings({
         <section>
           <h2 className="mb-4 text-lg font-medium">History</h2>
           {shownPast.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-2">
               {shownPast.map((l) => (
-                <ListingCard key={l.id} listing={l} audience="restaurant" />
+                <ListingCard key={l.id} listing={l} audience="restaurant" compact />
               ))}
             </div>
           ) : (
