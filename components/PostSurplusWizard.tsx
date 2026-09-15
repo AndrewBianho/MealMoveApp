@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { cn } from "./cn";
@@ -11,10 +12,23 @@ import { CheckIcon } from "./AuthPanels";
 import { inputCls, labelCls, errorBannerCls } from "./authStyles";
 import { postListing } from "@/app/actions";
 
-// A single past post the source can re-list with one tap.
+// A single past post the source can re-list with one tap. Carries the whole
+// answer set, not just the title: re-listing the same dish shouldn't mean
+// re-entering the weight, window, allergens, handling and photo that haven't
+// changed. Every field lands in the wizard as an ordinary editable value.
 export interface PastPost {
   title: string;
   notes?: string;
+  weightLbs?: number;
+  carsNeeded?: number;
+  /** The original claim window in minutes, from expiresAt - postedAt. */
+  windowMinutes?: number;
+  allergens?: string[];
+  tempHandling?: "hot" | "cold" | "ambient";
+  imageUrl?: string;
+  /** Short date of the original post ("Mar 3"), formatted server-side in the
+   *  org timezone so the note reads the same everywhere. */
+  postedLabel?: string;
 }
 
 // ---- Step model ------------------------------------------------------------
@@ -54,6 +68,24 @@ const PICKUPS = [
 ] as const;
 type PickupLabel = (typeof PICKUPS)[number]["label"];
 
+// A stored window (expiresAt - postedAt) back onto the fixed choices above.
+// Anything longer than the 3-hour option was an all-day post, so it reads as
+// "Today"; otherwise the nearest option wins.
+function pickupFromMinutes(minutes: number): PickupLabel {
+  if (minutes > 180) return "Today";
+  let best: PickupLabel = "1 hour";
+  let bestGap = Infinity;
+  for (const p of PICKUPS) {
+    if (p.minutes < 0) continue;
+    const gap = Math.abs(p.minutes - minutes);
+    if (gap < bestGap) {
+      bestGap = gap;
+      best = p.label;
+    }
+  }
+  return best;
+}
+
 function minutesUntilEndOfDay(): number {
   const now = new Date();
   const end = new Date(now);
@@ -72,8 +104,21 @@ const KEEPS = [
 ] as const;
 type KeepKey = (typeof KEEPS)[number]["key"] | "";
 
+// The reverse of KEEPS.temp. Two labels collapse onto "cold" and the original
+// choice isn't recoverable from the enum, so a re-listed cold item comes back as
+// the commoner of the two — refrigerated — and the restaurant can switch it to
+// frozen on the step like any other value.
+function keepFromTemp(temp?: "hot" | "cold" | "ambient"): KeepKey {
+  if (!temp) return "";
+  return KEEPS.find((k) => k.temp === temp)!.key;
+}
+
+// What one volunteer's car is assumed to hold. The suggestion is a starting
+// point, not a rule — the restaurant can override it on the Quantity step.
+const LBS_PER_CAR = 200;
+
 function suggestedCars(weight: number): number {
-  return weight > 0 ? Math.max(1, Math.ceil(weight / 60)) : 1;
+  return weight > 0 ? Math.max(1, Math.ceil(weight / LBS_PER_CAR)) : 1;
 }
 
 // The success recap is held in sessionStorage, not just React state: posting
@@ -134,6 +179,9 @@ export function PostSurplusWizard({
   const [special, setSpecial] = useState("");
   const [keep, setKeep] = useState<KeepKey>("");
   const [foodImage, setFoodImage] = useState<string | null>(null);
+  // Set when the draft was seeded from a past post — drives the Review note so
+  // it's obvious the values came from a previous listing and can be changed.
+  const [prefilledFrom, setPrefilledFrom] = useState<string | null>(null);
 
   // Snapshot for the success recap. Lazy-initialized from sessionStorage so it
   // survives the post-submit route refresh (see readPosted). Reset for "post
@@ -149,6 +197,44 @@ export function PostSurplusWizard({
     return null;
   }
 
+  // The first step still missing a required answer, or null when the draft is
+  // complete. A prefilled draft lands on Review without walking steps 1-2, and
+  // an older listing may carry no weight at all — so the required answers are
+  // checked against the whole draft, not just the step on screen.
+  function firstIncompleteStep(): number | null {
+    for (let s = 0; s < TOTAL; s++) {
+      if (validate(s)) return s;
+    }
+    return null;
+  }
+
+  // "Post again" — seed every step from a past listing and jump to Review, so
+  // an unchanged repost is one more tap. Nothing is locked: each value is the
+  // same state the steps edit, and the back button walks into any of them.
+  // Fields the old listing didn't carry fall back to the blank-form defaults.
+  function applyPast(p: PastPost) {
+    setTitle(p.title);
+    const w = p.weightLbs ?? 0;
+    setWeight(w);
+    // Keep the car count on "suggested" when the stored number is what the
+    // weight would suggest anyway; only a real override comes back as manual.
+    setCars(
+      p.carsNeeded != null && p.carsNeeded !== suggestedCars(w)
+        ? p.carsNeeded
+        : null,
+    );
+    setPickup(p.windowMinutes ? pickupFromMinutes(p.windowMinutes) : "1 hour");
+    setAllergens(p.allergens?.join(", ") ?? "");
+    setSpecial(p.notes ?? "");
+    setKeep(keepFromTemp(p.tempHandling));
+    setFoodImage(p.imageUrl ?? null);
+    setPrefilledFrom(p.postedLabel ?? null);
+    setError(null);
+    // Weight is required and older listings may not carry one — land on the
+    // step that still needs an answer rather than a Review that can't submit.
+    setStep(w > 0 && p.title.trim() ? TOTAL - 1 : 1);
+  }
+
   function next() {
     const err = validate(step);
     if (err) {
@@ -157,6 +243,12 @@ export function PostSurplusWizard({
     }
     setError(null);
     if (isLast) {
+      const missing = firstIncompleteStep();
+      if (missing != null) {
+        setStep(missing);
+        setError(validate(missing));
+        return;
+      }
       submit();
       return;
     }
@@ -214,6 +306,7 @@ export function PostSurplusWizard({
     setSpecial("");
     setKeep("");
     setFoodImage(null);
+    setPrefilledFrom(null);
     setPosted(null);
   }
 
@@ -272,7 +365,7 @@ export function PostSurplusWizard({
       {/* Step body — keyed so it re-mounts and replays the enter animation. */}
       <div key={step} className="mt-6 flex-1 motion-safe:animate-slide-in-right">
         {step === 0 && (
-          <ItemStep title={title} setTitle={setTitle} pastPosts={pastPosts} onPick={(t) => { setTitle(t); setError(null); }} />
+          <ItemStep title={title} setTitle={setTitle} pastPosts={pastPosts} onPick={applyPast} />
         )}
         {step === 1 && (
           <QuantityStep
@@ -303,10 +396,14 @@ export function PostSurplusWizard({
           <ReviewStep
             title={title}
             source={restaurant}
+            weight={weight}
             cars={carsShown}
             pickup={pickup}
             allergens={allergens}
+            special={special}
             keep={KEEPS.find((k) => k.key === keep)?.label}
+            photo={foodImage}
+            prefilledFrom={prefilledFrom}
             nearbyVolunteers={nearbyVolunteers}
           />
         )}
@@ -365,7 +462,7 @@ function ItemStep({
   title: string;
   setTitle: (v: string) => void;
   pastPosts: PastPost[];
-  onPick: (title: string) => void;
+  onPick: (post: PastPost) => void;
 }) {
   return (
     <div>
@@ -385,12 +482,15 @@ function ItemStep({
       {pastPosts.length > 0 && (
         <div className="mt-7">
           <p className={labelCls}>Post again</p>
+          <p className="mb-2 -mt-1 text-[13px] text-neutral-700">
+            Reuses everything you entered last time — edit anything before posting.
+          </p>
           <ul className="space-y-2">
             {pastPosts.map((p, i) => (
               <li key={`${p.title}-${i}`}>
                 <button
                   type="button"
-                  onClick={() => onPick(p.title)}
+                  onClick={() => onPick(p)}
                   className="flex w-full items-center gap-3 rounded-xl border border-neutral-200 bg-card px-3.5 py-3 text-left transition-colors hover:border-rescued-400 hover:bg-rescued-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rescued-400"
                 >
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-rescued-50 text-rescued-700">
@@ -567,21 +667,33 @@ function KeepStep({ value, onChange }: { value: KeepKey; onChange: (v: KeepKey) 
 function ReviewStep({
   title,
   source,
+  weight,
   cars,
   pickup,
   allergens,
+  special,
   keep,
+  photo,
+  prefilledFrom,
   nearbyVolunteers,
 }: {
   title: string;
   source: string;
+  weight: number;
   cars: number;
   pickup: string;
   allergens: string;
+  special: string;
   keep?: string;
+  photo?: string | null;
+  /** Short date of the post this draft was seeded from, if any. */
+  prefilledFrom?: string | null;
   nearbyVolunteers: number;
 }) {
+  // Every answer the wizard collected, so a prefilled draft can be checked in
+  // one place rather than by stepping back through all seven.
   const rows: [string, string][] = [
+    ...(weight > 0 ? ([["Weight", `${weight} lbs`]] as [string, string][]) : []),
     ["Cars needed", `${cars} ${cars === 1 ? "car" : "cars"}`],
     ["Pickup within", pickup],
     ...(allergens.trim() ? ([["Allergens", allergens.trim()]] as [string, string][]) : []),
@@ -590,7 +702,13 @@ function ReviewStep({
   return (
     <div>
       <StepHeading title="Ready to post?" />
-      <div className="rounded-2xl border border-neutral-200 bg-card p-5">
+      <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-card">
+        {photo && (
+          <div className="relative aspect-[16/9] w-full bg-neutral-100">
+            <Image src={photo} alt="" fill sizes="440px" className="object-cover" />
+          </div>
+        )}
+        <div className="p-5">
         <p className="font-display text-[21px] font-medium leading-tight text-neutral-900">{title || "Untitled"}</p>
         <p className="mt-1 text-[13.5px] text-neutral-700">{source}</p>
         <dl className="mt-4 space-y-2.5">
@@ -601,7 +719,21 @@ function ReviewStep({
             </div>
           ))}
         </dl>
+        {special.trim() && (
+          <div className="mt-4 border-t border-neutral-200 pt-3">
+            <p className="font-mono text-[11px] text-neutral-700">Notes</p>
+            <p className="mt-1 text-[14px] leading-relaxed text-neutral-800">
+              {special.trim()}
+            </p>
+          </div>
+        )}
+        </div>
       </div>
+      {prefilledFrom && (
+        <p className="mt-3 text-[13px] text-neutral-700">
+          Prefilled from your {prefilledFrom} post — use back to change anything.
+        </p>
+      )}
       <NearbyVolunteers count={nearbyVolunteers} className="mt-4" />
     </div>
   );
