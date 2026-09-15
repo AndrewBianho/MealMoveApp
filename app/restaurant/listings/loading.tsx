@@ -16,11 +16,11 @@ export default function Loading() {
       </header>
       <div aria-hidden="true">
         <SkeletonBlock className="mb-5 h-9 w-44 rounded-full" />
-        <div className="grid gap-4 sm:grid-cols-2">
-          <ListingCardSkeleton />
-          <ListingCardSkeleton />
-          <ListingCardSkeleton />
-          <ListingCardSkeleton />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ListingCardSkeleton compact />
+          <ListingCardSkeleton compact />
+          <ListingCardSkeleton compact />
+          <ListingCardSkeleton compact />
         </div>
       </div>
     </main>

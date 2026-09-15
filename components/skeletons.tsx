@@ -18,16 +18,29 @@ export function SkeletonBlock({ className }: { className?: string }) {
 /**
  * A ListingCard with its data pending: same shell and photo panel, with boxes
  * where the status line, title, source, facts, chips, and action will land.
+ * `compact` mirrors the card's two-up sizing.
  */
-export function ListingCardSkeleton() {
+export function ListingCardSkeleton({ compact = false }: { compact?: boolean }) {
   return (
     <div
       aria-hidden="true"
       className="flex flex-row-reverse overflow-hidden rounded-3xl border border-neutral-200/70 bg-card shadow-card"
     >
       {/* Photo panel */}
-      <SkeletonBlock className="w-24 shrink-0 self-stretch rounded-none sm:w-44 lg:w-[232px] xl:w-[264px] 2xl:w-[292px]" />
-      <div className="flex min-w-0 flex-1 flex-col justify-center p-4 sm:p-7">
+      <SkeletonBlock
+        className={cn(
+          "w-24 shrink-0 self-stretch rounded-none sm:w-44",
+          compact
+            ? "lg:w-40 xl:w-48 2xl:w-56"
+            : "lg:w-[232px] xl:w-[264px] 2xl:w-[292px]",
+        )}
+      />
+      <div
+        className={cn(
+          "flex min-w-0 flex-1 flex-col justify-center p-4 sm:p-7",
+          compact && "lg:p-5",
+        )}
+      >
         {/* Urgency line */}
         <SkeletonBlock className="h-3 w-24" />
         {/* Title */}
