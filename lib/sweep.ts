@@ -73,7 +73,11 @@ export async function materializeSchedules(
           category: s.category,
           perishable: s.perishable,
           notes: s.notes,
-          imageUrl: s.imageUrl,
+          // No photo. A schedule's template picture is a shot of one night's
+          // food standing in for every future occurrence, so it goes stale the
+          // moment the kitchen changes — and a photo that doesn't match what's
+          // waiting is worse than none. Occurrences fall back to the
+          // restaurant's own photo (see lib/listings), which stays true.
           demo: s.demo,
           status: "open",
           restaurantId: s.restaurantId,

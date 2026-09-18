@@ -16,7 +16,7 @@ import { DonorProtectionNote } from "@/components/DonorProtectionNote";
 
 const ORG_NAME = "Meal Move";
 const CONTACT_EMAIL = "support@mealmove.org";
-const EFFECTIVE_DATE = "June 16, 2026";
+const EFFECTIVE_DATE = "September 18, 2026";
 
 export const metadata: Metadata = {
   title: "Privacy policy · Meal Move",
@@ -157,6 +157,11 @@ export default function PrivacyPage() {
             Messaging</strong> delivers push notifications, where you have
             enabled them.
           </li>
+          <li>
+            <strong className="font-semibold">PostHog</strong> measures how the
+            app is used, so we can see where volunteers get stuck. See{" "}
+            <em>Analytics and session replay</em> below.
+          </li>
         </ul>
         <p>
           We may also share information if the law requires it, or to protect
@@ -170,6 +175,48 @@ export default function PrivacyPage() {
           settings, and you can revoke your browser&apos;s notification
           permission at any time. Some reminders may also be sent by email so
           they reach you when push is unavailable.
+        </p>
+      </Section>
+
+      <Section title="Analytics and session replay">
+        <p>
+          We use PostHog to understand how the app is actually used — which
+          screens people reach, where a claim or a post gets abandoned, and what
+          breaks. Two deliberate limits apply:
+        </p>
+        <ul className="ml-5 list-disc space-y-2 marker:text-clay-600">
+          <li>
+            <strong className="font-semibold">We never capture what you
+            type.</strong> Automatic capture of form input is switched off, so
+            the contents of messages, notes, and addresses are not sent to
+            analytics.
+          </li>
+          <li>
+            <strong className="font-semibold">You are identified by a
+            pseudonym.</strong> Analytics sees a one-way hash of your account
+            id and your role — not your name, email, or phone number.
+          </li>
+          <li>
+            <strong className="font-semibold">No analytics cookies.</strong>{" "}
+            Measurement state is held in memory for the length of a visit, so
+            nothing is written to your device and nothing follows you to
+            another site.
+          </li>
+        </ul>
+        <p>
+          On a small number of flows we also record a replay of the screen —
+          the pages and taps, not your keystrokes — to see why a rescue went
+          wrong. If you would rather not be measured at all, tell us and we
+          will exclude your account.
+        </p>
+      </Section>
+
+      <Section title="Minors">
+        <p>
+          Meal Move is built for campus volunteers and partner organizations,
+          and accounts are intended for people 13 and older. We do not knowingly
+          collect information from children under 13. If you believe a child has
+          created an account, contact us and we will remove it.
         </p>
       </Section>
 

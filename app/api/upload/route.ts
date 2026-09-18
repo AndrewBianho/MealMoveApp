@@ -37,6 +37,9 @@ export async function POST(req: Request) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "No file provided." }, { status: 400 });
   }
+  // A cheap first pass only. `file.type` is caller-supplied, so it screens
+  // obvious mistakes; the authoritative check is the magic-byte sniff in
+  // uploadImage, which decides the stored object's content type.
   if (!file.type.startsWith("image/")) {
     return NextResponse.json({ error: "That isn't an image." }, { status: 415 });
   }
@@ -53,6 +56,9 @@ export async function POST(req: Request) {
   } catch (e) {
     const message =
       e instanceof Error ? e.message : "Upload failed. Please try again.";
-    return NextResponse.json({ error: message }, { status: 500 });
+    // Bytes that aren't a real image are the caller's fault, not ours — 415,
+    // so a spoofed content type doesn't read as a server error.
+    const status = message.includes("supported image") ? 415 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

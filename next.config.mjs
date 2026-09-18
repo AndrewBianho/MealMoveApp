@@ -4,8 +4,7 @@
 // proxy matcher) get no CSP — acceptable, since neither renders a document that
 // could execute an injected script.
 //
-// Baseline security headers (SECURITY-AUDIT.md → remaining #3). Applied to every
-// route.
+// Baseline security headers, applied to every route.
 const securityHeaders = [
   // HTTPS only, one year. No `preload` — that submits the domain to the
   // browser-baked preload list, which is slow and painful to undo.
