@@ -12,6 +12,7 @@ import { ArrowRight, Car, MapPin, Users } from "./icons";
 import { cn } from "./cn";
 import {
   claimListing,
+  markArrived,
   markDelivered,
   startDelivery,
   takeHomeForTomorrow,
@@ -115,6 +116,7 @@ export function ListingDetail({
   chosenDropOffPin = null,
   activeElsewhere = null,
   canPrimeNotifications = false,
+  arrived = false,
 }: {
   listing: Listing | null;
   viewerId?: string;
@@ -124,6 +126,8 @@ export function ListingDetail({
   /** Volunteer hasn't enabled notifications or been prompted — show the one-time
    * prime card after they claim, the design's gentle anti-flaking on-ramp. */
   canPrimeNotifications?: boolean;
+  /** This viewer has already said they're at the drop-off. */
+  arrived?: boolean;
   /** A pending buddy invite addressed to the current viewer, if any. */
   incomingInvite?: { id: string; inviterName: string } | null;
   /** The primary's outstanding buddy invite, if one is awaiting a response. */
@@ -330,6 +334,16 @@ export function ListingDetail({
     startTransition(async () => {
       await startDelivery(id, pickupPhoto);
       setAdvancedTo(reached);
+    });
+  }
+  function onArrived() {
+    startTransition(async () => {
+      try {
+        await markArrived(id);
+        show("Nice. They know you're here.");
+      } catch (e) {
+        show(e instanceof Error ? e.message : "Couldn't send that just now.");
+      }
     });
   }
   function onConfirmDelivery() {
@@ -977,6 +991,29 @@ export function ListingDetail({
                       dropOff={mapsDropOff}
                       className="mb-4"
                     />
+                    {arrived ? (
+                      <p className="mb-4 flex items-center gap-2 rounded-xl bg-rescued-50 px-4 py-3 text-[15px] text-rescued-800">
+                        <MapPin className="mt-1 shrink-0" />
+                        You let {listing.dropOff ?? "the drop-off"} know
+                        you&apos;re here.
+                      </p>
+                    ) : (
+                      <div className="mb-4">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="w-full"
+                          onClick={onArrived}
+                          disabled={isPending}
+                        >
+                          I&apos;ve arrived
+                        </Button>
+                        <p className="mt-1.5 text-center text-[13px] text-neutral-700">
+                          Tells {listing.dropOff ?? "the drop-off"} you&apos;re
+                          outside — useful before you can hand over.
+                        </p>
+                      </div>
+                    )}
                     <ProofStep
                       stepName="Delivered"
                       title="Take a photo to confirm drop-off"

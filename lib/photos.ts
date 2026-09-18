@@ -15,7 +15,7 @@ import {
 
 // A structural slice of the Prisma client — just the methods these functions
 // touch. Lets tests inject a fake db without standing up a database.
-type Db = Pick<
+export type Db = Pick<
   typeof prisma,
   "pickup" | "foodListing" | "listingEvent" | "message" | "$transaction"
 >;
@@ -27,7 +27,7 @@ type Db = Pick<
  * pickup, not the listing: on a multi-car listing each car advances at its own
  * pace while the listing status trails the slowest car (see lib/claims).
  */
-async function loadClaimInStage(
+export async function loadClaimInStage(
   db: Db,
   userId: string,
   listingId: string,

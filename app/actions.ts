@@ -24,6 +24,7 @@ import {
   takeHomeForTomorrowFor,
   recordRescueAccuracyFor,
 } from "@/lib/photos";
+import { markArrivedFor, confirmReceiptFor } from "@/lib/handover";
 import {
   invitableVolunteers,
   inviteBuddyFor,
@@ -853,6 +854,43 @@ export async function releaseClaim(listingId: string) {
  * Capture the pickup photo and advance claimed → in_transit. The photo is
  * required — it's the proof a pickup actually happened (anti-flaking).
  */
+/**
+ * "I've arrived" — the volunteer is at the drop-off but hasn't handed over yet.
+ * Adds a line to the coordination thread so the drop-off knows someone is
+ * outside; it does not move the rescue's stage (see lib/handover).
+ */
+export async function markArrived(listingId: string) {
+  const userId = await currentUserId();
+  const res = await markArrivedFor(prisma, userId, listingId);
+  refreshViews(listingId);
+  return res;
+}
+
+/**
+ * The drop-off acknowledges the food reached them. Purely additive — it records
+ * a second, independent voice on a delivery rather than changing its status.
+ */
+export async function confirmReceipt(listingId: string) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  const role = session?.user?.role;
+  if (!userId || !role) throw new Error("Not signed in.");
+  // dropOffId isn't on the JWT, so it comes from the row — the same read
+  // guardDropOffEdit does.
+  const me = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { dropOffId: true },
+  });
+  const res = await confirmReceiptFor(
+    prisma,
+    { id: userId, role, dropOffId: me?.dropOffId ?? null },
+    listingId
+  );
+  refreshViews(listingId);
+  revalidatePath("/dropoff/incoming");
+  return res;
+}
+
 export async function startDelivery(listingId: string, photoUrl: string) {
   const userId = await currentUserId();
   await startDeliveryWithPhotoFor(prisma, userId, listingId, photoUrl);
