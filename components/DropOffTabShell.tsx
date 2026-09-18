@@ -16,8 +16,13 @@ export function DropOffTabShell({
   badge?: ReactNode;
   children: ReactNode;
 }) {
+  // `roster`, not `console`: this console is card and settings grids, which is
+  // what roster is for. At console's 1760px the opening-times rows stretched a
+  // day label and its time to opposite edges of the card, and the accepts-pills
+  // filled under half their row — a wider shell is only earned if the content
+  // fills it (DESIGN.md → Layout).
   return (
-    <main className="mx-auto max-w-console px-6 py-8">
+    <main className="mx-auto max-w-roster px-6 py-8">
       <header className="mb-8">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-balance">
