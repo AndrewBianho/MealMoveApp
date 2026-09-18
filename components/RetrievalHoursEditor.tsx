@@ -189,7 +189,7 @@ export function RetrievalHoursEditor({
                         >
                           {to12h(w.open)}
                         </button>
-                        <span aria-hidden className="text-neutral-400">
+                        <span aria-hidden className="text-neutral-700">
                           –
                         </span>
                         <button
