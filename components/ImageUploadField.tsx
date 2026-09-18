@@ -40,6 +40,7 @@ export function ImageUploadField({
   hint,
   aspect = "aspect-[16/9]",
   optional = true,
+  labelHidden = false,
   uploadKey,
 }: {
   value?: string | null;
@@ -48,6 +49,12 @@ export function ImageUploadField({
   hint?: string;
   aspect?: string;
   optional?: boolean;
+  /**
+   * Keep the label for screen readers but hide it visually. For cases where a
+   * heading right above already names the field, and printing the label again
+   * just adds a second, quieter title under the first.
+   */
+  labelHidden?: boolean;
   /**
    * Stable id (e.g. "pickup:<listingId>"). When set, a photo captured while
    * offline is stashed locally and uploaded automatically on reconnect, so the
@@ -212,7 +219,13 @@ export function ImageUploadField({
 
   return (
     <div>
-      <span className="mb-1.5 block font-mono text-[13px] text-neutral-700">
+      <span
+        className={cn(
+          labelHidden
+            ? "sr-only"
+            : "mb-1.5 block font-mono text-[13px] text-neutral-700",
+        )}
+      >
         {label}{" "}
         {optional && <span className="text-neutral-700">(optional)</span>}
       </span>

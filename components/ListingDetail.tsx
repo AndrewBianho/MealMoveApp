@@ -24,14 +24,12 @@ import { NotificationPrimeCard } from "./NotificationPrimeCard";
 import { ChatPanel } from "./ChatPanel";
 import { Avatar } from "./Avatar";
 import { BuddyInvitePicker } from "./BuddyInvitePicker";
-import { ImageUploadField } from "./ImageUploadField";
+import { ProofStep } from "./ProofStep";
 import { OpenInMapsButton } from "./OpenInMapsButton";
-import { SafetyChecklist } from "./SafetyChecklist";
 import { ClaimConfirmedPanel } from "./ClaimConfirmedPanel";
 import { RescueAccuracySignal } from "./RescueAccuracySignal";
 import { startFailureReplay } from "@/lib/analytics/client";
 import { capitalize } from "@/lib/text";
-import type { SafetyAnswers } from "@/lib/safety";
 import type { RescueAccuracy } from "@/lib/accuracy";
 import { DropOffName, OpenNowBadge } from "./RetrievalHoursDisplay";
 import { DropOffNotices } from "./DropOffNotices";
@@ -156,8 +154,12 @@ export function ListingDetail({
   const [advancedTo, setAdvancedTo] = useState<RescueStepIndex | null>(null);
   // One-time notification prime, surfaced right after a fresh claim.
   const [primeOpen, setPrimeOpen] = useState(false);
-  // Dismissible food-safety checklist answers, captured with the pickup proof.
-  const [safety, setSafety] = useState<SafetyAnswers>({});
+  // A photo that has uploaded but not yet been committed. Holding it here is
+  // what turns the shutter into a draft and the confirm button into the
+  // irreversible tap — the old field advanced the stage the instant the upload
+  // resolved, with no review and no way back.
+  const [pickupPhoto, setPickupPhoto] = useState<string | null>(null);
+  const [deliveryPhoto, setDeliveryPhoto] = useState<string | null>(null);
   // Destination-first claiming: the drop-off the volunteer picked, required
   // before the claim can go through (null until they choose).
   const [chosenDropOff, setChosenDropOff] = useState<string | null>(null);
@@ -273,14 +275,9 @@ export function ListingDetail({
         minute: "2-digit",
       })
     : null;
-  // The step this rescue is working toward — the one the photo below completes.
-  // Named in the photo prompt and counted under the stepper, so "what stage am
-  // I on" and "what is this camera button for" have the same answer on screen.
-  const nextStep = nextStepOf(listing);
-  // Every photo prompt leads with the stage it unlocks, so the shutter button
-  // is never just "a photo" — it's the thing that moves the rescue forward.
-  const photoHint = (detail: string) =>
-    nextStep ? `Take the photo to move to “${nextStep.name}”, ${detail}` : detail;
+  // ProofStep names the step it completes in its own heading now, so the
+  // hint-text version of that sentence is gone; nextStepOf is still read at
+  // confirm time to know which step we just advanced into.
   // Only the volunteer actually carrying this rescue gets the step counter; a
   // restaurant reading its own listing sees the bare timeline.
   const working = isLiveOwnRescue(listing);
@@ -324,21 +321,21 @@ export function ListingDetail({
       }
     });
   }
-  function onPickupPhoto(url: string | null) {
-    if (!url) return;
+  function onConfirmPickup() {
+    if (!pickupPhoto) return;
     // Read the step the photo is about to complete *before* the action lands —
     // once the server revalidates, `listing` already reports the new stage and
     // "what did we just advance into" is no longer derivable.
     const reached = listing ? nextStepOf(listing)?.index ?? null : null;
     startTransition(async () => {
-      await startDelivery(id, url, safety);
+      await startDelivery(id, pickupPhoto);
       setAdvancedTo(reached);
     });
   }
-  function onDeliveryPhoto(url: string | null) {
-    if (!url) return;
+  function onConfirmDelivery() {
+    if (!deliveryPhoto) return;
     startTransition(async () => {
-      const impact = await markDelivered(id, url);
+      const impact = await markDelivered(id, deliveryPhoto);
       setCelebration(impact);
     });
   }
@@ -921,14 +918,16 @@ export function ListingDetail({
                       dropOff={mapsDropOff}
                       className="mb-4"
                     />
-                    <SafetyChecklist answers={safety} onChange={setSafety} />
-                    <ImageUploadField
-                      label="Pickup photo"
-                      optional={false}
-                      hint={photoHint("snap the food as you leave.")}
-                      aspect="aspect-[4/3]"
+                    <ProofStep
+                      stepName="Picked up"
+                      title="Take a photo to confirm pickup"
+                      detail="Snap the food as you leave the restaurant."
+                      confirmLabel="Confirm pickup"
                       uploadKey={`pickup:${id}`}
-                      onChange={onPickupPhoto}
+                      photo={pickupPhoto}
+                      onPhoto={setPickupPhoto}
+                      onConfirm={onConfirmPickup}
+                      submitting={isPending}
                     />
                   </>
                 ) : (
@@ -978,13 +977,16 @@ export function ListingDetail({
                       dropOff={mapsDropOff}
                       className="mb-4"
                     />
-                    <ImageUploadField
-                      label="Delivery photo"
-                      optional={false}
-                      hint={photoHint("snap the food at the drop-off.")}
-                      aspect="aspect-[4/3]"
+                    <ProofStep
+                      stepName="Delivered"
+                      title="Take a photo to confirm drop-off"
+                      detail="Snap the food where you hand it over."
+                      confirmLabel="Confirm drop-off"
                       uploadKey={`delivery:${id}`}
-                      onChange={onDeliveryPhoto}
+                      photo={deliveryPhoto}
+                      onPhoto={setDeliveryPhoto}
+                      onConfirm={onConfirmDelivery}
+                      submitting={isPending}
                     />
                     {confirmTakeHome ? (
                       <div className="mt-3 animate-fade-in rounded-md bg-transit-50 px-4 py-3">
@@ -1070,15 +1072,16 @@ export function ListingDetail({
                           : `Drop it at ${listing.dropOff ?? "the drop-off"} tomorrow.`}
                       </p>
                     </div>
-                    <ImageUploadField
-                      label="Delivery photo"
-                      optional={false}
-                      hint={photoHint(
-                        "snap the food when you drop it off tomorrow."
-                      )}
-                      aspect="aspect-[4/3]"
+                    <ProofStep
+                      stepName="Delivered"
+                      title="Take a photo to confirm drop-off"
+                      detail="Snap the food when you hand it over tomorrow."
+                      confirmLabel="Confirm drop-off"
                       uploadKey={`delivery:${id}`}
-                      onChange={onDeliveryPhoto}
+                      photo={deliveryPhoto}
+                      onPhoto={setDeliveryPhoto}
+                      onConfirm={onConfirmDelivery}
+                      submitting={isPending}
                     />
                   </>
                 ) : (

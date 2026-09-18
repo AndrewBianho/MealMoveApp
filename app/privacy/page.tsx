@@ -252,9 +252,9 @@ export default function PrivacyPage() {
 
       <Section title="Food safety & good-faith donors">
         <p>
-          Restaurants share surplus in good faith, and volunteers handle it with
-          a short safety check at pickup. The note below summarizes how good-faith
-          donors are generally protected.
+          Restaurants share surplus in good faith, and volunteers photograph the
+          food at pickup and again at the drop-off, so each handover has a record.
+          The note below summarizes how good-faith donors are generally protected.
         </p>
         <DonorProtectionNote className="mt-2" />
       </Section>

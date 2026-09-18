@@ -853,13 +853,9 @@ export async function releaseClaim(listingId: string) {
  * Capture the pickup photo and advance claimed → in_transit. The photo is
  * required — it's the proof a pickup actually happened (anti-flaking).
  */
-export async function startDelivery(
-  listingId: string,
-  photoUrl: string,
-  safety?: Record<string, boolean> | null
-) {
+export async function startDelivery(listingId: string, photoUrl: string) {
   const userId = await currentUserId();
-  await startDeliveryWithPhotoFor(prisma, userId, listingId, photoUrl, safety);
+  await startDeliveryWithPhotoFor(prisma, userId, listingId, photoUrl);
   refreshViews(listingId);
   const pickup = await prisma.pickup.findFirst({
     where: { listingId, OR: [{ volunteerId: userId }, { buddyId: userId }] },
