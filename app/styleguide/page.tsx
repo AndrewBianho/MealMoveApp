@@ -10,6 +10,10 @@ import { MapPlannerDemo } from "@/components/map/MapPlannerDemo";
 import { LISTINGS } from "@/lib/mock";
 import type { ListingStatus } from "@/lib/types";
 
+// Internal design reference. Public so the team can open it without a
+// session, but it has no business in search results.
+export const metadata = { robots: { index: false, follow: false } };
+
 const STATUSES: ListingStatus[] = [
   "open",
   "claimed",
