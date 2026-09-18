@@ -9,7 +9,7 @@ import { auth } from "@/auth";
 import { trackServer, identifyServer } from "@/lib/analytics";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, resetLimit, clientIp, LIMITS } from "@/lib/rate-limit";
-import { passwordValid } from "@/lib/password";
+import { passwordValid, PASSWORD_REQUIREMENT_MESSAGE } from "@/lib/password";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { geocodeAddress } from "@/lib/geocode";
 import { cleanOrgNotes, type OrgNotesInput } from "@/lib/orgNotes";
@@ -102,7 +102,7 @@ export async function registerUser(input: {
     return { ok: false, error: "Please enter a valid 10-digit phone number." };
   }
   if (!passwordValid(password)) {
-    return { ok: false, error: "Password must be 8+ characters with an uppercase letter and a number." };
+    return { ok: false, error: PASSWORD_REQUIREMENT_MESSAGE };
   }
 
   // If this email was invited to an existing organization, the invite governs
@@ -506,7 +506,7 @@ export async function acceptOrgAdminInvite(input: {
     return { ok: false, error: "Please enter a valid 10-digit phone number." };
   }
   if (!passwordValid(password)) {
-    return { ok: false, error: "Password must be 8+ characters with an uppercase letter and a number." };
+    return { ok: false, error: PASSWORD_REQUIREMENT_MESSAGE };
   }
   if (await emailTaken(email, { db: prisma })) {
     return { ok: false, error: "That email already has an account." };
@@ -640,7 +640,7 @@ export async function resetPassword(
 
   if (!token) return { ok: false, error: "This reset link is invalid." };
   if (!passwordValid(newPassword)) {
-    return { ok: false, error: "Password must be 8+ characters with an uppercase letter and a number." };
+    return { ok: false, error: PASSWORD_REQUIREMENT_MESSAGE };
   }
 
   const record = await prisma.passwordResetToken.findUnique({

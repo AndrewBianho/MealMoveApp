@@ -18,3 +18,18 @@ export const PASSWORD_RULES: PasswordRule[] = [
 export function passwordValid(password: string): boolean {
   return PASSWORD_RULES.every((r) => r.test(password));
 }
+
+/**
+ * The rejection message, built from the rules themselves. The four call sites
+ * that used to spell it out by hand would have kept saying "8+ characters with
+ * an uppercase letter and a number" after a fourth rule was added here — the
+ * checklist would show it, the error wouldn't. Reads "Password must have 8+
+ * characters, 1 uppercase, and 1 number."
+ */
+export const PASSWORD_REQUIREMENT_MESSAGE = `Password must have ${
+  PASSWORD_RULES.length > 1
+    ? PASSWORD_RULES.slice(0, -1).map((r) => r.label).join(", ") +
+      ", and " +
+      PASSWORD_RULES[PASSWORD_RULES.length - 1].label
+    : PASSWORD_RULES[0].label
+}.`;
