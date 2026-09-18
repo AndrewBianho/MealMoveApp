@@ -540,7 +540,6 @@ export function ListingsMap({
     if (!mapRef.current) return;
     void applyRoute(routeRef.current);
     // routeRef holds the latest route; routeKey is its stable serialization.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routeKey, applyRoute]);
 
   // Restyle the drop-off halo when the picker selection changes — the markers

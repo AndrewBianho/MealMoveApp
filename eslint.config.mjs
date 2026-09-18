@@ -17,6 +17,10 @@ export default [
       "next-env.d.ts",
       "prisma/migrations/**",
       "public/**",
+      // Vendored tooling that ships with a plugin skill, not app code — one
+      // minified UMD bundle alone accounted for 78 of 115 warnings, burying
+      // the 21 in our own files that the note below was written about.
+      ".claude/**",
     ],
   },
   ...coreWebVitals,
