@@ -64,7 +64,16 @@ const INVALID_CODES = new Set([
 export const sendMulticast: PushSender = async (tokens, message) => {
   if (tokens.length === 0) return { delivered: 0, invalidTokens: [] };
   if (!configured()) {
-    console.log(`[push] would send "${message.title}" to ${tokens.length} token(s)`);
+    // Dev seam: report what would have gone out. In production the same state
+    // means push is silently dropping every notification, so it is an error,
+    // not a log line — and the message title isn't repeated into the logs.
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[push] would send "${message.title}" to ${tokens.length} token(s)`);
+    } else {
+      console.error(
+        `[push] Firebase is not configured; dropped a notification to ${tokens.length} token(s).`
+      );
+    }
     return { delivered: 0, invalidTokens: [] };
   }
   try {

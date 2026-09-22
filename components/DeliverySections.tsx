@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ListingCard } from "./ListingCard";
+import { ConfirmReceiptButton } from "./ConfirmReceiptButton";
 import { EmptyState } from "./EmptyState";
 import {
   StatusFilterSelect,
@@ -19,10 +20,14 @@ const STATUS_ORDER = ["open", "claimed", "in transit", "taken home", "delivered"
 export function DeliverySections({
   incoming,
   arrived,
+  receivedIds = [],
 }: {
   incoming: Listing[];
   arrived: Listing[];
+  /** Arrived deliveries this location has already acknowledged. */
+  receivedIds?: string[];
 }) {
+  const received = new Set(receivedIds);
   const [filter, setFilter] = useState("all");
   const options = useMemo(
     () => statusOptionsFrom([...incoming, ...arrived], STATUS_ORDER),
@@ -75,7 +80,13 @@ export function DeliverySections({
           {shownArrived.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2">
               {shownArrived.map((l) => (
-                <ListingCard key={l.id} listing={l} audience="dropoff" />
+                <div key={l.id}>
+                  <ListingCard listing={l} audience="dropoff" />
+                  <ConfirmReceiptButton
+                    listingId={l.id}
+                    confirmed={received.has(l.id)}
+                  />
+                </div>
               ))}
             </div>
           ) : (

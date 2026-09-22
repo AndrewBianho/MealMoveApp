@@ -7,17 +7,15 @@ import {
   type ClaimPickup,
 } from "./claims";
 import { sendDropOffPickupNotice, sendRestaurantRescueNotice } from "./notify";
-import { cleanSafetyAnswers, type SafetyAnswers } from "./safety";
 import {
   cleanAccuracyNote,
   cleanRescueAccuracy,
   type RescueAccuracy,
 } from "./accuracy";
-import { Prisma } from "@prisma/client";
 
 // A structural slice of the Prisma client — just the methods these functions
 // touch. Lets tests inject a fake db without standing up a database.
-type Db = Pick<
+export type Db = Pick<
   typeof prisma,
   "pickup" | "foodListing" | "listingEvent" | "message" | "$transaction"
 >;
@@ -29,7 +27,7 @@ type Db = Pick<
  * pickup, not the listing: on a multi-car listing each car advances at its own
  * pace while the listing status trails the slowest car (see lib/claims).
  */
-async function loadClaimInStage(
+export async function loadClaimInStage(
   db: Db,
   userId: string,
   listingId: string,
@@ -82,15 +80,12 @@ export async function startDeliveryWithPhotoFor(
   userId: string,
   listingId: string,
   photoUrl: string,
-  safety?: SafetyAnswers | null,
   notify = sendDropOffPickupNotice
 ): Promise<void> {
   const url = photoUrl?.trim();
   if (!url) throw new Error("A pickup photo is required to start delivery.");
   const pickup = await loadClaimInStage(db, userId, listingId, ["claimed"]);
   const dropOff = pickup.listing.dropOff;
-  // Record the dismissible safety checklist alongside the proof, if answered.
-  const checklist = cleanSafetyAnswers(safety);
 
   // A durable "it's picked up" line in the coordination thread, posted from the
   // volunteer who captured the photo (a participant). The drop-off, restaurant,
@@ -102,12 +97,7 @@ export async function startDeliveryWithPhotoFor(
   await db.$transaction([
     db.pickup.update({
       where: { id: pickup.id },
-      data: {
-        photoAtPickupUrl: url,
-        ...(checklist
-          ? { safetyChecklist: checklist as Prisma.InputJsonValue }
-          : {}),
-      },
+      data: { photoAtPickupUrl: url },
     }),
     db.foodListing.update({
       where: { id: listingId },

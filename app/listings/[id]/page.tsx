@@ -1,5 +1,6 @@
 import { ListingDetail } from "@/components/ListingDetail";
 import { getListing } from "@/lib/listings";
+import { ARRIVED } from "@/lib/handover";
 import { getActiveDropOffNotices } from "@/lib/dropoffNotices";
 import { canAccessChat } from "@/lib/chat";
 import { getDropOffs } from "@/lib/map";
@@ -49,6 +50,15 @@ export default async function ListingDetailPage(
   // World isolation: a listing from the other world (demo vs real) is treated
   // as not existing, so its URL can't be reached by direct browsing.
   if (listingRow && listingRow.demo !== demo) notFound();
+
+  // Has this viewer already marked themselves arrived? Drives the in-transit
+  // panel's arrived state. An event row rather than a column — see lib/handover.
+  const arrived = viewerId
+    ? (await prisma.listingEvent.findFirst({
+        where: { listingId: params.id, type: ARRIVED, actorId: viewerId },
+        select: { id: true },
+      })) != null
+    : false;
 
   const dropOffNotices = listingRow?.dropOffId
     ? await getActiveDropOffNotices(listingRow.dropOffId)
@@ -165,6 +175,7 @@ export default async function ListingDetailPage(
         activeElsewhere={activeElsewhere}
         chosenDropOffPin={listingRow?.dropOff ?? null}
         canPrimeNotifications={canPrimeNotifications}
+        arrived={arrived}
       />
     </main>
   );

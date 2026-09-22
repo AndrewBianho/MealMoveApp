@@ -6,6 +6,9 @@ import { hashToken } from "@/lib/orgAdminInvite";
 
 export const dynamic = "force-dynamic";
 
+// The invite token is the path itself — never let this into an index.
+export const metadata = { robots: { index: false, follow: false } };
+
 // Redeem an org-admin invite link. The raw token rides in the path; we look it
 // up by hash. A used, revoked, or unknown link all show the same calm dead-end.
 export default async function AdminInvitePage(

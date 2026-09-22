@@ -9,7 +9,7 @@ import { PasswordField } from "./PasswordField";
 import { cn } from "./cn";
 import { inputCls, labelCls, errorBannerCls } from "./authStyles";
 import { SuccessPanel, BackToSignIn, CheckIcon } from "./AuthPanels";
-import { passwordValid } from "@/lib/password";
+import { passwordValid, PASSWORD_REQUIREMENT_MESSAGE } from "@/lib/password";
 import { registerUser, findPendingInvite } from "@/app/actions";
 import { trackClient } from "@/lib/analytics/client";
 
@@ -95,7 +95,7 @@ export function SignupForm() {
     }
     if (s === 2) {
       if (!EMAIL_RE.test(email)) return "Please enter a valid email address.";
-      if (!passwordValid(password)) return "Password must be 8+ characters with an uppercase letter and a number.";
+      if (!passwordValid(password)) return PASSWORD_REQUIREMENT_MESSAGE;
     }
     if (s === 3 && !invite) {
       if (role === "restaurant" && (!restaurantName.trim() || !restaurantAddress.trim()))

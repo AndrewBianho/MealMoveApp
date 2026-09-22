@@ -19,6 +19,14 @@ function smtpConfigured(): boolean {
   return Boolean(SMTP_HOST && SMTP_PORT && SMTP_FROM);
 }
 
+// The dev seam below prints what *would* have been sent. That is exactly right
+// locally and exactly wrong in production: a deploy that lost its SMTP config
+// would write live password-reset links — and every recipient's address — into
+// the platform logs, where anyone with log access could walk in through them.
+// So the seam is bound to development; production reports the misconfiguration
+// without reproducing its contents.
+const IS_DEV = process.env.NODE_ENV !== "production";
+
 // Encodes the three characters that break out of an HTML text node. Safe for
 // text content (the only use here, building email bodies); NOT sufficient for
 // attribute values, which would also need quote escaping.
@@ -48,7 +56,8 @@ export async function sendNudgeEmail(
   html: string
 ): Promise<void> {
   if (!smtpConfigured()) {
-    console.log(`[nudge] would email ${to}: ${subject}`);
+    if (IS_DEV) console.log(`[nudge] would email ${to}: ${subject}`);
+    else console.error("[nudge] SMTP is not configured; nudge email not sent.");
     return;
   }
   try {
@@ -75,8 +84,13 @@ export async function sendPasswordResetEmail(
   link: string
 ): Promise<void> {
   if (!smtpConfigured()) {
-    // Dev seam: no SMTP configured, so print the link instead of sending.
-    console.log(`[password-reset] would email ${to}: ${link}`);
+    // Dev seam: no SMTP configured, so print the link instead of sending. The
+    // link is a bearer token for the account — never log it outside dev.
+    if (IS_DEV) console.log(`[password-reset] would email ${to}: ${link}`);
+    else
+      console.error(
+        "[password-reset] SMTP is not configured; reset email not sent."
+      );
     return;
   }
 

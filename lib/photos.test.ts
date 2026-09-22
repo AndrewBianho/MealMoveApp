@@ -124,7 +124,7 @@ test("startDeliveryWithPhotoFor: notifies the drop-off that food is on its way",
     },
   });
   const notices: any[] = [];
-  await startDeliveryWithPhotoFor(db, "vol1", "ls1", "https://x/p.jpg", null, async (n) => {
+  await startDeliveryWithPhotoFor(db, "vol1", "ls1", "https://x/p.jpg", async (n) => {
     notices.push(n);
   });
   assert.equal(notices.length, 1);
@@ -144,7 +144,7 @@ test("startDeliveryWithPhotoFor: posts a pickup update into the coordination thr
   });
   // Inject a no-op notify: this test covers thread-posting, not the drop-off
   // notice, and the real dispatch would query the database (unavailable in CI).
-  await startDeliveryWithPhotoFor(db, "vol1", "ls1", "https://x/p.jpg", null, async () => {});
+  await startDeliveryWithPhotoFor(db, "vol1", "ls1", "https://x/p.jpg", async () => {});
   assert.equal(calls.messages.length, 1);
   assert.equal(calls.messages[0].senderId, "vol1");
   assert.equal(calls.messages[0].listingId, "ls1");
@@ -157,7 +157,7 @@ test("startDeliveryWithPhotoFor: no drop-off notice when none is assigned yet, b
     listing: { status: "claimed", title: "Bagels", dropOff: null },
   });
   const notices: any[] = [];
-  await startDeliveryWithPhotoFor(db, "vol1", "ls1", "https://x/p.jpg", null, async (n) => {
+  await startDeliveryWithPhotoFor(db, "vol1", "ls1", "https://x/p.jpg", async (n) => {
     notices.push(n);
   });
   assert.equal(notices.length, 0);

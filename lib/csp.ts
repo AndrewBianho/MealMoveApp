@@ -13,7 +13,8 @@
  * report-only pass caught us missing. The nonce alone buys the thing that
  * matters here; strict-dynamic only adds ways to break it.
  *
- * Origins are read out of the code, not guessed. See SECURITY-AUDIT.md #3.
+ * Origins are read out of the code, not guessed: each one below is here
+ * because something in this app actually talks to it.
  */
 export function buildCsp(nonce: string): string {
   return [

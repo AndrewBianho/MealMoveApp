@@ -25,9 +25,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
+# local env files. `.env.*` is the catch-all: the previous `.env*.local` let a
+# `.env.production` (or `.env.development`) through, which is exactly the file
+# most likely to hold real credentials.
 .env
-.env*.local
+.env.*
 .env.bak*
 !.env.example
 

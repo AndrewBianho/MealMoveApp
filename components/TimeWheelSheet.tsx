@@ -101,7 +101,7 @@ function Wheel<T extends string | number>({
             aria-selected={active}
             className={cn(
               "flex snap-center items-center justify-center font-mono tabular-nums transition-colors",
-              active ? "text-neutral-900" : "text-neutral-500",
+              active ? "text-neutral-900" : "text-neutral-700",
               ariaLabel === "Meridiem" ? "text-[17px]" : "text-[22px]"
             )}
             style={{ height: ITEM_H }}
@@ -200,7 +200,7 @@ export function TimeWheelSheet({
             format={(v) => String(v)}
             onSelect={(v) => set({ h12: v })}
           />
-          <div className="grid h-[200px] w-2 place-items-center font-mono text-[22px] text-neutral-500">
+          <div className="grid h-[200px] w-2 place-items-center font-mono text-[22px] text-neutral-700">
             :
           </div>
           <Wheel

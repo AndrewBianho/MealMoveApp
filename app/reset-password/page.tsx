@@ -1,5 +1,10 @@
 import { ResetPasswordForm } from "@/components/ResetPasswordForm";
 
+// The reset token rides in the query string, so this page must never enter a
+// search index — robots.txt only asks crawlers not to fetch it, while this
+// keeps it out of results even if someone links the URL.
+export const metadata = { robots: { index: false, follow: false } };
+
 export default async function ResetPasswordPage(
   props: {
     searchParams: Promise<{ token?: string }>;

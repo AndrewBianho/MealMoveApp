@@ -9,7 +9,7 @@ import { auth } from "@/auth";
 import { trackServer, identifyServer } from "@/lib/analytics";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, resetLimit, clientIp, LIMITS } from "@/lib/rate-limit";
-import { passwordValid } from "@/lib/password";
+import { passwordValid, PASSWORD_REQUIREMENT_MESSAGE } from "@/lib/password";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { geocodeAddress } from "@/lib/geocode";
 import { cleanOrgNotes, type OrgNotesInput } from "@/lib/orgNotes";
@@ -24,6 +24,7 @@ import {
   takeHomeForTomorrowFor,
   recordRescueAccuracyFor,
 } from "@/lib/photos";
+import { markArrivedFor, confirmReceiptFor } from "@/lib/handover";
 import {
   invitableVolunteers,
   inviteBuddyFor,
@@ -102,7 +103,7 @@ export async function registerUser(input: {
     return { ok: false, error: "Please enter a valid 10-digit phone number." };
   }
   if (!passwordValid(password)) {
-    return { ok: false, error: "Password must be 8+ characters with an uppercase letter and a number." };
+    return { ok: false, error: PASSWORD_REQUIREMENT_MESSAGE };
   }
 
   // If this email was invited to an existing organization, the invite governs
@@ -506,7 +507,7 @@ export async function acceptOrgAdminInvite(input: {
     return { ok: false, error: "Please enter a valid 10-digit phone number." };
   }
   if (!passwordValid(password)) {
-    return { ok: false, error: "Password must be 8+ characters with an uppercase letter and a number." };
+    return { ok: false, error: PASSWORD_REQUIREMENT_MESSAGE };
   }
   if (await emailTaken(email, { db: prisma })) {
     return { ok: false, error: "That email already has an account." };
@@ -640,7 +641,7 @@ export async function resetPassword(
 
   if (!token) return { ok: false, error: "This reset link is invalid." };
   if (!passwordValid(newPassword)) {
-    return { ok: false, error: "Password must be 8+ characters with an uppercase letter and a number." };
+    return { ok: false, error: PASSWORD_REQUIREMENT_MESSAGE };
   }
 
   const record = await prisma.passwordResetToken.findUnique({
@@ -853,13 +854,46 @@ export async function releaseClaim(listingId: string) {
  * Capture the pickup photo and advance claimed → in_transit. The photo is
  * required — it's the proof a pickup actually happened (anti-flaking).
  */
-export async function startDelivery(
-  listingId: string,
-  photoUrl: string,
-  safety?: Record<string, boolean> | null
-) {
+/**
+ * "I've arrived" — the volunteer is at the drop-off but hasn't handed over yet.
+ * Adds a line to the coordination thread so the drop-off knows someone is
+ * outside; it does not move the rescue's stage (see lib/handover).
+ */
+export async function markArrived(listingId: string) {
   const userId = await currentUserId();
-  await startDeliveryWithPhotoFor(prisma, userId, listingId, photoUrl, safety);
+  const res = await markArrivedFor(prisma, userId, listingId);
+  refreshViews(listingId);
+  return res;
+}
+
+/**
+ * The drop-off acknowledges the food reached them. Purely additive — it records
+ * a second, independent voice on a delivery rather than changing its status.
+ */
+export async function confirmReceipt(listingId: string) {
+  const session = await auth();
+  const userId = session?.user?.id;
+  const role = session?.user?.role;
+  if (!userId || !role) throw new Error("Not signed in.");
+  // dropOffId isn't on the JWT, so it comes from the row — the same read
+  // guardDropOffEdit does.
+  const me = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { dropOffId: true },
+  });
+  const res = await confirmReceiptFor(
+    prisma,
+    { id: userId, role, dropOffId: me?.dropOffId ?? null },
+    listingId
+  );
+  refreshViews(listingId);
+  revalidatePath("/dropoff/incoming");
+  return res;
+}
+
+export async function startDelivery(listingId: string, photoUrl: string) {
+  const userId = await currentUserId();
+  await startDeliveryWithPhotoFor(prisma, userId, listingId, photoUrl);
   refreshViews(listingId);
   const pickup = await prisma.pickup.findFirst({
     where: { listingId, OR: [{ volunteerId: userId }, { buddyId: userId }] },
