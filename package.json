@@ -17,6 +17,8 @@
     "db:seed": "prisma db seed",
     "db:demo:reset": "node --env-file=.env --import tsx prisma/reset-demo.ts",
     "db:studio": "prisma studio",
+    "db:status:prod": "node --env-file=.env.production ./node_modules/.bin/prisma migrate status",
+    "db:migrate:prod": "node --env-file=.env.production ./node_modules/.bin/prisma migrate deploy",
     "make-admin": "node --env-file=.env --import tsx scripts/make-admin.ts",
     "db:promote-super-admin": "node --env-file=.env --import tsx scripts/promote-super-admin.ts",
     "sweep": "node --env-file=.env --import tsx scripts/sweep.ts",
