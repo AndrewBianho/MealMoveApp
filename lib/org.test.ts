@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { orgForEmail } from "./org";
 
 const ORGS = [
-  { id: "org_malvern", name: "Malvern", emailDomain: "malvernprep.org", isDefault: false },
+  { id: "org_malvern", name: "Malvern Prep", emailDomain: "malvernprep.org", isDefault: false },
   { id: "org_default_cfr", name: "None", emailDomain: null, isDefault: true },
 ];
 
