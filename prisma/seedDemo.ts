@@ -46,7 +46,7 @@ export async function seedDemo(prisma: PrismaClient) {
   // All demo accounts share the password "MealMove1".
   const passwordHash = await bcrypt.hash("MealMove1", 10);
 
-  // Two starting organizations. Malvern auto-joins @malvernprep.org volunteers;
+  // Two starting organizations. Malvern Prep auto-joins @malvernprep.org volunteers;
   // everyone else falls to the default. Exactly one isDefault org. Upserted so
   // reruns (full reseed or demo-only reset) don't create duplicate rows.
   const defaultOrg = await prisma.organization.upsert({
@@ -57,7 +57,7 @@ export async function seedDemo(prisma: PrismaClient) {
   const malvernOrg = await prisma.organization.upsert({
     where: { id: "org_malvern" },
     update: {},
-    create: { id: "org_malvern", name: "Malvern", emailDomain: "malvernprep.org" },
+    create: { id: "org_malvern", name: "Malvern Prep", emailDomain: "malvernprep.org" },
   });
   // Volunteers and org admins auto-join by email domain; restaurant/drop_off
   // accounts stay org-less (partners are global, never org-scoped).

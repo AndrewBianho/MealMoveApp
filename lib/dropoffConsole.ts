@@ -33,9 +33,25 @@ export async function loadDropOffConsole() {
   const [all, allLocations] = await Promise.all([getListings(), getDropOffs()]);
   const demo = await isDemo();
 
-  const locations = isOrgAdmin
+  let locations = isOrgAdmin
     ? allLocations
     : allLocations.filter((d) => d.id === myDropOffId);
+
+  // In the demo world an account may have no location of its own to speak for:
+  // a real-world drop-off account toggled into demo (its location lives in the
+  // real world), or one never linked at all. The sample world should stay
+  // explorable, so it borrows a demo location instead of the "not linked yet"
+  // wall. Prefer one with food headed to it, so Conversations and Incoming have
+  // something to show. `myDropOffId` drops to null: the borrowed location isn't
+  // this account's, so the team panel (its own members and invites) stays out.
+  if (!isOrgAdmin && demo && locations.length === 0) {
+    const standIn =
+      allLocations.find((d) => all.some((l) => l.dropOffId === d.id)) ??
+      allLocations[0];
+    locations = standIn ? [standIn] : [];
+    myDropOffId = null;
+  }
+
   const managedIds = new Set(locations.map((d) => d.id));
 
   const noticesByDropOff = await getActiveNoticesByDropOff(

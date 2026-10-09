@@ -224,7 +224,7 @@ export async function registerUser(input: {
 
     // Volunteers are active immediately — low-stakes, and the whole point is a
     // first-timer claiming a pickup without friction. Auto-join their org by
-    // email domain (Malvern for @malvernprep.org, else the default org).
+    // email domain (Malvern Prep for @malvernprep.org, else the default org).
     const org = await orgForEmail(email);
     const newUser = await prisma.user.create({
       data: { name, email, phone, passwordHash, role: "volunteer", organizationId: org.id },
@@ -1514,6 +1514,17 @@ async function guardDropOffEdit(
       select: { dropOffId: true },
     });
     if (me?.dropOffId && me.dropOffId === dropOffId) return { ok: true };
+    // In the demo world a drop-off account may be speaking for a borrowed
+    // sample location rather than its own (lib/dropoffConsole) — let it edit
+    // that row, which is sample data reset by prisma/reset-demo. Real-world
+    // locations still answer only to the account linked to them.
+    if (await isDemo()) {
+      const target = await prisma.dropOff.findUnique({
+        where: { id: dropOffId },
+        select: { demo: true },
+      });
+      if (target?.demo) return { ok: true };
+    }
     return { ok: false, error: "That isn't your drop-off." };
   }
   return { ok: false, error: "Only the drop-off or an org admin can edit this." };

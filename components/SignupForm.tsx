@@ -15,6 +15,7 @@ import { trackClient } from "@/lib/analytics/client";
 
 type Role = "volunteer" | "restaurant" | "drop_off";
 type RoleLabel = Role | "org_admin" | "super_admin";
+type Org = { id: string; name: string };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const TOTAL = 6;
@@ -44,7 +45,7 @@ const NOTIF_COPY: Record<RoleLabel, { email: string; sms: string }> = {
 // Per-step width classes for the progress fill (no inline styles — Tailwind only).
 const PROGRESS = ["w-1/6", "w-2/6", "w-3/6", "w-4/6", "w-5/6", "w-full"];
 
-export function SignupForm() {
+export function SignupForm({ orgs }: { orgs: Org[] }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [role, setRole] = useState<Role>("volunteer");
@@ -52,9 +53,11 @@ export function SignupForm() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // Volunteer affiliation — collected for parity; not yet persisted (registerUser
-  // has no campus field), so it's local-only until the model gains one.
-  const [campus, setCampus] = useState("");
+  // Volunteer affiliation, picked from the real org list rather than typed, so
+  // the value is an id the server could act on. Still collected for parity only:
+  // registerUser assigns the org from the email domain (lib/org.orgForEmail),
+  // so this stays local until that flow takes a chosen org.
+  const [orgId, setOrgId] = useState("");
   const [restaurantName, setRestaurantName] = useState("");
   const [restaurantAddress, setRestaurantAddress] = useState("");
   const [dropOffName, setDropOffName] = useState("");
@@ -305,8 +308,9 @@ export function SignupForm() {
           <RoleSpecificStep
             invite={invite}
             role={role}
-            campus={campus}
-            setCampus={setCampus}
+            orgs={orgs}
+            orgId={orgId}
+            setOrgId={setOrgId}
             onSkip={() => setStep((s) => s + 1)}
             restaurantName={restaurantName}
             setRestaurantName={setRestaurantName}
@@ -343,7 +347,7 @@ export function SignupForm() {
             name={name}
             phone={phone}
             email={email}
-            campus={campus}
+            orgName={orgs.find((o) => o.id === orgId)?.name ?? ""}
             restaurantName={restaurantName}
             restaurantAddress={restaurantAddress}
             dropOffName={dropOffName}
@@ -407,7 +411,10 @@ function stepCopy(
         return { title: "Your restaurant", sub: "Where volunteers will pick up surplus." };
       if (role === "drop_off")
         return { title: "Your drop-off site", sub: "Where rescued food arrives." };
-      return { title: "Your campus", sub: "Where you're rescuing from, if anywhere." };
+      return {
+        title: "Your organization",
+        sub: "Which chapter you're rescuing with, if any.",
+      };
     case 4:
       return { title: "Stay in the loop", sub: "Choose how we reach you. Change anytime." };
     default:
@@ -459,8 +466,9 @@ function RoleStep({ role, onPick }: { role: Role; onPick: (r: Role) => void }) {
 function RoleSpecificStep(props: {
   invite: { orgName: string; role: Role } | null;
   role: Role;
-  campus: string;
-  setCampus: (v: string) => void;
+  orgs: Org[];
+  orgId: string;
+  setOrgId: (v: string) => void;
   onSkip: () => void;
   restaurantName: string;
   setRestaurantName: (v: string) => void;
@@ -500,10 +508,25 @@ function RoleSpecificStep(props: {
     );
   }
 
-  // Volunteer — optional affiliation.
+  // Volunteer — optional affiliation, chosen from the chapters that exist.
   return (
     <div>
-      <Field id="campus" label="Campus or organization" placeholder="State University" value={props.campus} onChange={props.setCampus} />
+      <label className={labelCls} htmlFor="org">
+        Organization
+      </label>
+      <select
+        id="org"
+        className={inputCls}
+        value={props.orgId}
+        onChange={(e) => props.setOrgId(e.target.value)}
+      >
+        <option value="">Not affiliated</option>
+        {props.orgs.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.name}
+          </option>
+        ))}
+      </select>
       <p className="mt-1.5 text-[15px] leading-relaxed text-neutral-700">
         Optional —{" "}
         <button
@@ -525,7 +548,7 @@ function ReviewStep(props: {
   name: string;
   phone: string;
   email: string;
-  campus: string;
+  orgName: string;
   restaurantName: string;
   restaurantAddress: string;
   dropOffName: string;
@@ -558,7 +581,7 @@ function ReviewStep(props: {
     rows.push({ label: "Site", value: props.dropOffName || "—", step: 3 });
     rows.push({ label: "Site address", value: props.dropOffAddress || "—", step: 3 });
   } else {
-    rows.push({ label: "Campus", value: props.campus || "Not set", step: 3 });
+    rows.push({ label: "Organization", value: props.orgName || "Not affiliated", step: 3 });
   }
   rows.push({ label: "Notifications", value: notif, step: 4 });
 
